@@ -1,6 +1,6 @@
-import type { Config } from 'next'
-
-const config: Config = {
+/** @type {import('next').NextConfig} */
+const config = {
   pageExtensions: ['js', 'jsx', 'ts', 'tsx'],
 }
-export default config
+
+module.exports = config
