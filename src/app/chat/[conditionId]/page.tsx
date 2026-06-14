@@ -13,7 +13,7 @@ import {
   initializeParticipantData,
   saveToLocalStorage,
 } from '@/lib/dataRecorder';
-import { getCondition } from '@/lib/conditions';
+import { buildSurveyUrl, Condition, getCondition, hasValidSurveyUrl } from '@/lib/conditions';
 
 type Step = 'expectation' | 'greeting' | 'chat' | 'recommendation' | 'surprise' | 'complete';
 
@@ -23,7 +23,7 @@ export default function ChatPage() {
   const conditionId = parseInt(params.conditionId as string);
 
   const [participantData, setParticipantData] = useState<ParticipantData | null>(null);
-  const [condition, setCondition] = useState<any>(null);
+  const [condition, setCondition] = useState<Condition | null>(null);
   const [currentStep, setCurrentStep] = useState<Step>('expectation');
   const [chatStep, setChatStep] = useState<string>('stylePreference');
 
@@ -67,28 +67,46 @@ export default function ChatPage() {
     setParticipantData(data);
   };
 
-  const handleChatStepChange = (step: string) => {
+  const handleChatStepChange = (step: string, latestData?: ParticipantData) => {
     setChatStep(step);
 
     if (step === 'recommendation') {
+      const sourceData = latestData ?? participantData;
       setCurrentStep('recommendation');
       const updated = {
-        ...participantData,
+        ...sourceData,
+        finalRecommendedOutfit: condition.finalRecommendedOutfit,
         finalRecommendationText: condition.finalRecommendationText,
         expectationMismatch:
-          participantData.expectedOutfit === participantData.finalRecommendedOutfit ? 0 : 1,
+          sourceData.expectedOutfit === condition.finalRecommendedOutfit ? 0 : 1,
       };
       setParticipantData(updated);
     }
   };
 
-  const handleSurpriseComplete = () => {
+  const handleSurpriseComplete = (data: ParticipantData) => {
+    const completedData = {
+      ...data,
+      sessionEndTime: data.sessionEndTime ?? new Date().toISOString(),
+    };
+
     setCurrentStep('complete');
-    saveToLocalStorage(participantData);
-    console.log('Participant data saved:', participantData);
+    setParticipantData(completedData);
+    saveToLocalStorage(completedData);
+    console.log('Participant data saved:', completedData);
   };
 
   const handleClickSurvey = () => {
+    const surveyUrl = buildSurveyUrl(condition.surveyUrl, {
+      participantId: participantData.participantId,
+      conditionId,
+    });
+
+    if (!surveyUrl) {
+      alert('問卷網址尚未設定。請研究者先設定有效的問卷連結。');
+      return;
+    }
+
     const updated = {
       ...participantData,
       clickedSurveyButton: true,
@@ -99,10 +117,11 @@ export default function ChatPage() {
     saveToLocalStorage(updated);
 
     setTimeout(() => {
-      const surveyUrl = `${condition.surveyUrl}&participantId=${updated.participantId}&conditionId=${conditionId}`;
-      window.location.href = surveyUrl;
+      window.location.assign(surveyUrl);
     }, 1000);
   };
+
+  const surveyConfigured = hasValidSurveyUrl(condition.surveyUrl);
 
   return (
     <div className="min-h-screen py-8 px-4">
@@ -176,10 +195,17 @@ export default function ChatPage() {
 
             <button
               onClick={handleClickSurvey}
-              className="px-8 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white font-bold rounded-lg hover:shadow-lg transition"
+              disabled={!surveyConfigured}
+              className="px-8 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white font-bold rounded-lg hover:shadow-lg transition disabled:cursor-not-allowed disabled:opacity-50"
             >
-              前往問卷調查 →
+              {surveyConfigured ? '前往問卷調查 →' : '問卷網址尚未設定'}
             </button>
+
+            {!surveyConfigured && (
+              <p className="text-sm text-red-600">
+                目前條件資料仍是範例網址，請設定正式問卷 URL 後再開放受試者填答。
+              </p>
+            )}
 
             <div className="text-xs text-gray-500 mt-8">
               <p>Participant ID: {participantData.participantId}</p>
