@@ -14,10 +14,6 @@ export interface Condition {
   avatarUrl: string;
   tone: 'friendly' | 'professional';
   greetingText: string;
-  finalRecommendedOutfit: string;
-  finalRecommendedOutfitEN: string;
-  finalRecommendationImage: string;
-  finalRecommendationText: string;
   manipulationNotes: string;
   surveyUrl: string;
 }
@@ -34,9 +30,7 @@ export function getRandomConditionId(): number {
 }
 
 export function hasValidSurveyUrl(surveyUrl?: string): boolean {
-  if (!surveyUrl) {
-    return false;
-  }
+  if (!surveyUrl) return false;
 
   try {
     const url = new URL(surveyUrl);
@@ -46,16 +40,26 @@ export function hasValidSurveyUrl(surveyUrl?: string): boolean {
   }
 }
 
-export function buildSurveyUrl(
-  surveyUrl: string,
-  params: { participantId: string; conditionId: number },
-): string | null {
-  if (!hasValidSurveyUrl(surveyUrl)) {
-    return null;
-  }
+export interface SurveyParams {
+  participantId: string;
+  conditionId: number;
+  surpriseMode: string;
+  expectedOutfit: string;
+  finalRecommendedOutfit: string;
+  expectationMismatch: number | null;
+  selectedOutfitCategory: string;
+}
+
+export function buildSurveyUrl(surveyUrl: string, params: SurveyParams): string | null {
+  if (!hasValidSurveyUrl(surveyUrl)) return null;
 
   const url = new URL(surveyUrl);
-  url.searchParams.set('participantId', params.participantId);
-  url.searchParams.set('conditionId', String(params.conditionId));
+  url.searchParams.set('pid', params.participantId);
+  url.searchParams.set('condition', String(params.conditionId));
+  url.searchParams.set('surprise', params.surpriseMode);
+  url.searchParams.set('expected', params.expectedOutfit);
+  url.searchParams.set('final', params.finalRecommendedOutfit);
+  url.searchParams.set('mismatch', String(params.expectationMismatch ?? ''));
+  url.searchParams.set('category', params.selectedOutfitCategory);
   return url.toString();
 }

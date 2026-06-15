@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { Condition } from '@/lib/conditions';
+import { CHAT_PROMPTS, generateAcknowledgment } from '@/lib/aiResponses';
 import { ChatMessage, ParticipantData } from '@/lib/dataRecorder';
 
 interface ChatInterfaceProps {
@@ -11,24 +12,6 @@ interface ChatInterfaceProps {
   onStepChange: (step: string, data?: ParticipantData) => void;
   currentStep: string;
 }
-
-const prompts: Record<string, { question: string; answerKey: keyof ParticipantData['answers']; nextStep: string }> = {
-  stylePreference: {
-    question: '你平常偏好的穿搭風格是什麼？例如簡約、正式、休閒或甜美。',
-    answerKey: 'stylePreferenceInput',
-    nextStep: 'bodyShape',
-  },
-  bodyShape: {
-    question: '你希望穿搭如何修飾身形或呈現比例？',
-    answerKey: 'bodyShapeInput',
-    nextStep: 'koreanStylePreference',
-  },
-  koreanStylePreference: {
-    question: '你對韓系面試穿搭有哪些期待？',
-    answerKey: 'koreanStylePreferenceInput',
-    nextStep: 'recommendation',
-  },
-};
 
 function createMessage(step: string, sender: ChatMessage['sender'], message: string): ChatMessage {
   return {
@@ -47,7 +30,7 @@ export function ChatInterface({
   currentStep,
 }: ChatInterfaceProps) {
   const [inputValue, setInputValue] = useState('');
-  const prompt = prompts[currentStep];
+  const prompt = CHAT_PROMPTS[currentStep as keyof typeof CHAT_PROMPTS];
 
   if (!prompt) {
     return null;
@@ -57,23 +40,24 @@ export function ChatInterface({
     event.preventDefault();
 
     const answer = inputValue.trim();
-    if (!answer) {
-      return;
-    }
+    if (!answer) return;
 
-    const botMessage = createMessage(currentStep, 'bot', prompt.question);
+    const questionMessage = createMessage(currentStep, 'bot', prompt.question);
+    const acknowledgment = generateAcknowledgment(
+      currentStep as keyof typeof CHAT_PROMPTS,
+      answer,
+      condition,
+    );
+    const ackMessage = createMessage(currentStep, 'bot', acknowledgment);
     const userMessage = createMessage(currentStep, 'user', answer);
+
     const updatedData: ParticipantData = {
       ...participantData,
       answers: {
         ...participantData.answers,
         [prompt.answerKey]: answer,
       },
-      chatLog: [...participantData.chatLog, botMessage, userMessage],
-      finalRecommendedOutfit:
-        prompt.nextStep === 'recommendation'
-          ? condition.finalRecommendedOutfit
-          : participantData.finalRecommendedOutfit,
+      chatLog: [...participantData.chatLog, questionMessage, userMessage, ackMessage],
     };
 
     onUpdateData(updatedData);
@@ -82,7 +66,7 @@ export function ChatInterface({
   };
 
   return (
-    <div className="flex h-full flex-col rounded-lg bg-white shadow-lg">
+    <div className="flex h-full min-h-[28rem] flex-col rounded-lg bg-white shadow-lg">
       <div className="flex-1 space-y-4 overflow-y-auto p-6">
         {participantData.chatLog.map((message, index) => (
           <div
@@ -90,7 +74,7 @@ export function ChatInterface({
             className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
           >
             <div
-              className={`max-w-[80%] rounded-2xl px-4 py-3 ${
+              className={`max-w-[85%] rounded-2xl px-4 py-3 ${
                 message.sender === 'user'
                   ? 'bg-blue-500 text-white'
                   : 'bg-gray-100 text-gray-800'
@@ -102,15 +86,13 @@ export function ChatInterface({
         ))}
 
         <div className="flex justify-start">
-          <div className="max-w-[80%] rounded-2xl bg-gray-100 px-4 py-3 text-gray-800">
-            {prompt.question}
-            {condition.proactivity === 'high' && (
-              <p className="mt-2 text-sm text-gray-600">
-                可以從顏色、版型、正式程度或你想呈現的形象來描述。
-              </p>
-            )}
+            <div className="max-w-[85%] rounded-2xl bg-gray-100 px-4 py-3 text-gray-800">
+              {prompt.question}
+              {condition.proactivity === 'high' && (
+                <p className="mt-2 text-sm text-gray-600">請以文字自由輸入你的回答。</p>
+              )}
+            </div>
           </div>
-        </div>
       </div>
 
       <form onSubmit={handleSubmit} className="border-t border-gray-200 p-4">

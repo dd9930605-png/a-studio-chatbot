@@ -1,3 +1,5 @@
+import { OutfitCategory, SurpriseMode } from '@/lib/outfits';
+
 export interface ChatMessage {
   step: string;
   sender: 'user' | 'bot';
@@ -8,7 +10,9 @@ export interface ChatMessage {
 export interface ParticipantAnswers {
   stylePreferenceInput: string;
   bodyShapeInput: string;
-  koreanStylePreferenceInput: string;
+  websitePreferenceInput: string;
+  koreanExperienceInput: string;
+  usualStyleInput: string;
 }
 
 export interface ParticipantConditionInfo {
@@ -20,23 +24,34 @@ export interface ParticipantConditionInfo {
 
 export interface ParticipantData {
   participantId: string;
+  selectedOutfitCategory: OutfitCategory | '';
+  allowedOutfits: string[];
+  blockedOutfits: string[];
   conditionId: number;
   conditionInfo: ParticipantConditionInfo;
+  surpriseMode: SurpriseMode | '';
+  acceptableOutfits: string[];
   expectedOutfit: string;
+  surpriseCandidateOutfits: string[];
   finalRecommendedOutfit: string;
   finalRecommendationText: string;
   expectationMismatch: number | null;
   answers: ParticipantAnswers;
   chatLog: ChatMessage[];
-  styleSurpriseItems: number[];
-  styleSurpriseScore: number;
   clickedSurveyButton: boolean;
   surveyClickedAt: string | null;
+  surveyRedirectUrl: string | null;
   sessionStartTime: string;
   sessionEndTime: string | null;
 }
 
 const STORAGE_KEY = 'participant_data';
+const SESSION_KEY = 'experiment_session';
+
+export interface ExperimentSession {
+  conditionId: number;
+  surpriseMode: SurpriseMode;
+}
 
 export function generateParticipantId(): string {
   const timestamp = new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14);
@@ -44,38 +59,70 @@ export function generateParticipantId(): string {
   return `P-${timestamp}-${random}`;
 }
 
+export function saveExperimentSession(session: ExperimentSession): void {
+  if (typeof window === 'undefined') return;
+  sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
+}
+
+export function getExperimentSession(): ExperimentSession | null {
+  if (typeof window === 'undefined') return null;
+
+  const raw = sessionStorage.getItem(SESSION_KEY);
+  if (!raw) return null;
+
+  try {
+    return JSON.parse(raw) as ExperimentSession;
+  } catch {
+    return null;
+  }
+}
+
 export function initializeParticipantData(
   participantId: string,
   conditionId: number,
+  surpriseMode: SurpriseMode,
   conditionInfo: ParticipantConditionInfo,
 ): ParticipantData {
   return {
     participantId,
+    selectedOutfitCategory: '',
+    allowedOutfits: [],
+    blockedOutfits: [],
     conditionId,
     conditionInfo,
+    surpriseMode,
+    acceptableOutfits: [],
     expectedOutfit: '',
+    surpriseCandidateOutfits: [],
     finalRecommendedOutfit: '',
     finalRecommendationText: '',
     expectationMismatch: null,
     answers: {
       stylePreferenceInput: '',
       bodyShapeInput: '',
-      koreanStylePreferenceInput: '',
+      websitePreferenceInput: '',
+      koreanExperienceInput: '',
+      usualStyleInput: '',
     },
     chatLog: [],
-    styleSurpriseItems: [],
-    styleSurpriseScore: 0,
     clickedSurveyButton: false,
     surveyClickedAt: null,
+    surveyRedirectUrl: null,
     sessionStartTime: new Date().toISOString(),
     sessionEndTime: null,
   };
 }
 
+export function extractUserMessages(data: ParticipantData): string[] {
+  return data.chatLog.filter((m) => m.sender === 'user').map((m) => m.message);
+}
+
+export function extractBotMessages(data: ParticipantData): string[] {
+  return data.chatLog.filter((m) => m.sender === 'bot').map((m) => m.message);
+}
+
 export function saveToLocalStorage(data: ParticipantData): void {
-  if (typeof window === 'undefined') {
-    return;
-  }
+  if (typeof window === 'undefined') return;
 
   const existing = getFromLocalStorage();
   const index = existing.findIndex((item) => item.participantId === data.participantId);
@@ -89,14 +136,10 @@ export function saveToLocalStorage(data: ParticipantData): void {
 }
 
 export function getFromLocalStorage(): ParticipantData[] {
-  if (typeof window === 'undefined') {
-    return [];
-  }
+  if (typeof window === 'undefined') return [];
 
   const rawData = localStorage.getItem(STORAGE_KEY);
-  if (!rawData) {
-    return [];
-  }
+  if (!rawData) return [];
 
   try {
     const parsed = JSON.parse(rawData);
@@ -107,9 +150,7 @@ export function getFromLocalStorage(): ParticipantData[] {
 }
 
 export function downloadJSON(): void {
-  if (typeof window === 'undefined') {
-    return;
-  }
+  if (typeof window === 'undefined') return;
 
   const data = getFromLocalStorage();
   const blob = new Blob([JSON.stringify(data, null, 2)], {
