@@ -1,9 +1,7 @@
-# 穿搭圖片存放說明
+# Outfit Images
 
-請將圖片檔放入此資料夾，檔名需與 outfitId 一致：
-
-| 檔名 | 說明 |
-|------|------|
+| File | Outfit |
+|------|--------|
 | F1.jpg | 女1 — 白色T恤＋淺藍寬褲牛仔褲 |
 | F5.jpg | 女5 — 白色襯衫＋藕色A字中長裙 |
 | M1.jpg | 男1 — 白色短袖襯衫＋黑色領帶＋深灰牛仔褲 |
@@ -13,4 +11,4 @@
 | M5.jpg | 男5 — 深灰T恤＋深灰牛仔褲 |
 | M6.jpg | 男6 — 深灰破邊襯衫＋黑色工裝寬褲 |
 
-尚未提供的：F2、F3、F4、F6（目前顯示 placeholder）
+To replace with your own photos, overwrite these files (keep the same filenames).
