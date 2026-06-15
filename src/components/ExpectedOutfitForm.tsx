@@ -4,11 +4,11 @@ import React, { useState } from 'react';
 import { OutfitGrid } from '@/components/OutfitGrid';
 
 interface ExpectedOutfitFormProps {
-  acceptableOutfits: string[];
+  allowedOutfits: string[];
   onSubmit: (expectedOutfit: string) => void;
 }
 
-export function ExpectedOutfitForm({ acceptableOutfits, onSubmit }: ExpectedOutfitFormProps) {
+export function ExpectedOutfitForm({ allowedOutfits, onSubmit }: ExpectedOutfitFormProps) {
   const [selected, setSelected] = useState<string[]>([]);
   const [error, setError] = useState('');
 
@@ -28,12 +28,12 @@ export function ExpectedOutfitForm({ acceptableOutfits, onSubmit }: ExpectedOutf
     <div className="mx-auto max-w-4xl rounded-lg bg-white p-8 shadow-lg">
       <h1 className="mb-2 text-2xl font-bold text-gray-900">預期推薦選擇</h1>
       <p className="mb-6 text-gray-600">
-        在你剛剛選擇的可接受穿搭中，你預期 AI 最可能推薦哪一套？
+        在開始使用 AI 穿搭顧問前，你預期 AI 最可能推薦哪一套面試穿搭？
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <OutfitGrid
-          outfitIds={acceptableOutfits}
+          outfitIds={allowedOutfits}
           selectedIds={selected}
           onChange={setSelected}
           mode="single"

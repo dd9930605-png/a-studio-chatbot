@@ -6,7 +6,6 @@ import { BotHeader } from '@/components/BotHeader';
 import { ChatInterface } from '@/components/ChatInterface';
 import { RecommendationCard } from '@/components/RecommendationCard';
 import { OutfitCategoryForm } from '@/components/OutfitCategoryForm';
-import { AcceptableOutfitsForm } from '@/components/AcceptableOutfitsForm';
 import { ExpectedOutfitForm } from '@/components/ExpectedOutfitForm';
 import {
   ParticipantData,
@@ -34,7 +33,6 @@ import { buildRecommendationText } from '@/lib/recommendationText';
 
 type Step =
   | 'category'
-  | 'acceptable'
   | 'expected'
   | 'greeting'
   | 'chat'
@@ -112,11 +110,6 @@ export default function ChatPageContent() {
       allowedOutfits: pools.allowedOutfits,
       blockedOutfits: pools.blockedOutfits,
     });
-    setCurrentStep('acceptable');
-  };
-
-  const handleAcceptableSubmit = (acceptableOutfits: string[]) => {
-    setParticipantData({ ...participantData, acceptableOutfits });
     setCurrentStep('expected');
   };
 
@@ -125,7 +118,6 @@ export default function ChatPageContent() {
       const { finalRecommendedOutfit, surpriseCandidateOutfits } = resolveFinalOutfit({
         surpriseMode: participantData.surpriseMode as 'surprise' | 'no_surprise',
         expectedOutfit,
-        acceptableOutfits: participantData.acceptableOutfits,
         allowedOutfits: participantData.allowedOutfits,
         blockedOutfits: participantData.blockedOutfits,
       });
@@ -209,16 +201,9 @@ export default function ChatPageContent() {
       <div className="mx-auto max-w-4xl">
         {currentStep === 'category' && <OutfitCategoryForm onSubmit={handleCategorySubmit} />}
 
-        {currentStep === 'acceptable' && (
-          <AcceptableOutfitsForm
-            allowedOutfits={participantData.allowedOutfits}
-            onSubmit={handleAcceptableSubmit}
-          />
-        )}
-
         {currentStep === 'expected' && (
           <ExpectedOutfitForm
-            acceptableOutfits={participantData.acceptableOutfits}
+            allowedOutfits={participantData.allowedOutfits}
             onSubmit={handleExpectedSubmit}
           />
         )}
