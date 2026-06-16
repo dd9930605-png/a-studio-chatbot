@@ -64,34 +64,41 @@ export function validateAcceptableOutfits(
 
 export function validateExpectedOutfit(
   expectedOutfit: string,
-  allowedOutfits: string[],
+  acceptableOutfits: string[],
 ): string | null {
-  if (!allowedOutfits.includes(expectedOutfit)) {
-    return 'expectedOutfit 必須來自 allowedOutfits。';
+  if (!acceptableOutfits.includes(expectedOutfit)) {
+    return 'expectedOutfit 必須來自 acceptableOutfits。';
   }
 
   return null;
 }
 
 export function getSurpriseCandidates(
-  poolOutfits: string[],
+  acceptableOutfits: string[],
   expectedOutfit: string,
 ): string[] {
-  return poolOutfits.filter((id) => id !== expectedOutfit);
+  return acceptableOutfits.filter((id) => id !== expectedOutfit);
 }
 
 export function resolveFinalOutfit(params: {
   surpriseMode: SurpriseMode;
   expectedOutfit: string;
+  acceptableOutfits: string[];
   allowedOutfits: string[];
   blockedOutfits: string[];
 }): {
   finalRecommendedOutfit: string;
   surpriseCandidateOutfits: string[];
 } {
-  const { surpriseMode, expectedOutfit, allowedOutfits, blockedOutfits } = params;
+  const { surpriseMode, expectedOutfit, acceptableOutfits, allowedOutfits, blockedOutfits } =
+    params;
 
-  const expectedError = validateExpectedOutfit(expectedOutfit, allowedOutfits);
+  const acceptableError = validateAcceptableOutfits(acceptableOutfits, allowedOutfits);
+  if (acceptableError) {
+    throw new Error(acceptableError);
+  }
+
+  const expectedError = validateExpectedOutfit(expectedOutfit, acceptableOutfits);
   if (expectedError) {
     throw new Error(expectedError);
   }
@@ -103,7 +110,7 @@ export function resolveFinalOutfit(params: {
     };
   }
 
-  const surpriseCandidateOutfits = getSurpriseCandidates(allowedOutfits, expectedOutfit);
+  const surpriseCandidateOutfits = getSurpriseCandidates(acceptableOutfits, expectedOutfit);
 
   if (surpriseCandidateOutfits.length === 0) {
     throw new Error('surprise 模式下沒有可用的推薦候選穿搭。');

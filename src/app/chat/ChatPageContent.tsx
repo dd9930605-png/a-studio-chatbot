@@ -1,171 +1,79 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { BotHeader } from '@/components/BotHeader';
 import { ChatInterface } from '@/components/ChatInterface';
 import { RecommendationCard } from '@/components/RecommendationCard';
-import { OutfitCategoryForm } from '@/components/OutfitCategoryForm';
-import { ExpectedOutfitForm } from '@/components/ExpectedOutfitForm';
 import {
   ParticipantData,
-  generateParticipantId,
-  getExperimentSession,
-  initializeParticipantData,
-  saveExperimentSession,
+  getParticipantDraft,
   saveToLocalStorage,
 } from '@/lib/dataRecorder';
 import {
   buildSurveyUrl,
   getCondition,
-  getRandomConditionId,
   hasValidSurveyUrl,
 } from '@/lib/conditions';
-import {
-  Outfit,
-  OutfitCategory,
-  getOutfit,
-  getOutfitPools,
-  resolveFinalOutfit,
-  getRandomSurpriseMode,
-} from '@/lib/outfits';
-import { buildRecommendationText } from '@/lib/recommendationText';
+import { getOutfit } from '@/lib/outfits';
 
-type Step =
-  | 'category'
-  | 'expected'
-  | 'greeting'
-  | 'chat'
-  | 'recommendation'
-  | 'complete';
+type Step = 'greeting' | 'chat' | 'recommendation';
 
 export default function ChatPageContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [participantData, setParticipantData] = useState<ParticipantData | null>(null);
   const [condition, setCondition] = useState<ReturnType<typeof getCondition>>(undefined);
-  const [finalOutfit, setFinalOutfit] = useState<Outfit | null>(null);
-  const [currentStep, setCurrentStep] = useState<Step>('category');
+  const [currentStep, setCurrentStep] = useState<Step>('greeting');
   const [chatStep, setChatStep] = useState('stylePreference');
 
   useEffect(() => {
-    let session = getExperimentSession();
-
-    const conditionParam = searchParams.get('condition');
-    if (conditionParam) {
-      const conditionId = parseInt(conditionParam, 10);
-      if (!isNaN(conditionId) && conditionId >= 1 && conditionId <= 16) {
-        const surpriseParam = searchParams.get('surprise');
-        session = {
-          conditionId,
-          surpriseMode:
-            surpriseParam === 'no_surprise' || surpriseParam === 'surprise'
-              ? surpriseParam
-              : getRandomSurpriseMode(),
-        };
-        saveExperimentSession(session);
-      }
+    const draft = getParticipantDraft();
+    if (!draft || !draft.expectedOutfit) {
+      router.push('/pre');
+      return;
     }
 
-    if (!session) {
-      const conditionId = getRandomConditionId();
-      session = { conditionId, surpriseMode: getRandomSurpriseMode() };
-      saveExperimentSession(session);
-    }
-
-    const cond = getCondition(session.conditionId);
+    const cond = getCondition(draft.conditionId);
     if (!cond) {
       router.push('/');
       return;
     }
 
+    setParticipantData(draft);
     setCondition(cond);
-    const participantId = generateParticipantId();
-    setParticipantData(
-      initializeParticipantData(participantId, session.conditionId, session.surpriseMode, {
-        explainability: cond.explainability,
-        twoSidedMessage: cond.twoSidedMessage,
-        anthropomorphism: cond.anthropomorphism,
-        proactivity: cond.proactivity,
-      }),
-    );
-  }, [router, searchParams]);
+
+    const timer = setTimeout(() => {
+      setCurrentStep('chat');
+    }, 1500);
+
+    return () => clearTimeout(timer);
+  }, [router]);
 
   if (!participantData || !condition) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="text-center">
           <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-blue-500" />
-          <p className="text-gray-600">載入實驗環境...</p>
+          <p className="text-gray-600">準備 AI 穿搭顧問...</p>
         </div>
       </div>
     );
   }
 
-  const handleCategorySubmit = (category: OutfitCategory) => {
-    const pools = getOutfitPools(category);
-    setParticipantData({
-      ...participantData,
-      selectedOutfitCategory: category,
-      allowedOutfits: pools.allowedOutfits,
-      blockedOutfits: pools.blockedOutfits,
-    });
-    setCurrentStep('expected');
-  };
-
-  const handleExpectedSubmit = (expectedOutfit: string) => {
-    try {
-      const { finalRecommendedOutfit, surpriseCandidateOutfits } = resolveFinalOutfit({
-        surpriseMode: participantData.surpriseMode as 'surprise' | 'no_surprise',
-        expectedOutfit,
-        allowedOutfits: participantData.allowedOutfits,
-        blockedOutfits: participantData.blockedOutfits,
-      });
-
-      const outfit = getOutfit(finalRecommendedOutfit);
-      const recommendationText = outfit ? buildRecommendationText(condition, outfit) : '';
-
-      const updated: ParticipantData = {
-        ...participantData,
-        expectedOutfit,
-        finalRecommendedOutfit,
-        surpriseCandidateOutfits,
-        finalRecommendationText: recommendationText,
-        expectationMismatch: expectedOutfit === finalRecommendedOutfit ? 0 : 1,
-      };
-
-      setParticipantData(updated);
-      if (outfit) setFinalOutfit(outfit);
-      setCurrentStep('greeting');
-
-      setTimeout(() => {
-        setCurrentStep('chat');
-        setChatStep('stylePreference');
-      }, 1500);
-    } catch (error) {
-      alert(error instanceof Error ? error.message : '推薦邏輯發生錯誤');
-    }
-  };
-
   const handleChatStepChange = (step: string) => {
     setChatStep(step);
     if (step === 'recommendation') {
+      const saved = {
+        ...participantData,
+        sessionEndTime: new Date().toISOString(),
+      };
+      setParticipantData(saved);
+      saveToLocalStorage(saved);
       setCurrentStep('recommendation');
     }
   };
 
-  const handleRecommendationContinue = () => {
-    const completed: ParticipantData = {
-      ...participantData,
-      sessionEndTime: new Date().toISOString(),
-    };
-    setParticipantData(completed);
-    saveToLocalStorage(completed);
-    console.log('Participant data saved:', completed);
-    setCurrentStep('complete');
-  };
-
-  const handleClickSurvey = () => {
+  const handleSurveyClick = () => {
     const surveyUrl = buildSurveyUrl(condition.surveyUrl, {
       participantId: participantData.participantId,
       conditionId: participantData.conditionId,
@@ -181,35 +89,26 @@ export default function ChatPageContent() {
       return;
     }
 
-    const updated: ParticipantData = {
+    const completed: ParticipantData = {
       ...participantData,
       clickedSurveyButton: true,
       surveyClickedAt: new Date().toISOString(),
       surveyRedirectUrl: surveyUrl,
       sessionEndTime: new Date().toISOString(),
     };
-    setParticipantData(updated);
-    saveToLocalStorage(updated);
+    setParticipantData(completed);
+    saveToLocalStorage(completed);
     window.location.assign(surveyUrl);
   };
 
+  const displayOutfit = getOutfit(participantData.finalRecommendedOutfit);
   const surveyConfigured = hasValidSurveyUrl(condition.surveyUrl);
-  const displayOutfit = finalOutfit ?? getOutfit(participantData.finalRecommendedOutfit);
 
   return (
     <div className="min-h-screen px-4 py-8">
       <div className="mx-auto max-w-4xl">
-        {currentStep === 'category' && <OutfitCategoryForm onSubmit={handleCategorySubmit} />}
-
-        {currentStep === 'expected' && (
-          <ExpectedOutfitForm
-            allowedOutfits={participantData.allowedOutfits}
-            onSubmit={handleExpectedSubmit}
-          />
-        )}
-
         {currentStep === 'greeting' && (
-          <div className="space-y-4 text-center">
+          <div className="space-y-4 py-20 text-center">
             <div className="animate-pulse text-2xl text-gray-600">準備中...</div>
           </div>
         )}
@@ -237,35 +136,9 @@ export default function ChatPageContent() {
             outfit={displayOutfit}
             recommendationText={participantData.finalRecommendationText}
             participantData={participantData}
-            onContinue={handleRecommendationContinue}
+            surveyConfigured={surveyConfigured}
+            onSurveyClick={handleSurveyClick}
           />
-        )}
-
-        {currentStep === 'complete' && (
-          <div className="space-y-6 rounded-lg bg-white p-12 text-center shadow-lg">
-            <h2 className="text-3xl font-bold text-green-600">✓ 實驗完成</h2>
-            <p className="text-lg text-gray-700">感謝你的參與！請前往問卷填答。</p>
-
-            <button
-              onClick={handleClickSurvey}
-              disabled={!surveyConfigured}
-              className="rounded-lg bg-gradient-to-r from-blue-500 to-purple-500 px-8 py-3 font-bold text-white transition hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {surveyConfigured ? '前往問卷調查 →' : '問卷網址尚未設定'}
-            </button>
-
-            {!surveyConfigured && (
-              <p className="text-sm text-red-600">
-                目前條件資料仍是範例網址，請設定正式問卷 URL 後再開放受試者填答。
-              </p>
-            )}
-
-            <div className="mt-8 space-y-1 text-xs text-gray-500">
-              <p>Participant ID: {participantData.participantId}</p>
-              <p>Condition ID: {participantData.conditionId}</p>
-              <p>Surprise Mode: {participantData.surpriseMode}</p>
-            </div>
-          </div>
         )}
       </div>
     </div>

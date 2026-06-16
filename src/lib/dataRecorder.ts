@@ -11,7 +11,7 @@ export interface ParticipantAnswers {
   stylePreferenceInput: string;
   bodyShapeInput: string;
   websitePreferenceInput: string;
-  koreanExperienceInput: string;
+  koreanClothingExperienceInput: string;
   usualStyleInput: string;
 }
 
@@ -47,6 +47,7 @@ export interface ParticipantData {
 
 const STORAGE_KEY = 'participant_data';
 const SESSION_KEY = 'experiment_session';
+const PARTICIPANT_DRAFT_KEY = 'participant_draft';
 
 export interface ExperimentSession {
   conditionId: number;
@@ -101,7 +102,7 @@ export function initializeParticipantData(
       stylePreferenceInput: '',
       bodyShapeInput: '',
       websitePreferenceInput: '',
-      koreanExperienceInput: '',
+      koreanClothingExperienceInput: '',
       usualStyleInput: '',
     },
     chatLog: [],
@@ -111,6 +112,27 @@ export function initializeParticipantData(
     sessionStartTime: new Date().toISOString(),
     sessionEndTime: null,
   };
+}
+
+export function saveParticipantDraft(data: ParticipantData): void {
+  if (typeof window === 'undefined') return;
+  sessionStorage.setItem(PARTICIPANT_DRAFT_KEY, JSON.stringify(data));
+}
+
+export function getParticipantDraft(): ParticipantData | null {
+  if (typeof window === 'undefined') return null;
+  const raw = sessionStorage.getItem(PARTICIPANT_DRAFT_KEY);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as ParticipantData;
+  } catch {
+    return null;
+  }
+}
+
+export function clearParticipantDraft(): void {
+  if (typeof window === 'undefined') return;
+  sessionStorage.removeItem(PARTICIPANT_DRAFT_KEY);
 }
 
 export function extractUserMessages(data: ParticipantData): string[] {

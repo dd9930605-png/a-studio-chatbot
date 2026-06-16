@@ -179,7 +179,7 @@ export default function AdminPage() {
                   />
                   <Field
                     label="韓系服飾經驗"
-                    value={selectedParticipant.answers.koreanExperienceInput}
+                    value={selectedParticipant.answers.koreanClothingExperienceInput}
                   />
                   <Field label="平時穿搭風格" value={selectedParticipant.answers.usualStyleInput} />
                 </Section>

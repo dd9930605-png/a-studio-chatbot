@@ -2,27 +2,18 @@
 
 import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { saveExperimentSession } from '@/lib/dataRecorder';
-import { getRandomConditionId } from '@/lib/conditions';
-import { getRandomSurpriseMode } from '@/lib/outfits';
 
+/** 舊連結相容：導向購物網站流程的起點 */
 export default function StartPage() {
   const router = useRouter();
 
   useEffect(() => {
-    saveExperimentSession({
-      conditionId: getRandomConditionId(),
-      surpriseMode: getRandomSurpriseMode(),
-    });
-    router.push('/chat');
+    router.replace('/shop');
   }, [router]);
 
   return (
     <div className="flex min-h-screen items-center justify-center">
-      <div className="text-center">
-        <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-blue-500" />
-        <p className="text-lg text-gray-700">正在準備您的實驗環境...</p>
-      </div>
+      <p className="text-gray-600">正在前往購物網站...</p>
     </div>
   );
 }

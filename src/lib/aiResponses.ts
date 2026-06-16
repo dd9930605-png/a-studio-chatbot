@@ -146,7 +146,7 @@ export const CHAT_PROMPTS: Record<
   },
   koreanExperience: {
     question: '您過去是否購買過韓系服飾？請簡單描述您的經驗。',
-    answerKey: 'koreanExperienceInput',
+    answerKey: 'koreanClothingExperienceInput',
     nextStep: 'usualStyle',
   },
   usualStyle: {

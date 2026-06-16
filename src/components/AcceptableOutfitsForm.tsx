@@ -3,40 +3,41 @@
 import React, { useState } from 'react';
 import { OutfitGrid } from '@/components/OutfitGrid';
 
-interface ExpectedOutfitFormProps {
-  acceptableOutfits: string[];
-  onSubmit: (expectedOutfit: string) => void;
+interface AcceptableOutfitsFormProps {
+  allowedOutfits: string[];
+  onSubmit: (acceptableOutfits: string[]) => void;
 }
 
-export function ExpectedOutfitForm({ acceptableOutfits, onSubmit }: ExpectedOutfitFormProps) {
+export function AcceptableOutfitsForm({ allowedOutfits, onSubmit }: AcceptableOutfitsFormProps) {
   const [selected, setSelected] = useState<string[]>([]);
   const [error, setError] = useState('');
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
 
-    if (selected.length !== 1) {
-      setError('請選擇 1 套你預期 AI 最可能推薦的穿搭。');
+    if (selected.length < 3) {
+      setError('請至少選擇 3 套你可以接受或願意考慮的穿搭，以便 AI 進行推薦。');
       return;
     }
 
     setError('');
-    onSubmit(selected[0]);
+    onSubmit(selected);
   };
 
   return (
     <div className="mx-auto max-w-4xl rounded-lg bg-white p-8 shadow-lg">
-      <h2 className="mb-2 text-xl font-bold text-gray-900">前置問題 3</h2>
-      <p className="mb-6 text-gray-700">
-        在你剛剛選擇的可接受穿搭中，你預期 AI 最可能推薦哪一套？
+      <h2 className="mb-2 text-xl font-bold text-gray-900">前置問題 2</h2>
+      <p className="mb-2 text-gray-700">
+        剛才看到的穿搭中，哪些是你可以接受或願意考慮的？請至少選擇 3 套。
       </p>
+      <p className="mb-6 text-sm text-gray-500">已選擇 {selected.length} 套（至少 3 套）</p>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <OutfitGrid
-          outfitIds={acceptableOutfits}
+          outfitIds={allowedOutfits}
           selectedIds={selected}
           onChange={setSelected}
-          mode="single"
+          mode="multi"
           showLookLabels
         />
 
@@ -44,10 +45,10 @@ export function ExpectedOutfitForm({ acceptableOutfits, onSubmit }: ExpectedOutf
 
         <button
           type="submit"
-          disabled={selected.length !== 1}
+          disabled={selected.length < 3}
           className="w-full rounded-lg bg-gradient-to-r from-blue-500 to-purple-500 px-6 py-3 font-bold text-white transition hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
         >
-          開始使用 AI 穿搭顧問
+          下一步
         </button>
       </form>
     </div>

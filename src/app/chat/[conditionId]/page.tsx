@@ -16,7 +16,7 @@ export default function LegacyChatRedirect() {
         conditionId,
         surpriseMode: getRandomSurpriseMode(),
       });
-      router.replace('/chat');
+      router.replace(`/pre?condition=${conditionId}`);
     } else {
       router.replace('/');
     }

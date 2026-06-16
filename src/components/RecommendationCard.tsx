@@ -3,28 +3,41 @@
 import React, { useState } from 'react';
 import { Outfit } from '@/lib/outfits';
 import { ParticipantData } from '@/lib/dataRecorder';
+import { getLookLabel, getLookNumberFromOutfitId } from '@/lib/looks';
 
 interface RecommendationCardProps {
   outfit: Outfit;
   recommendationText: string;
   participantData: ParticipantData;
-  onContinue: () => void;
+  surveyConfigured: boolean;
+  onSurveyClick: () => void;
 }
 
 export function RecommendationCard({
   outfit,
   recommendationText,
   participantData,
-  onContinue,
+  surveyConfigured,
+  onSurveyClick,
 }: RecommendationCardProps) {
   const [imageFailed, setImageFailed] = useState(false);
+  const lookNumber = getLookNumberFromOutfitId(outfit.outfitId);
+  const lookLabel = lookNumber ? getLookLabel(lookNumber) : '';
+  const displayTags = outfit.styleTags.filter(
+    (t) => !['男裝', '女裝', '待補'].includes(t),
+  );
 
   return (
     <div className="rounded-lg bg-white p-8 shadow-lg">
       <div className="mb-6 text-center">
-        <p className="text-sm font-semibold uppercase tracking-wide text-blue-600">AI 推薦結果</p>
-        <h2 className="mt-2 text-3xl font-bold text-gray-900">{outfit.outfitName}</h2>
-        <p className="mt-2 text-sm text-gray-500">{outfit.styleTags.join(' · ')}</p>
+        <p className="text-sm font-semibold uppercase tracking-wide text-blue-600">
+          AI 推薦結果
+        </p>
+        {lookLabel && <p className="mt-1 text-lg font-bold text-blue-700">{lookLabel}</p>}
+        <h2 className="mt-2 text-2xl font-bold text-gray-900">{outfit.outfitName}</h2>
+        {displayTags.length > 0 && (
+          <p className="mt-2 text-sm text-gray-500">{displayTags.join('｜')}</p>
+        )}
       </div>
 
       {!imageFailed && outfit.outfitImage ? (
@@ -36,7 +49,7 @@ export function RecommendationCard({
         />
       ) : (
         <div className="mb-6 rounded-lg border border-dashed border-gray-300 bg-gray-50 p-8 text-center text-gray-500">
-          {outfit.outfitId} — 圖片暫未提供
+          {lookLabel || outfit.outfitId} — 圖片暫未提供
         </div>
       )}
 
@@ -44,22 +57,26 @@ export function RecommendationCard({
         <p className="leading-relaxed">{recommendationText}</p>
       </div>
 
-      <div className="mt-6 rounded-lg bg-gray-50 p-4 text-sm text-gray-600">
-        <p>你的預期推薦：{participantData.expectedOutfit}</p>
-        <p>AI 實際推薦：{participantData.finalRecommendedOutfit}</p>
-        <p>
-          是否吻合：
-          {participantData.expectationMismatch === 0 ? ' 吻合' : ' 不吻合（風格驚喜）'}
-        </p>
+      <div className="mt-8 border-t pt-8">
+        <button
+          type="button"
+          onClick={onSurveyClick}
+          disabled={!surveyConfigured}
+          className="w-full rounded-lg bg-gradient-to-r from-blue-500 to-purple-500 px-6 py-4 font-bold text-lg text-white transition hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {surveyConfigured ? '前往正式問卷 →' : '問卷網址尚未設定'}
+        </button>
+        {!surveyConfigured && (
+          <p className="mt-3 text-center text-sm text-red-600">
+            目前為範例網址，請研究者設定正式問卷 URL。
+          </p>
+        )}
       </div>
 
-      <button
-        type="button"
-        onClick={onContinue}
-        className="mt-8 w-full rounded-lg bg-gradient-to-r from-blue-500 to-purple-500 px-6 py-3 font-bold text-white transition hover:shadow-lg"
-      >
-        完成實驗，前往問卷 →
-      </button>
+      <div className="mt-6 rounded-lg bg-gray-50 p-4 text-xs text-gray-500">
+        <p>Participant ID: {participantData.participantId}</p>
+        <p>Condition: {participantData.conditionId} · Surprise: {participantData.surpriseMode}</p>
+      </div>
     </div>
   );
 }

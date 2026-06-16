@@ -18,11 +18,15 @@ export function OutfitCategoryForm({ onSubmit }: OutfitCategoryFormProps) {
 
   return (
     <div className="mx-auto max-w-2xl rounded-lg bg-white p-8 shadow-lg">
-      <h1 className="mb-2 text-2xl font-bold text-gray-900">AI 穿搭顧問</h1>
-      <p className="mb-6 text-gray-600">在開始之前，請先回答以下問題。</p>
+      <p className="mb-1 text-sm font-semibold text-blue-600">AI 前置問題</p>
+      <h1 className="mb-2 text-2xl font-bold text-gray-900">開始前的問題</h1>
+      <p className="mb-6 text-sm text-gray-500">
+        以下問題用於協助 AI 進行推薦，並非詢問您的生理性別。
+      </p>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <p className="text-lg font-medium text-gray-800">請選擇你想參考的面試穿搭類型。</p>
+        <h2 className="text-lg font-medium text-gray-800">前置問題 1</h2>
+        <p className="text-gray-700">請選擇你想參考的面試穿搭類型。</p>
 
         <label
           className={`flex cursor-pointer items-center gap-4 rounded-lg border-2 p-4 transition ${
@@ -37,10 +41,7 @@ export function OutfitCategoryForm({ onSubmit }: OutfitCategoryFormProps) {
             onChange={() => setCategory('male')}
             className="h-4 w-4"
           />
-          <div>
-            <p className="font-semibold text-gray-900">男款面試穿搭</p>
-            <p className="text-sm text-gray-500">參考男款區穿搭為主</p>
-          </div>
+          <span className="font-semibold text-gray-900">男款面試穿搭</span>
         </label>
 
         <label
@@ -56,10 +57,7 @@ export function OutfitCategoryForm({ onSubmit }: OutfitCategoryFormProps) {
             onChange={() => setCategory('female')}
             className="h-4 w-4"
           />
-          <div>
-            <p className="font-semibold text-gray-900">女款面試穿搭</p>
-            <p className="text-sm text-gray-500">參考女款區穿搭為主</p>
-          </div>
+          <span className="font-semibold text-gray-900">女款面試穿搭</span>
         </label>
 
         <button
