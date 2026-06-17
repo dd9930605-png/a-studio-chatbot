@@ -16,6 +16,7 @@ import {
   hasValidSurveyUrl,
 } from '@/lib/conditions';
 import { getOutfit } from '@/lib/outfits';
+import { returnToSurveyCake } from '@/lib/surveyReturn';
 
 type Step = 'greeting' | 'chat' | 'recommendation';
 
@@ -98,7 +99,15 @@ export default function ChatPageContent() {
     };
     setParticipantData(completed);
     void saveParticipantData(completed);
-    window.location.assign(surveyUrl);
+    returnToSurveyCake(surveyUrl, {
+      participantId: participantData.participantId,
+      conditionId: participantData.conditionId,
+      surpriseMode: participantData.surpriseMode,
+      expectedOutfit: participantData.expectedOutfit,
+      finalRecommendedOutfit: participantData.finalRecommendedOutfit,
+      expectationMismatch: participantData.expectationMismatch,
+      selectedOutfitCategory: participantData.selectedOutfitCategory,
+    }, condition.surveyContinueUrl);
   };
 
   const displayOutfit = getOutfit(participantData.finalRecommendedOutfit);

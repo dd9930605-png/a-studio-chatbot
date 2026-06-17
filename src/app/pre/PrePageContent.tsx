@@ -21,6 +21,7 @@ import {
   getOutfit,
 } from '@/lib/outfits';
 import { buildRecommendationText } from '@/lib/recommendationText';
+import { captureSurveyEntry } from '@/lib/surveyReturn';
 
 type PreStep = 'category' | 'expected';
 
@@ -31,6 +32,8 @@ export default function PrePageContent() {
   const [currentStep, setCurrentStep] = useState<PreStep>('category');
 
   useEffect(() => {
+    captureSurveyEntry(searchParams.get('return_url'));
+
     let session = getExperimentSession();
 
     const conditionParam = searchParams.get('condition');

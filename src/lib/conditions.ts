@@ -16,6 +16,8 @@ export interface Condition {
   greetingText: string;
   manipulationNotes: string;
   surveyUrl: string;
+  /** 可選：AI 結束後要接續的問卷網址（建議設為問卷後半段專用連結） */
+  surveyContinueUrl?: string;
 }
 
 export const conditions = conditionsData as Condition[];
