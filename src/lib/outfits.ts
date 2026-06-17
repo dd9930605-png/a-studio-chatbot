@@ -1,4 +1,5 @@
 import outfitsData from '../../public/outfits.json';
+import { sortOutfitIdsByLook } from '@/lib/looks';
 
 export type OutfitCategory = 'male' | 'female';
 export type WearCategory = 'neutral' | 'male_only' | 'female_only';
@@ -29,7 +30,8 @@ export function getOutfit(outfitId: string): Outfit | undefined {
 }
 
 export function getAllowedOutfits(category: OutfitCategory): string[] {
-  return category === 'male' ? [...MALE_ALLOWED] : [...FEMALE_ALLOWED];
+  const ids = category === 'male' ? [...MALE_ALLOWED] : [...FEMALE_ALLOWED];
+  return sortOutfitIdsByLook(ids);
 }
 
 export function getBlockedOutfits(category: OutfitCategory): string[] {
