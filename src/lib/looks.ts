@@ -50,3 +50,8 @@ export function sortOutfitIdsByLook(outfitIds: string[]): string[] {
     return lookA - lookB;
   });
 }
+
+/** 全部 12 套穿搭（Look 1–12） */
+export function getAllOutfitIds(): string[] {
+  return sortOutfitIdsByLook(ALL_LOOK_NUMBERS.map((n) => LOOK_TO_OUTFIT[n]));
+}

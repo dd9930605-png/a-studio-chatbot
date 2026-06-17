@@ -147,10 +147,7 @@ export default function PrePageContent() {
         )}
 
         {currentStep === 'expected' && (
-          <ExpectedOutfitForm
-            allowedOutfits={participantData.allowedOutfits}
-            onSubmit={handleExpectedSubmit}
-          />
+          <ExpectedOutfitForm onSubmit={handleExpectedSubmit} />
         )}
       </div>
     </div>

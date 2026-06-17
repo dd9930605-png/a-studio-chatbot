@@ -1,5 +1,5 @@
 import outfitsData from '../../public/outfits.json';
-import { sortOutfitIdsByLook } from '@/lib/looks';
+import { getAllOutfitIds, sortOutfitIdsByLook } from '@/lib/looks';
 
 export type OutfitCategory = 'male' | 'female';
 export type WearCategory = 'neutral' | 'male_only' | 'female_only';
@@ -48,12 +48,9 @@ export function getOutfitPools(category: OutfitCategory): {
   };
 }
 
-export function validateExpectedOutfit(
-  expectedOutfit: string,
-  allowedOutfits: string[],
-): string | null {
-  if (!allowedOutfits.includes(expectedOutfit)) {
-    return 'expectedOutfit 必須來自 allowedOutfits。';
+export function validateExpectedOutfit(expectedOutfit: string): string | null {
+  if (!getAllOutfitIds().includes(expectedOutfit)) {
+    return '請選擇有效的穿搭。';
   }
 
   return null;
@@ -77,7 +74,7 @@ export function resolveFinalOutfit(params: {
 } {
   const { surpriseMode, expectedOutfit, allowedOutfits, blockedOutfits } = params;
 
-  const expectedError = validateExpectedOutfit(expectedOutfit, allowedOutfits);
+  const expectedError = validateExpectedOutfit(expectedOutfit);
   if (expectedError) {
     throw new Error(expectedError);
   }

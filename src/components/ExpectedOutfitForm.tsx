@@ -2,13 +2,13 @@
 
 import React, { useState } from 'react';
 import { OutfitGrid } from '@/components/OutfitGrid';
+import { getAllOutfitIds } from '@/lib/looks';
 
 interface ExpectedOutfitFormProps {
-  allowedOutfits: string[];
   onSubmit: (expectedOutfit: string) => void;
 }
 
-export function ExpectedOutfitForm({ allowedOutfits, onSubmit }: ExpectedOutfitFormProps) {
+export function ExpectedOutfitForm({ onSubmit }: ExpectedOutfitFormProps) {
   const [selected, setSelected] = useState<string[]>([]);
   const [error, setError] = useState('');
 
@@ -33,7 +33,7 @@ export function ExpectedOutfitForm({ allowedOutfits, onSubmit }: ExpectedOutfitF
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <OutfitGrid
-          outfitIds={allowedOutfits}
+          outfitIds={getAllOutfitIds()}
           selectedIds={selected}
           onChange={setSelected}
           mode="single"
