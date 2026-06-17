@@ -46,59 +46,36 @@ export function getOutfitPools(category: OutfitCategory): {
   };
 }
 
-export function validateAcceptableOutfits(
-  acceptableOutfits: string[],
-  allowedOutfits: string[],
-): string | null {
-  if (acceptableOutfits.length < 3) {
-    return '請至少選擇 3 套你可以接受或願意考慮的穿搭，以便 AI 進行推薦。';
-  }
-
-  const invalid = acceptableOutfits.filter((id) => !allowedOutfits.includes(id));
-  if (invalid.length > 0) {
-    return 'acceptableOutfits 必須全部來自 allowedOutfits。';
-  }
-
-  return null;
-}
-
 export function validateExpectedOutfit(
   expectedOutfit: string,
-  acceptableOutfits: string[],
+  allowedOutfits: string[],
 ): string | null {
-  if (!acceptableOutfits.includes(expectedOutfit)) {
-    return 'expectedOutfit 必須來自 acceptableOutfits。';
+  if (!allowedOutfits.includes(expectedOutfit)) {
+    return 'expectedOutfit 必須來自 allowedOutfits。';
   }
 
   return null;
 }
 
 export function getSurpriseCandidates(
-  acceptableOutfits: string[],
+  poolOutfits: string[],
   expectedOutfit: string,
 ): string[] {
-  return acceptableOutfits.filter((id) => id !== expectedOutfit);
+  return poolOutfits.filter((id) => id !== expectedOutfit);
 }
 
 export function resolveFinalOutfit(params: {
   surpriseMode: SurpriseMode;
   expectedOutfit: string;
-  acceptableOutfits: string[];
   allowedOutfits: string[];
   blockedOutfits: string[];
 }): {
   finalRecommendedOutfit: string;
   surpriseCandidateOutfits: string[];
 } {
-  const { surpriseMode, expectedOutfit, acceptableOutfits, allowedOutfits, blockedOutfits } =
-    params;
+  const { surpriseMode, expectedOutfit, allowedOutfits, blockedOutfits } = params;
 
-  const acceptableError = validateAcceptableOutfits(acceptableOutfits, allowedOutfits);
-  if (acceptableError) {
-    throw new Error(acceptableError);
-  }
-
-  const expectedError = validateExpectedOutfit(expectedOutfit, acceptableOutfits);
+  const expectedError = validateExpectedOutfit(expectedOutfit, allowedOutfits);
   if (expectedError) {
     throw new Error(expectedError);
   }
@@ -110,7 +87,7 @@ export function resolveFinalOutfit(params: {
     };
   }
 
-  const surpriseCandidateOutfits = getSurpriseCandidates(acceptableOutfits, expectedOutfit);
+  const surpriseCandidateOutfits = getSurpriseCandidates(allowedOutfits, expectedOutfit);
 
   if (surpriseCandidateOutfits.length === 0) {
     throw new Error('surprise 模式下沒有可用的推薦候選穿搭。');

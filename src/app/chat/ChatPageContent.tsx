@@ -8,7 +8,7 @@ import { RecommendationCard } from '@/components/RecommendationCard';
 import {
   ParticipantData,
   getParticipantDraft,
-  saveToLocalStorage,
+  saveParticipantData,
 } from '@/lib/dataRecorder';
 import {
   buildSurveyUrl,
@@ -68,7 +68,7 @@ export default function ChatPageContent() {
         sessionEndTime: new Date().toISOString(),
       };
       setParticipantData(saved);
-      saveToLocalStorage(saved);
+      void saveParticipantData(saved);
       setCurrentStep('recommendation');
     }
   };
@@ -97,7 +97,7 @@ export default function ChatPageContent() {
       sessionEndTime: new Date().toISOString(),
     };
     setParticipantData(completed);
-    saveToLocalStorage(completed);
+    void saveParticipantData(completed);
     window.location.assign(surveyUrl);
   };
 

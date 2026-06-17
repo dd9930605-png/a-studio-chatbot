@@ -157,6 +157,46 @@ export function saveToLocalStorage(data: ParticipantData): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(nextData));
 }
 
+export async function saveParticipantData(data: ParticipantData): Promise<void> {
+  saveToLocalStorage(data);
+
+  try {
+    await fetch('/api/participants', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+  } catch {
+    // 本機開發或網路異常時仍保留 localStorage 備份
+  }
+}
+
+export async function fetchAllParticipants(): Promise<{
+  configured: boolean;
+  participants: ParticipantData[];
+}> {
+  try {
+    const response = await fetch('/api/participants', { cache: 'no-store' });
+    if (!response.ok) {
+      return { configured: false, participants: getFromLocalStorage() };
+    }
+    const result = (await response.json()) as {
+      configured: boolean;
+      participants: ParticipantData[];
+    };
+    if (result.configured && result.participants.length > 0) {
+      return result;
+    }
+    const local = getFromLocalStorage();
+    return {
+      configured: result.configured,
+      participants: local.length > 0 ? local : result.participants,
+    };
+  } catch {
+    return { configured: false, participants: getFromLocalStorage() };
+  }
+}
+
 export function getFromLocalStorage(): ParticipantData[] {
   if (typeof window === 'undefined') return [];
 

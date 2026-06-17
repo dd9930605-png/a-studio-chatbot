@@ -4,11 +4,11 @@ import React, { useState } from 'react';
 import { OutfitGrid } from '@/components/OutfitGrid';
 
 interface ExpectedOutfitFormProps {
-  acceptableOutfits: string[];
+  allowedOutfits: string[];
   onSubmit: (expectedOutfit: string) => void;
 }
 
-export function ExpectedOutfitForm({ acceptableOutfits, onSubmit }: ExpectedOutfitFormProps) {
+export function ExpectedOutfitForm({ allowedOutfits, onSubmit }: ExpectedOutfitFormProps) {
   const [selected, setSelected] = useState<string[]>([]);
   const [error, setError] = useState('');
 
@@ -26,14 +26,14 @@ export function ExpectedOutfitForm({ acceptableOutfits, onSubmit }: ExpectedOutf
 
   return (
     <div className="mx-auto max-w-4xl rounded-lg bg-white p-8 shadow-lg">
-      <h2 className="mb-2 text-xl font-bold text-gray-900">前置問題 3</h2>
+      <h2 className="mb-2 text-xl font-bold text-gray-900">前置問題 2</h2>
       <p className="mb-6 text-gray-700">
-        在你剛剛選擇的可接受穿搭中，你預期 AI 最可能推薦哪一套？
+        在開始使用 AI 穿搭顧問前，你預期 AI 最可能推薦哪一套面試穿搭？
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <OutfitGrid
-          outfitIds={acceptableOutfits}
+          outfitIds={allowedOutfits}
           selectedIds={selected}
           onChange={setSelected}
           mode="single"
@@ -47,7 +47,7 @@ export function ExpectedOutfitForm({ acceptableOutfits, onSubmit }: ExpectedOutf
           disabled={selected.length !== 1}
           className="w-full rounded-lg bg-gradient-to-r from-blue-500 to-purple-500 px-6 py-3 font-bold text-white transition hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
         >
-          開始使用 AI 穿搭顧問
+          開始 AI 穿搭顧問對話
         </button>
       </form>
     </div>

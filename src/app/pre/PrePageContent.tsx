@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { OutfitCategoryForm } from '@/components/OutfitCategoryForm';
-import { AcceptableOutfitsForm } from '@/components/AcceptableOutfitsForm';
 import { ExpectedOutfitForm } from '@/components/ExpectedOutfitForm';
 import {
   ParticipantData,
@@ -19,11 +18,11 @@ import {
   getOutfitPools,
   resolveFinalOutfit,
   getRandomSurpriseMode,
+  getOutfit,
 } from '@/lib/outfits';
 import { buildRecommendationText } from '@/lib/recommendationText';
-import { getOutfit } from '@/lib/outfits';
 
-type PreStep = 'category' | 'acceptable' | 'expected';
+type PreStep = 'category' | 'expected';
 
 export default function PrePageContent() {
   const router = useRouter();
@@ -95,11 +94,6 @@ export default function PrePageContent() {
       allowedOutfits: pools.allowedOutfits,
       blockedOutfits: pools.blockedOutfits,
     });
-    setCurrentStep('acceptable');
-  };
-
-  const handleAcceptableSubmit = (acceptableOutfits: string[]) => {
-    setParticipantData({ ...participantData, acceptableOutfits });
     setCurrentStep('expected');
   };
 
@@ -111,7 +105,6 @@ export default function PrePageContent() {
       const { finalRecommendedOutfit, surpriseCandidateOutfits } = resolveFinalOutfit({
         surpriseMode: participantData.surpriseMode as 'surprise' | 'no_surprise',
         expectedOutfit,
-        acceptableOutfits: participantData.acceptableOutfits,
         allowedOutfits: participantData.allowedOutfits,
         blockedOutfits: participantData.blockedOutfits,
       });
@@ -123,6 +116,7 @@ export default function PrePageContent() {
 
       const completed: ParticipantData = {
         ...participantData,
+        acceptableOutfits: [expectedOutfit],
         expectedOutfit,
         finalRecommendedOutfit,
         surpriseCandidateOutfits,
@@ -142,25 +136,16 @@ export default function PrePageContent() {
       <div className="mx-auto max-w-4xl space-y-6">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900">AI 穿搭顧問 — 前置問題</h1>
-          <p className="mt-2 text-sm text-gray-500">
-            請先回答以下問題，再開始與 AI 顧問互動
-          </p>
+          <p className="mt-2 text-sm text-gray-500">請先回答以下問題，再開始與 AI 顧問互動</p>
         </div>
 
         {currentStep === 'category' && (
           <OutfitCategoryForm onSubmit={handleCategorySubmit} />
         )}
 
-        {currentStep === 'acceptable' && (
-          <AcceptableOutfitsForm
-            allowedOutfits={participantData.allowedOutfits}
-            onSubmit={handleAcceptableSubmit}
-          />
-        )}
-
         {currentStep === 'expected' && (
           <ExpectedOutfitForm
-            acceptableOutfits={participantData.acceptableOutfits}
+            allowedOutfits={participantData.allowedOutfits}
             onSubmit={handleExpectedSubmit}
           />
         )}

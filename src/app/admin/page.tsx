@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
-  getFromLocalStorage,
+  fetchAllParticipants,
   downloadJSON,
   ParticipantData,
 } from '@/lib/dataRecorder';
@@ -10,18 +10,39 @@ import {
 export default function AdminPage() {
   const [allData, setAllData] = useState<ParticipantData[]>([]);
   const [selectedParticipant, setSelectedParticipant] = useState<ParticipantData | null>(null);
+  const [cloudConfigured, setCloudConfigured] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    setAllData(getFromLocalStorage());
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    const result = await fetchAllParticipants();
+    setCloudConfigured(result.configured);
+    setAllData(result.participants);
+    setLoading(false);
   }, []);
 
-  const handleClearData = () => {
-    if (window.confirm('確定要清除所有資料嗎？此操作無法復原。')) {
-      localStorage.removeItem('participant_data');
-      setAllData([]);
-      setSelectedParticipant(null);
-      alert('資料已清除');
+  useEffect(() => {
+    void loadData();
+  }, [loadData]);
+
+  const handleClearData = async () => {
+    if (!window.confirm('確定要清除所有資料嗎？此操作無法復原。')) return;
+
+    if (cloudConfigured) {
+      const secret = window.prompt('請輸入管理者密碼（若未設定可留空）：') ?? '';
+      const headers: HeadersInit = secret ? { 'x-admin-secret': secret } : {};
+      const response = await fetch('/api/participants', { method: 'DELETE', headers });
+      if (!response.ok) {
+        alert('清除雲端資料失敗，請確認管理者密碼是否正確。');
+        return;
+      }
     }
+
+    localStorage.removeItem('participant_data');
+    setAllData([]);
+    setSelectedParticipant(null);
+    alert('資料已清除');
+    void loadData();
   };
 
   return (
@@ -29,7 +50,14 @@ export default function AdminPage() {
       <div className="mx-auto max-w-7xl">
         <div className="mb-6 rounded-lg bg-white p-8 shadow-lg">
           <h1 className="mb-4 text-4xl font-bold">研究者後台</h1>
-          <p className="mb-6 text-gray-600">查看與管理受試者實驗數據</p>
+          <p className="mb-2 text-gray-600">查看與管理受試者實驗數據</p>
+          <p className="mb-6 text-sm text-gray-500">
+            {loading
+              ? '載入中...'
+              : cloudConfigured
+                ? '✓ 已連接雲端儲存，可查看所有受試者資料'
+                : '⚠ 雲端儲存尚未設定，目前僅顯示本機瀏覽器資料（正式上線請在 Vercel 加入 Blob Storage）'}
+          </p>
 
           <div className="flex flex-wrap gap-4">
             <button
@@ -39,7 +67,7 @@ export default function AdminPage() {
               匯出 JSON 檔案
             </button>
             <button
-              onClick={() => setAllData(getFromLocalStorage())}
+              onClick={() => void loadData()}
               className="rounded-lg bg-blue-500 px-6 py-2 font-bold text-white hover:bg-blue-600"
             >
               重新整理
