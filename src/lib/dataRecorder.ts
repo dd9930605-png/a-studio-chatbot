@@ -157,17 +157,18 @@ export function saveToLocalStorage(data: ParticipantData): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(nextData));
 }
 
-export async function saveParticipantData(data: ParticipantData): Promise<void> {
+export async function saveParticipantData(data: ParticipantData): Promise<boolean> {
   saveToLocalStorage(data);
 
   try {
-    await fetch('/api/participants', {
+    const response = await fetch('/api/participants', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
+    return response.ok;
   } catch {
-    // 本機開發或網路異常時仍保留 localStorage 備份
+    return false;
   }
 }
 
@@ -178,23 +179,38 @@ export async function fetchAllParticipants(): Promise<{
   try {
     const response = await fetch('/api/participants', { cache: 'no-store' });
     if (!response.ok) {
-      return { configured: false, participants: getFromLocalStorage() };
+      return { configured: false, participants: [] };
     }
     const result = (await response.json()) as {
       configured: boolean;
       participants: ParticipantData[];
     };
-    if (result.configured && result.participants.length > 0) {
-      return result;
+    if (result.configured) {
+      return { configured: true, participants: result.participants ?? [] };
     }
-    const local = getFromLocalStorage();
-    return {
-      configured: result.configured,
-      participants: local.length > 0 ? local : result.participants,
-    };
+    return { configured: false, participants: getFromLocalStorage() };
   } catch {
     return { configured: false, participants: getFromLocalStorage() };
   }
+}
+
+export async function downloadAllParticipantsJSON(): Promise<void> {
+  if (typeof window === 'undefined') return;
+
+  const { participants } = await fetchAllParticipants();
+  const blob = new Blob([JSON.stringify(participants, null, 2)], {
+    type: 'application/json;charset=utf-8',
+  });
+  const url = URL.createObjectURL(blob);
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const link = document.createElement('a');
+
+  link.href = url;
+  link.download = `participant-data-${timestamp}.json`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }
 
 export function getFromLocalStorage(): ParticipantData[] {
@@ -212,20 +228,5 @@ export function getFromLocalStorage(): ParticipantData[] {
 }
 
 export function downloadJSON(): void {
-  if (typeof window === 'undefined') return;
-
-  const data = getFromLocalStorage();
-  const blob = new Blob([JSON.stringify(data, null, 2)], {
-    type: 'application/json;charset=utf-8',
-  });
-  const url = URL.createObjectURL(blob);
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const link = document.createElement('a');
-
-  link.href = url;
-  link.download = `participant-data-${timestamp}.json`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  void downloadAllParticipantsJSON();
 }

@@ -55,7 +55,7 @@ export default function AdminPage() {
             {loading
               ? '載入中...'
               : cloudConfigured
-                ? '✓ 已連接雲端儲存，可查看所有受試者資料'
+                ? `✓ 已連接雲端儲存（共 ${allData.length} 筆，手機與電腦共用）`
                 : '⚠ 雲端儲存尚未設定，目前僅顯示本機瀏覽器資料（正式上線請在 Vercel 加入 Blob Storage）'}
           </p>
 

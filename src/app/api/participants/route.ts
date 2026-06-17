@@ -23,8 +23,17 @@ export async function GET() {
     );
   }
 
-  const participants = await getAllParticipantsFromCloud();
-  return NextResponse.json({ configured: true, participants });
+  try {
+    const participants = await getAllParticipantsFromCloud();
+    return NextResponse.json({ configured: true, participants });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '讀取失敗';
+    console.error('GET /api/participants failed:', message);
+    return NextResponse.json(
+      { configured: false, participants: [], error: message },
+      { status: 500 },
+    );
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -46,8 +55,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: '缺少 participantId' }, { status: 400 });
   }
 
-  await saveParticipantToCloud(data);
-  return NextResponse.json({ ok: true, participantId: data.participantId });
+  try {
+    await saveParticipantToCloud(data);
+    return NextResponse.json({ ok: true, participantId: data.participantId });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '儲存失敗';
+    console.error('POST /api/participants failed:', message);
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }
 
 export async function DELETE(request: NextRequest) {
