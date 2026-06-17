@@ -12,7 +12,7 @@
     "tone": "friendly",
     "greetingText": "嗨，我是 Emma，你的 AI 穿搭顧問。接下來我會透過幾個簡單問題，幫你找出適合重要面試的穿搭。我很期待與你合作！",
     "manipulationNotes": "高可解釋性、高雙面論點、高擬人化、高主動性",
-    "surveyUrl": "https://example.com/survey?condition=1"
+    "surveyUrl": "https://www.surveycake.com/s/Qy2B7"
   },
   {
     "conditionId": 2,
@@ -27,7 +27,7 @@
     "tone": "friendly",
     "greetingText": "嗨，我是 Emma，你的 AI 穿搭顧問。接下來我會透過幾個簡單問題，幫你找出適合重要面試的穿搭。",
     "manipulationNotes": "高可解釋性、高雙面論點、高擬人化、低主動性",
-    "surveyUrl": "https://example.com/survey?condition=2"
+    "surveyUrl": "https://www.surveycake.com/s/Qy2B7"
   },
   {
     "conditionId": 3,
@@ -42,7 +42,7 @@
     "tone": "professional",
     "greetingText": "AI 穿搭推薦系統將依據使用者輸入的風格偏好、身形條件與穿搭需求，產生面試穿搭建議。系統已準備就緒。",
     "manipulationNotes": "高可解釋性、高雙面論點、低擬人化、高主動性",
-    "surveyUrl": "https://example.com/survey?condition=3"
+    "surveyUrl": "https://www.surveycake.com/s/Qy2B7"
   },
   {
     "conditionId": 4,
@@ -57,7 +57,7 @@
     "tone": "professional",
     "greetingText": "AI 穿搭推薦系統將依據使用者輸入的風格偏好、身形條件與穿搭需求，產生面試穿搭建議。",
     "manipulationNotes": "高可解釋性、高雙面論點、低擬人化、低主動性",
-    "surveyUrl": "https://example.com/survey?condition=4"
+    "surveyUrl": "https://www.surveycake.com/s/Qy2B7"
   },
   {
     "conditionId": 5,
@@ -72,7 +72,7 @@
     "tone": "friendly",
     "greetingText": "嗨，我是 Emma，你的 AI 穿搭顧問。接下來我會透過幾個簡單問題，幫你找出適合重要面試的穿搭。我很期待與你合作！",
     "manipulationNotes": "高可解釋性、低雙面論點、高擬人化、高主動性",
-    "surveyUrl": "https://example.com/survey?condition=5"
+    "surveyUrl": "https://www.surveycake.com/s/Qy2B7"
   },
   {
     "conditionId": 6,
@@ -87,7 +87,7 @@
     "tone": "friendly",
     "greetingText": "嗨，我是 Emma，你的 AI 穿搭顧問。接下來我會透過幾個簡單問題，幫你找出適合重要面試的穿搭。",
     "manipulationNotes": "高可解釋性、低雙面論點、高擬人化、低主動性",
-    "surveyUrl": "https://example.com/survey?condition=6"
+    "surveyUrl": "https://www.surveycake.com/s/Qy2B7"
   },
   {
     "conditionId": 7,
@@ -102,7 +102,7 @@
     "tone": "professional",
     "greetingText": "AI 穿搭推薦系統將依據使用者輸入的風格偏好、身形條件與穿搭需求，產生面試穿搭建議。系統已準備就緒。",
     "manipulationNotes": "高可解釋性、低雙面論點、低擬人化、高主動性",
-    "surveyUrl": "https://example.com/survey?condition=7"
+    "surveyUrl": "https://www.surveycake.com/s/Qy2B7"
   },
   {
     "conditionId": 8,
@@ -117,7 +117,7 @@
     "tone": "professional",
     "greetingText": "AI 穿搭推薦系統將依據使用者輸入的風格偏好、身形條件與穿搭需求，產生面試穿搭建議。",
     "manipulationNotes": "高可解釋性、低雙面論點、低擬人化、低主動性",
-    "surveyUrl": "https://example.com/survey?condition=8"
+    "surveyUrl": "https://www.surveycake.com/s/Qy2B7"
   },
   {
     "conditionId": 9,
@@ -132,7 +132,7 @@
     "tone": "friendly",
     "greetingText": "嗨，我是 Emma，你的 AI 穿搭顧問。接下來我會透過幾個簡單問題，幫你找出適合重要面試的穿搭。我很期待與你合作！",
     "manipulationNotes": "低可解釋性、高雙面論點、高擬人化、高主動性",
-    "surveyUrl": "https://example.com/survey?condition=9"
+    "surveyUrl": "https://www.surveycake.com/s/Qy2B7"
   },
   {
     "conditionId": 10,
@@ -147,7 +147,7 @@
     "tone": "friendly",
     "greetingText": "嗨，我是 Emma，你的 AI 穿搭顧問。接下來我會透過幾個簡單問題，幫你找出適合重要面試的穿搭。",
     "manipulationNotes": "低可解釋性、高雙面論點、高擬人化、低主動性",
-    "surveyUrl": "https://example.com/survey?condition=10"
+    "surveyUrl": "https://www.surveycake.com/s/Qy2B7"
   },
   {
     "conditionId": 11,
@@ -162,7 +162,7 @@
     "tone": "professional",
     "greetingText": "AI 穿搭推薦系統將依據使用者輸入的風格偏好、身形條件與穿搭需求，產生面試穿搭建議。系統已準備就緒。",
     "manipulationNotes": "低可解釋性、高雙面論點、低擬人化、高主動性",
-    "surveyUrl": "https://example.com/survey?condition=11"
+    "surveyUrl": "https://www.surveycake.com/s/Qy2B7"
   },
   {
     "conditionId": 12,
@@ -177,7 +177,7 @@
     "tone": "professional",
     "greetingText": "AI 穿搭推薦系統將依據使用者輸入的風格偏好、身形條件與穿搭需求，產生面試穿搭建議。",
     "manipulationNotes": "低可解釋性、高雙面論點、低擬人化、低主動性",
-    "surveyUrl": "https://example.com/survey?condition=12"
+    "surveyUrl": "https://www.surveycake.com/s/Qy2B7"
   },
   {
     "conditionId": 13,
@@ -192,7 +192,7 @@
     "tone": "friendly",
     "greetingText": "嗨，我是 Emma，你的 AI 穿搭顧問。接下來我會透過幾個簡單問題，幫你找出適合重要面試的穿搭。我很期待與你合作！",
     "manipulationNotes": "低可解釋性、低雙面論點、高擬人化、高主動性",
-    "surveyUrl": "https://example.com/survey?condition=13"
+    "surveyUrl": "https://www.surveycake.com/s/Qy2B7"
   },
   {
     "conditionId": 14,
@@ -207,7 +207,7 @@
     "tone": "friendly",
     "greetingText": "嗨，我是 Emma，你的 AI 穿搭顧問。接下來我會透過幾個簡單問題，幫你找出適合重要面試的穿搭。",
     "manipulationNotes": "低可解釋性、低雙面論點、高擬人化、低主動性",
-    "surveyUrl": "https://example.com/survey?condition=14"
+    "surveyUrl": "https://www.surveycake.com/s/Qy2B7"
   },
   {
     "conditionId": 15,
@@ -222,7 +222,7 @@
     "tone": "professional",
     "greetingText": "AI 穿搭推薦系統將依據使用者輸入的風格偏好、身形條件與穿搭需求，產生面試穿搭建議。系統已準備就緒。",
     "manipulationNotes": "低可解釋性、低雙面論點、低擬人化、高主動性",
-    "surveyUrl": "https://example.com/survey?condition=15"
+    "surveyUrl": "https://www.surveycake.com/s/Qy2B7"
   },
   {
     "conditionId": 16,
@@ -237,6 +237,6 @@
     "tone": "professional",
     "greetingText": "AI 穿搭推薦系統將依據使用者輸入的風格偏好、身形條件與穿搭需求，產生面試穿搭建議。",
     "manipulationNotes": "低可解釋性、低雙面論點、低擬人化、低主動性",
-    "surveyUrl": "https://example.com/survey?condition=16"
+    "surveyUrl": "https://www.surveycake.com/s/Qy2B7"
   }
 ]

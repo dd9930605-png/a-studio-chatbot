@@ -64,7 +64,7 @@ export function RecommendationCard({
           disabled={!surveyConfigured}
           className="w-full rounded-lg bg-gradient-to-r from-blue-500 to-purple-500 px-6 py-4 font-bold text-lg text-white transition hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {surveyConfigured ? '前往正式問卷 →' : '問卷網址尚未設定'}
+          {surveyConfigured ? '回到 SurveyCake 繼續填答 →' : '問卷網址尚未設定'}
         </button>
         {!surveyConfigured && (
           <p className="mt-3 text-center text-sm text-red-600">
