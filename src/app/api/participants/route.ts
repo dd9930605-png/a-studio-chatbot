@@ -7,6 +7,8 @@ import {
   saveParticipantToCloud,
 } from '@/lib/participantStore';
 
+export const dynamic = 'force-dynamic';
+
 function verifyAdminSecret(request: NextRequest): boolean {
   const secret = process.env.ADMIN_SECRET;
   if (!secret) return true;

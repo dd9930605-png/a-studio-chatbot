@@ -34,9 +34,18 @@ export function getLookNumberFromOutfitId(outfitId: string): number | undefined 
 }
 
 export function outfitIdsToLookLabels(outfitIds: string[]): string[] {
-  return outfitIds
+  return sortOutfitIdsByLook(outfitIds)
     .map((id) => {
       const n = getLookNumberFromOutfitId(id);
       return n ? getLookLabel(n) : id;
     });
+}
+
+/** 依 Look 1–12 數字順序排列 outfitId */
+export function sortOutfitIdsByLook(outfitIds: string[]): string[] {
+  return [...outfitIds].sort((a, b) => {
+    const lookA = getLookNumberFromOutfitId(a) ?? 999;
+    const lookB = getLookNumberFromOutfitId(b) ?? 999;
+    return lookA - lookB;
+  });
 }

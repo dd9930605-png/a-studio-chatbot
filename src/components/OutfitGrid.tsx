@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { getOutfit } from '@/lib/outfits';
-import { getLookLabel, getLookNumberFromOutfitId } from '@/lib/looks';
+import { getLookLabel, getLookNumberFromOutfitId, sortOutfitIdsByLook } from '@/lib/looks';
 
 interface OutfitGridProps {
   outfitIds: string[];
@@ -33,9 +33,11 @@ export function OutfitGrid({
     }
   };
 
+  const sortedIds = sortOutfitIdsByLook(outfitIds);
+
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-      {outfitIds.map((id) => {
+      {sortedIds.map((id) => {
         const outfit = getOutfit(id);
         const lookNumber = getLookNumberFromOutfitId(id);
         const title = showLookLabels && lookNumber ? getLookLabel(lookNumber) : id;
