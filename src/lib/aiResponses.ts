@@ -1,11 +1,41 @@
 import { Condition } from '@/lib/conditions';
 
-type ResponseStep =
+export type ResponseStep =
   | 'stylePreference'
   | 'bodyShape'
   | 'websitePreference'
   | 'koreanExperience'
   | 'usualStyle';
+
+export interface ChatValidationResult {
+  valid: boolean;
+  rejectionMessage?: string;
+}
+
+const OFF_TOPIC_KEYWORDS = [
+  '獸醫', '醫師', '醫生', '護士', '護理', '律師', '會計', '工程師', '程式', '寫程式',
+  '天氣', '下雨', '晴天', '足球', '籃球', '棒球', '遊戲', '打電動', '股票', '投資',
+  '電影', '追劇', '唱歌', '煮飯', '做菜', '寵物', '貓咪', '狗狗', '數學', '物理',
+  '化學', '歷史', '地理', '考試', '作業', '上班', '加班', '薪水',
+];
+
+const BROAD_RELEVANCE_KEYWORDS = [
+  '穿', '搭', '服', '裝', '衣', '褲', '裙', '鞋', '外套', '西裝', '襯衫', '針織',
+  '面試', '正式', '休閒', '簡約', '風格', '款式', '穿搭', '造型', '形象', '顯瘦',
+  '顯高', '修飾', '身材', '身形', '比例', '腰', '肩', '腿', '手臂', '韓系', '韓風',
+  '購買', '買過', '喜歡', '不喜歡', '偏好', '網站', '瀏覽', '感覺', '專業', '穩重',
+  '親切', '自然', '自信', '俐落', '時尚', '百搭', '日常', '商務', '合身',
+  '寬鬆', '顏色', '色系', '黑白', '素色', '乾淨', '整齊', '得體', '場合', '公司',
+  '主管', '印象', '氣質', '精神', '好看', '適合', '不舒服', '沒有', '有',
+];
+
+const STEP_HINTS: Record<ResponseStep, string> = {
+  stylePreference: '請描述你希望這套面試穿搭給人的感覺（例如：專業、親切、自信）。',
+  bodyShape: '請說明你希望修飾或強調的身形部位（例如：腰線、比例、顯瘦）。',
+  websitePreference: '請說明你對剛才瀏覽的 12 套穿搭是否有符合喜好的款式，以及原因。',
+  koreanExperience: '請描述你過去購買韓系服飾的經驗（例如：有/沒有、經常或偶爾）。',
+  usualStyle: '請描述你平時的服飾款式或穿搭風格（例如：簡約、正式、韓系）。',
+};
 
 const KEYWORD_RULES: Record<ResponseStep, { keywords: string[]; response: string }[]> = {
   stylePreference: [
@@ -97,10 +127,58 @@ function applyTone(response: string, condition: Condition): string {
     return response
       .replace(/^了解，/, '已記錄：')
       .replace(/我會/g, '系統將')
-      .replace(/我/g, '系統');
+      .replace(/我/g, '系統')
+      .replace(/^抱歉，/, '提示：')
+      .replace(/請再試一次/g, '請重新輸入');
   }
 
   return response;
+}
+
+function getStepKeywords(step: ResponseStep): string[] {
+  return KEYWORD_RULES[step].flatMap((rule) => rule.keywords);
+}
+
+function hasRelevantContent(step: ResponseStep, normalized: string): boolean {
+  if (getStepKeywords(step).some((keyword) => normalized.includes(keyword))) {
+    return true;
+  }
+
+  return BROAD_RELEVANCE_KEYWORDS.some((keyword) => normalized.includes(keyword));
+}
+
+export function validateChatInput(
+  step: ResponseStep,
+  userInput: string,
+  condition: Condition,
+): ChatValidationResult {
+  const normalized = userInput.trim();
+
+  if (normalized.length < 2) {
+    const message =
+      condition.anthropomorphism === 'high'
+        ? '抱歉，你的回答太短了。請再多描述一點，讓我更能了解你的穿搭需求。'
+        : '輸入過短。請提供與面試穿搭相關的完整描述。';
+    return { valid: false, rejectionMessage: applyTone(message, condition) };
+  }
+
+  if (OFF_TOPIC_KEYWORDS.some((keyword) => normalized.includes(keyword))) {
+    const message =
+      condition.anthropomorphism === 'high'
+        ? `抱歉，「${normalized}」似乎與面試穿搭無關。${STEP_HINTS[step]}`
+        : `輸入內容與面試穿搭無關。${STEP_HINTS[step]}`;
+    return { valid: false, rejectionMessage: applyTone(message, condition) };
+  }
+
+  if (!hasRelevantContent(step, normalized)) {
+    const message =
+      condition.anthropomorphism === 'high'
+        ? `抱歉，我不太確定這是否與穿搭有關。${STEP_HINTS[step]}`
+        : `輸入內容無法判斷為穿搭相關。${STEP_HINTS[step]}`;
+    return { valid: false, rejectionMessage: applyTone(message, condition) };
+  }
+
+  return { valid: true };
 }
 
 export function generateAcknowledgment(

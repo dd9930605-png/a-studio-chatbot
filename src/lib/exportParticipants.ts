@@ -30,6 +30,9 @@ const METADATA_COLUMNS = [
   'usualStyleInput',
   'allUserMessages',
   'allBotMessages',
+  'invalidInputCount',
+  'invalidInputs',
+  'correctedInputs',
   'finalRecommendationText',
 ] as const;
 
@@ -58,6 +61,9 @@ export function flattenParticipantForExport(participant: ParticipantData): Recor
     usualStyleInput: data.answers.usualStyleInput,
     allUserMessages: extractUserMessages(data).join(' | '),
     allBotMessages: extractBotMessages(data).join(' | '),
+    invalidInputCount: data.invalidInputCount,
+    invalidInputs: data.invalidInputs.map((item) => `${item.step}:${item.message}`).join(' | '),
+    correctedInputs: data.correctedInputs.map((item) => `${item.step}:${item.message}`).join(' | '),
     finalRecommendationText: data.finalRecommendationText,
   };
 
