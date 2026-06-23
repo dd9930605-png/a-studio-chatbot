@@ -46,7 +46,9 @@ export interface SurveyParams {
   participantId: string;
   conditionId: number;
   surpriseMode: string;
-  expectedOutfit: string;
+  favoriteOutfitBeforeAI: string;
+  /** @deprecated */
+  expectedOutfit?: string;
   finalRecommendedOutfit: string;
   expectationMismatch: number | null;
   selectedOutfitCategory: string;
@@ -55,11 +57,13 @@ export interface SurveyParams {
 export function buildSurveyUrl(surveyUrl: string, params: SurveyParams): string | null {
   if (!hasValidSurveyUrl(surveyUrl)) return null;
 
+  const favoriteOutfitBeforeAI = params.favoriteOutfitBeforeAI || params.expectedOutfit || '';
   const url = new URL(surveyUrl);
   url.searchParams.set('pid', params.participantId);
   url.searchParams.set('condition', String(params.conditionId));
   url.searchParams.set('surprise', params.surpriseMode);
-  url.searchParams.set('expected', params.expectedOutfit);
+  url.searchParams.set('favorite', favoriteOutfitBeforeAI);
+  url.searchParams.set('expected', favoriteOutfitBeforeAI);
   url.searchParams.set('final', params.finalRecommendedOutfit);
   url.searchParams.set('mismatch', String(params.expectationMismatch ?? ''));
   url.searchParams.set('category', params.selectedOutfitCategory);

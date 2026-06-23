@@ -9,14 +9,10 @@ import {
   ParticipantData,
   getParticipantDraft,
   saveParticipantData,
+  saveParticipantDraft,
 } from '@/lib/dataRecorder';
-import {
-  buildSurveyUrl,
-  getCondition,
-  hasValidSurveyUrl,
-} from '@/lib/conditions';
+import { getCondition } from '@/lib/conditions';
 import { getOutfit } from '@/lib/outfits';
-import { returnToSurveyCake } from '@/lib/surveyReturn';
 
 type Step = 'greeting' | 'chat' | 'recommendation';
 
@@ -29,7 +25,7 @@ export default function ChatPageContent() {
 
   useEffect(() => {
     const draft = getParticipantDraft();
-    if (!draft || !draft.expectedOutfit) {
+    if (!draft || !draft.favoriteOutfitBeforeAI) {
       router.push('/pre');
       return;
     }
@@ -69,49 +65,27 @@ export default function ChatPageContent() {
         sessionEndTime: new Date().toISOString(),
       };
       setParticipantData(saved);
+      saveParticipantDraft(saved);
       void saveParticipantData(saved);
       setCurrentStep('recommendation');
     }
   };
 
   const handleSurveyClick = () => {
-    const surveyUrl = buildSurveyUrl(condition.surveyUrl, {
-      participantId: participantData.participantId,
-      conditionId: participantData.conditionId,
-      surpriseMode: participantData.surpriseMode,
-      expectedOutfit: participantData.expectedOutfit,
-      finalRecommendedOutfit: participantData.finalRecommendedOutfit,
-      expectationMismatch: participantData.expectationMismatch,
-      selectedOutfitCategory: participantData.selectedOutfitCategory,
-    });
-
-    if (!surveyUrl) {
-      alert('問卷網址尚未設定。請研究者先設定有效的問卷連結。');
-      return;
-    }
-
-    const completed: ParticipantData = {
+    const readyForSurvey: ParticipantData = {
       ...participantData,
       clickedSurveyButton: true,
       surveyClickedAt: new Date().toISOString(),
-      surveyRedirectUrl: surveyUrl,
+      surveyRedirectUrl: '/survey',
       sessionEndTime: new Date().toISOString(),
     };
-    setParticipantData(completed);
-    void saveParticipantData(completed);
-    returnToSurveyCake(surveyUrl, {
-      participantId: participantData.participantId,
-      conditionId: participantData.conditionId,
-      surpriseMode: participantData.surpriseMode,
-      expectedOutfit: participantData.expectedOutfit,
-      finalRecommendedOutfit: participantData.finalRecommendedOutfit,
-      expectationMismatch: participantData.expectationMismatch,
-      selectedOutfitCategory: participantData.selectedOutfitCategory,
-    }, condition.surveyContinueUrl);
+    setParticipantData(readyForSurvey);
+    saveParticipantDraft(readyForSurvey);
+    void saveParticipantData(readyForSurvey);
+    router.push('/survey');
   };
 
   const displayOutfit = getOutfit(participantData.finalRecommendedOutfit);
-  const surveyConfigured = hasValidSurveyUrl(condition.surveyUrl);
 
   return (
     <div className="min-h-screen px-4 py-8">
@@ -133,7 +107,10 @@ export default function ChatPageContent() {
             <ChatInterface
               participantData={participantData}
               condition={condition}
-              onUpdateData={setParticipantData}
+              onUpdateData={(data) => {
+                setParticipantData(data);
+                saveParticipantDraft(data);
+              }}
               onStepChange={handleChatStepChange}
               currentStep={chatStep}
             />
@@ -145,7 +122,6 @@ export default function ChatPageContent() {
             outfit={displayOutfit}
             recommendationText={participantData.finalRecommendationText}
             participantData={participantData}
-            surveyConfigured={surveyConfigured}
             onSurveyClick={handleSurveyClick}
           />
         )}

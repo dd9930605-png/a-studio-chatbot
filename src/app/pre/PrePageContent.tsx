@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { OutfitCategoryForm } from '@/components/OutfitCategoryForm';
-import { ExpectedOutfitForm } from '@/components/ExpectedOutfitForm';
+import { FavoriteOutfitForm } from '@/components/FavoriteOutfitForm';
 import {
   ParticipantData,
   generateParticipantId,
@@ -100,14 +100,14 @@ export default function PrePageContent() {
     setCurrentStep('expected');
   };
 
-  const handleExpectedSubmit = (expectedOutfit: string) => {
+  const handleFavoriteSubmit = (favoriteOutfitBeforeAI: string) => {
     const condition = getCondition(participantData.conditionId);
     if (!condition) return;
 
     try {
       const { finalRecommendedOutfit, surpriseCandidateOutfits } = resolveFinalOutfit({
         surpriseMode: participantData.surpriseMode as 'surprise' | 'no_surprise',
-        expectedOutfit,
+        favoriteOutfitBeforeAI,
         allowedOutfits: participantData.allowedOutfits,
         blockedOutfits: participantData.blockedOutfits,
       });
@@ -119,12 +119,11 @@ export default function PrePageContent() {
 
       const completed: ParticipantData = {
         ...participantData,
-        acceptableOutfits: [expectedOutfit],
-        expectedOutfit,
+        favoriteOutfitBeforeAI,
         finalRecommendedOutfit,
         surpriseCandidateOutfits,
         finalRecommendationText: recommendationText,
-        expectationMismatch: expectedOutfit === finalRecommendedOutfit ? 0 : 1,
+        expectationMismatch: favoriteOutfitBeforeAI === finalRecommendedOutfit ? 0 : 1,
       };
 
       saveParticipantDraft(completed);
@@ -147,7 +146,7 @@ export default function PrePageContent() {
         )}
 
         {currentStep === 'expected' && (
-          <ExpectedOutfitForm onSubmit={handleExpectedSubmit} />
+          <FavoriteOutfitForm onSubmit={handleFavoriteSubmit} />
         )}
       </div>
     </div>

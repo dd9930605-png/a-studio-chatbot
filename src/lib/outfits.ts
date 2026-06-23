@@ -65,28 +65,34 @@ export function getSurpriseCandidates(
 
 export function resolveFinalOutfit(params: {
   surpriseMode: SurpriseMode;
-  expectedOutfit: string;
+  favoriteOutfitBeforeAI: string;
+  /** @deprecated 請改用 favoriteOutfitBeforeAI */
+  expectedOutfit?: string;
   allowedOutfits: string[];
   blockedOutfits: string[];
 }): {
   finalRecommendedOutfit: string;
   surpriseCandidateOutfits: string[];
 } {
-  const { surpriseMode, expectedOutfit, allowedOutfits, blockedOutfits } = params;
+  const favoriteOutfitBeforeAI = params.favoriteOutfitBeforeAI || params.expectedOutfit || '';
+  const { surpriseMode, allowedOutfits, blockedOutfits } = params;
 
-  const expectedError = validateExpectedOutfit(expectedOutfit);
+  const expectedError = validateExpectedOutfit(favoriteOutfitBeforeAI);
   if (expectedError) {
     throw new Error(expectedError);
   }
 
   if (surpriseMode === 'no_surprise') {
     return {
-      finalRecommendedOutfit: expectedOutfit,
+      finalRecommendedOutfit: favoriteOutfitBeforeAI,
       surpriseCandidateOutfits: [],
     };
   }
 
-  const surpriseCandidateOutfits = getSurpriseCandidates(allowedOutfits, expectedOutfit);
+  const surpriseCandidateOutfits = getSurpriseCandidates(
+    allowedOutfits,
+    favoriteOutfitBeforeAI,
+  );
 
   if (surpriseCandidateOutfits.length === 0) {
     throw new Error('surprise 模式下沒有可用的推薦候選穿搭。');
