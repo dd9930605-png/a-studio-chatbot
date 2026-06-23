@@ -227,6 +227,7 @@ export default function AdminPage() {
                 </Section>
 
                 <Section title="AI 對談回答">
+                  <Field label="invalidInputCount" value={String(selectedParticipant.invalidInputCount)} />
                   <Field label="風格偏好" value={selectedParticipant.answers.stylePreferenceInput} />
                   <Field label="身形修飾" value={selectedParticipant.answers.bodyShapeInput} />
                   <Field

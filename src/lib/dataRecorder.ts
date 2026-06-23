@@ -22,6 +22,12 @@ export interface ParticipantConditionInfo {
   proactivity: 'high' | 'low';
 }
 
+export interface InvalidInputRecord {
+  step: string;
+  message: string;
+  timestamp: string;
+}
+
 export type QuestionnaireResponses = Record<string, number>;
 
 export interface ParticipantData {
@@ -42,6 +48,9 @@ export interface ParticipantData {
   expectationMismatch: number | null;
   answers: ParticipantAnswers;
   chatLog: ChatMessage[];
+  invalidInputCount: number;
+  invalidInputs: InvalidInputRecord[];
+  correctedInputs: InvalidInputRecord[];
   questionnaireResponses: QuestionnaireResponses;
   questionnaireCompletedAt: string | null;
   completionCode: string | null;
@@ -118,6 +127,9 @@ export function initializeParticipantData(
       usualStyleInput: '',
     },
     chatLog: [],
+    invalidInputCount: 0,
+    invalidInputs: [],
+    correctedInputs: [],
     questionnaireResponses: {},
     questionnaireCompletedAt: null,
     completionCode: null,
@@ -146,6 +158,9 @@ export function normalizeParticipantData(raw: ParticipantData): ParticipantData 
     surveyClickedAt: raw.surveyClickedAt ?? null,
     surveyRedirectUrl: raw.surveyRedirectUrl ?? null,
     sessionEndTime: raw.sessionEndTime ?? null,
+    invalidInputCount: raw.invalidInputCount ?? 0,
+    invalidInputs: raw.invalidInputs ?? [],
+    correctedInputs: raw.correctedInputs ?? [],
   };
 }
 

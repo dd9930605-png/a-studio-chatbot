@@ -2,8 +2,12 @@
 
 import React, { useState } from 'react';
 import { Condition } from '@/lib/conditions';
-import { CHAT_PROMPTS, generateAcknowledgment } from '@/lib/aiResponses';
-import { ChatMessage, ParticipantData } from '@/lib/dataRecorder';
+import {
+  CHAT_PROMPTS,
+  generateAcknowledgment,
+  validateChatInput,
+} from '@/lib/aiResponses';
+import { ChatMessage, InvalidInputRecord, ParticipantData } from '@/lib/dataRecorder';
 
 interface ChatInterfaceProps {
   participantData: ParticipantData;
@@ -42,14 +46,58 @@ export function ChatInterface({
     const answer = inputValue.trim();
     if (!answer) return;
 
-    const questionMessage = createMessage(currentStep, 'bot', prompt.question);
-    const acknowledgment = generateAcknowledgment(
-      currentStep as keyof typeof CHAT_PROMPTS,
-      answer,
-      condition,
-    );
-    const ackMessage = createMessage(currentStep, 'bot', acknowledgment);
+    const step = currentStep as keyof typeof CHAT_PROMPTS;
+    const validation = validateChatInput(step, answer, condition);
+    const timestamp = new Date().toISOString();
     const userMessage = createMessage(currentStep, 'user', answer);
+
+    const hasQuestionInLog = participantData.chatLog.some(
+      (message) =>
+        message.step === currentStep &&
+        message.sender === 'bot' &&
+        message.message === prompt.question,
+    );
+    const questionMessage = createMessage(currentStep, 'bot', prompt.question);
+
+    if (!validation.valid) {
+      const rejectionMessage = createMessage(
+        currentStep,
+        'bot',
+        validation.rejectionMessage ?? '請輸入與面試穿搭相關的回答。',
+      );
+      const invalidRecord: InvalidInputRecord = {
+        step: currentStep,
+        message: answer,
+        timestamp,
+      };
+
+      const updatedData: ParticipantData = {
+        ...participantData,
+        invalidInputCount: participantData.invalidInputCount + 1,
+        invalidInputs: [...participantData.invalidInputs, invalidRecord],
+        chatLog: [
+          ...participantData.chatLog,
+          ...(hasQuestionInLog ? [] : [questionMessage]),
+          userMessage,
+          rejectionMessage,
+        ],
+      };
+
+      onUpdateData(updatedData);
+      setInputValue('');
+      return;
+    }
+
+    const acknowledgment = generateAcknowledgment(step, answer, condition);
+    const ackMessage = createMessage(currentStep, 'bot', acknowledgment);
+    const hadInvalidForStep = participantData.invalidInputs.some(
+      (record) => record.step === currentStep,
+    );
+    const correctedRecord: InvalidInputRecord = {
+      step: currentStep,
+      message: answer,
+      timestamp,
+    };
 
     const updatedData: ParticipantData = {
       ...participantData,
@@ -57,7 +105,15 @@ export function ChatInterface({
         ...participantData.answers,
         [prompt.answerKey]: answer,
       },
-      chatLog: [...participantData.chatLog, questionMessage, userMessage, ackMessage],
+      correctedInputs: hadInvalidForStep
+        ? [...participantData.correctedInputs, correctedRecord]
+        : participantData.correctedInputs,
+      chatLog: [
+        ...participantData.chatLog,
+        ...(hasQuestionInLog ? [] : [questionMessage]),
+        userMessage,
+        ackMessage,
+      ],
     };
 
     onUpdateData(updatedData);
@@ -77,7 +133,12 @@ export function ChatInterface({
               className={`max-w-[85%] rounded-2xl px-4 py-3 ${
                 message.sender === 'user'
                   ? 'bg-blue-500 text-white'
-                  : 'bg-gray-100 text-gray-800'
+                  : message.message.includes('抱歉') ||
+                      message.message.includes('無關') ||
+                      message.message.includes('過短') ||
+                      message.message.includes('提示：')
+                    ? 'border border-amber-200 bg-amber-50 text-amber-900'
+                    : 'bg-gray-100 text-gray-800'
               }`}
             >
               {message.message}
@@ -86,13 +147,13 @@ export function ChatInterface({
         ))}
 
         <div className="flex justify-start">
-            <div className="max-w-[85%] rounded-2xl bg-gray-100 px-4 py-3 text-gray-800">
-              {prompt.question}
-              {condition.proactivity === 'high' && (
-                <p className="mt-2 text-sm text-gray-600">請以文字自由輸入你的回答。</p>
-              )}
-            </div>
+          <div className="max-w-[85%] rounded-2xl bg-gray-100 px-4 py-3 text-gray-800">
+            {prompt.question}
+            {condition.proactivity === 'high' && (
+              <p className="mt-2 text-sm text-gray-600">請以文字自由輸入你的回答。</p>
+            )}
           </div>
+        </div>
       </div>
 
       <form onSubmit={handleSubmit} className="border-t border-gray-200 p-4">
