@@ -13,10 +13,20 @@ export interface ChatValidationResult {
 }
 
 const OFF_TOPIC_KEYWORDS = [
-  '獸醫', '醫師', '醫生', '護士', '護理', '律師', '會計', '工程師', '程式', '寫程式',
+  '獸醫', '醫師', '醫生', '護士', '護理', '會計', '工程師', '程式', '寫程式',
   '天氣', '下雨', '晴天', '足球', '籃球', '棒球', '遊戲', '打電動', '股票', '投資',
   '電影', '追劇', '唱歌', '煮飯', '做菜', '寵物', '貓咪', '狗狗', '數學', '物理',
-  '化學', '歷史', '地理', '考試', '作業', '上班', '加班', '薪水',
+  '化學', '歷史', '地理', '考試', '作業', '上班', '加班', '薪水', '吐司', '吃東西', '想吃',
+];
+
+const SHORT_STYLE_TERMS = [
+  '美式', '韓系', '日系', '歐美', '休閒', '正式', '簡約', '街頭', '運動', '商務',
+  '高冷', '帥氣', '甜美', '知性', '幹練', '專業', '自然', '親切', '俐落', '百搭',
+  '日常', '寬鬆', 'oversize', '西裝', '學院', '復古', '潮流',
+];
+
+const BODY_SHAPE_TERMS = [
+  '肚子', '腰腹', '腰', '腿', '肩', '手臂', '胸', '臀', '比例', '顯瘦', '顯高', '修飾',
 ];
 
 const BROAD_RELEVANCE_KEYWORDS = [
@@ -54,6 +64,10 @@ const KEYWORD_RULES: Record<ResponseStep, { keywords: string[]; response: string
     {
       keywords: ['時尚', '設計', '潮流', '有型'],
       response: '了解，你希望兼具專業與時尚感，我會留意整體風格的協調性。',
+    },
+    {
+      keywords: ['高冷', '帥氣', '酷'],
+      response: '了解，你希望呈現帥氣、有個性的形象，我會把這個風格方向納入推薦考量。',
     },
   ],
   bodyShape: [
@@ -116,6 +130,10 @@ const KEYWORD_RULES: Record<ResponseStep, { keywords: string[]; response: string
       response: '了解，你偏好韓系風格，我會在面試穿搭需求下調整推薦方向。',
     },
     {
+      keywords: ['美式', '歐美', '日系', '街頭', '運動'],
+      response: '了解，你平時偏好這類風格，我會在面試穿搭需求下調整推薦方向。',
+    },
+    {
       keywords: ['沒有', '不固定', '看場合'],
       response: '了解，我會根據面試情境的需求來提供適合的穿搭推薦。',
     },
@@ -135,11 +153,37 @@ function applyTone(response: string, condition: Condition): string {
   return response;
 }
 
+function normalizeUserInput(input: string): string {
+  return input.trim().replace(/[吧呢啊喔哦～~!！。,.，]/g, '');
+}
+
+function matchesShortStyleTerm(normalized: string): boolean {
+  const compact = normalizeUserInput(normalized);
+  return SHORT_STYLE_TERMS.some(
+    (term) => compact === term || compact.includes(term) || term.includes(compact),
+  );
+}
+
+function matchesBodyShapeTerm(normalized: string): boolean {
+  return BODY_SHAPE_TERMS.some((term) => normalized.includes(term));
+}
+
 function getStepKeywords(step: ResponseStep): string[] {
   return KEYWORD_RULES[step].flatMap((rule) => rule.keywords);
 }
 
 function hasRelevantContent(step: ResponseStep, normalized: string): boolean {
+  if (matchesShortStyleTerm(normalized)) {
+    return true;
+  }
+
+  if (
+    (step === 'bodyShape' || step === 'stylePreference') &&
+    matchesBodyShapeTerm(normalized)
+  ) {
+    return true;
+  }
+
   if (getStepKeywords(step).some((keyword) => normalized.includes(keyword))) {
     return true;
   }
@@ -153,8 +197,9 @@ export function validateChatInput(
   condition: Condition,
 ): ChatValidationResult {
   const normalized = userInput.trim();
+  const compact = normalizeUserInput(normalized);
 
-  if (normalized.length < 2) {
+  if (compact.length < 1) {
     const message =
       condition.anthropomorphism === 'high'
         ? '抱歉，你的回答太短了。請再多描述一點，讓我更能了解你的穿搭需求。'

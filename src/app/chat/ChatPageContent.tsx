@@ -120,6 +120,7 @@ export default function ChatPageContent() {
         {currentStep === 'recommendation' && displayOutfit && (
           <RecommendationCard
             outfit={displayOutfit}
+            condition={condition}
             recommendationText={participantData.finalRecommendationText}
             participantData={participantData}
             onSurveyClick={handleSurveyClick}
