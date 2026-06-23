@@ -9,7 +9,6 @@ interface RecommendationCardProps {
   outfit: Outfit;
   recommendationText: string;
   participantData: ParticipantData;
-  surveyConfigured: boolean;
   onSurveyClick: () => void;
 }
 
@@ -17,7 +16,6 @@ export function RecommendationCard({
   outfit,
   recommendationText,
   participantData,
-  surveyConfigured,
   onSurveyClick,
 }: RecommendationCardProps) {
   const [imageFailed, setImageFailed] = useState(false);
@@ -53,29 +51,29 @@ export function RecommendationCard({
         </div>
       )}
 
+      <div className="mb-6 rounded-lg border border-purple-200 bg-purple-50 p-4 text-sm text-purple-900">
+        請仔細閱讀以下 AI 推薦說明，完成後將進入正式問卷填答。
+      </div>
+
       <div className="rounded-lg bg-blue-50 p-6 text-gray-800">
-        <p className="leading-relaxed">{recommendationText}</p>
+        <p className="leading-relaxed whitespace-pre-line">{recommendationText}</p>
       </div>
 
       <div className="mt-8 border-t pt-8">
         <button
           type="button"
           onClick={onSurveyClick}
-          disabled={!surveyConfigured}
-          className="w-full rounded-lg bg-gradient-to-r from-blue-500 to-purple-500 px-6 py-4 font-bold text-lg text-white transition hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
+          className="w-full rounded-lg bg-gradient-to-r from-blue-500 to-purple-500 px-6 py-4 text-lg font-bold text-white transition hover:shadow-lg"
         >
-          {surveyConfigured ? '回到 SurveyCake 繼續填答 →' : '問卷網址尚未設定'}
+          繼續填寫問卷 →
         </button>
-        {!surveyConfigured && (
-          <p className="mt-3 text-center text-sm text-red-600">
-            目前為範例網址，請研究者設定正式問卷 URL。
-          </p>
-        )}
       </div>
 
       <div className="mt-6 rounded-lg bg-gray-50 p-4 text-xs text-gray-500">
         <p>Participant ID: {participantData.participantId}</p>
-        <p>Condition: {participantData.conditionId} · Surprise: {participantData.surpriseMode}</p>
+        <p>
+          Condition: {participantData.conditionId} · Surprise: {participantData.surpriseMode}
+        </p>
       </div>
     </div>
   );

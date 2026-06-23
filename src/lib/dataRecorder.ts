@@ -22,6 +22,8 @@ export interface ParticipantConditionInfo {
   proactivity: 'high' | 'low';
 }
 
+export type QuestionnaireResponses = Record<string, number>;
+
 export interface ParticipantData {
   participantId: string;
   selectedOutfitCategory: OutfitCategory | '';
@@ -31,13 +33,18 @@ export interface ParticipantData {
   conditionInfo: ParticipantConditionInfo;
   surpriseMode: SurpriseMode | '';
   acceptableOutfits: string[];
-  expectedOutfit: string;
+  favoriteOutfitBeforeAI: string;
+  /** @deprecated 舊版欄位，讀取時會對應至 favoriteOutfitBeforeAI */
+  expectedOutfit?: string;
   surpriseCandidateOutfits: string[];
   finalRecommendedOutfit: string;
   finalRecommendationText: string;
   expectationMismatch: number | null;
   answers: ParticipantAnswers;
   chatLog: ChatMessage[];
+  questionnaireResponses: QuestionnaireResponses;
+  questionnaireCompletedAt: string | null;
+  completionCode: string | null;
   clickedSurveyButton: boolean;
   surveyClickedAt: string | null;
   surveyRedirectUrl: string | null;
@@ -58,6 +65,11 @@ export function generateParticipantId(): string {
   const timestamp = new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14);
   const random = Math.random().toString(36).slice(2, 8).toUpperCase();
   return `P-${timestamp}-${random}`;
+}
+
+export function generateCompletionCode(participantId: string): string {
+  const suffix = participantId.replace(/[^A-Z0-9]/gi, '').slice(-6).toUpperCase();
+  return `THX-${suffix}`;
 }
 
 export function saveExperimentSession(session: ExperimentSession): void {
@@ -93,7 +105,7 @@ export function initializeParticipantData(
     conditionInfo,
     surpriseMode,
     acceptableOutfits: [],
-    expectedOutfit: '',
+    favoriteOutfitBeforeAI: '',
     surpriseCandidateOutfits: [],
     finalRecommendedOutfit: '',
     finalRecommendationText: '',
@@ -106,6 +118,9 @@ export function initializeParticipantData(
       usualStyleInput: '',
     },
     chatLog: [],
+    questionnaireResponses: {},
+    questionnaireCompletedAt: null,
+    completionCode: null,
     clickedSurveyButton: false,
     surveyClickedAt: null,
     surveyRedirectUrl: null,
@@ -114,9 +129,29 @@ export function initializeParticipantData(
   };
 }
 
+export function normalizeParticipantData(raw: ParticipantData): ParticipantData {
+  const favoriteOutfitBeforeAI = raw.favoriteOutfitBeforeAI || raw.expectedOutfit || '';
+  const questionnaireResponses = {
+    ...(raw.questionnaireResponses ?? {}),
+  } as QuestionnaireResponses;
+
+  return {
+    ...raw,
+    favoriteOutfitBeforeAI,
+    questionnaireResponses,
+    questionnaireCompletedAt: raw.questionnaireCompletedAt ?? null,
+    completionCode: raw.completionCode ?? null,
+    acceptableOutfits: raw.acceptableOutfits ?? [],
+    clickedSurveyButton: raw.clickedSurveyButton ?? false,
+    surveyClickedAt: raw.surveyClickedAt ?? null,
+    surveyRedirectUrl: raw.surveyRedirectUrl ?? null,
+    sessionEndTime: raw.sessionEndTime ?? null,
+  };
+}
+
 export function saveParticipantDraft(data: ParticipantData): void {
   if (typeof window === 'undefined') return;
-  sessionStorage.setItem(PARTICIPANT_DRAFT_KEY, JSON.stringify(data));
+  sessionStorage.setItem(PARTICIPANT_DRAFT_KEY, JSON.stringify(normalizeParticipantData(data)));
 }
 
 export function getParticipantDraft(): ParticipantData | null {
@@ -124,7 +159,7 @@ export function getParticipantDraft(): ParticipantData | null {
   const raw = sessionStorage.getItem(PARTICIPANT_DRAFT_KEY);
   if (!raw) return null;
   try {
-    return JSON.parse(raw) as ParticipantData;
+    return normalizeParticipantData(JSON.parse(raw) as ParticipantData);
   } catch {
     return null;
   }
@@ -146,25 +181,27 @@ export function extractBotMessages(data: ParticipantData): string[] {
 export function saveToLocalStorage(data: ParticipantData): void {
   if (typeof window === 'undefined') return;
 
+  const normalized = normalizeParticipantData(data);
   const existing = getFromLocalStorage();
-  const index = existing.findIndex((item) => item.participantId === data.participantId);
-  const nextData = index >= 0 ? [...existing] : [...existing, data];
+  const index = existing.findIndex((item) => item.participantId === normalized.participantId);
+  const nextData = index >= 0 ? [...existing] : [...existing, normalized];
 
   if (index >= 0) {
-    nextData[index] = data;
+    nextData[index] = normalized;
   }
 
   localStorage.setItem(STORAGE_KEY, JSON.stringify(nextData));
 }
 
 export async function saveParticipantData(data: ParticipantData): Promise<boolean> {
-  saveToLocalStorage(data);
+  const normalized = normalizeParticipantData(data);
+  saveToLocalStorage(normalized);
 
   try {
     const response = await fetch('/api/participants', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
+      body: JSON.stringify(normalized),
     });
     return response.ok;
   } catch {
@@ -186,7 +223,12 @@ export async function fetchAllParticipants(): Promise<{
       participants: ParticipantData[];
     };
     if (result.configured) {
-      return { configured: true, participants: result.participants ?? [] };
+      return {
+        configured: true,
+        participants: (result.participants ?? []).map((participant) =>
+          normalizeParticipantData(participant),
+        ),
+      };
     }
     return { configured: false, participants: getFromLocalStorage() };
   } catch {
@@ -221,7 +263,8 @@ export function getFromLocalStorage(): ParticipantData[] {
 
   try {
     const parsed = JSON.parse(rawData);
-    return Array.isArray(parsed) ? parsed : [];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map((item) => normalizeParticipantData(item as ParticipantData));
   } catch {
     return [];
   }

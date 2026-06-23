@@ -6,6 +6,11 @@ import {
   downloadJSON,
   ParticipantData,
 } from '@/lib/dataRecorder';
+import {
+  downloadParticipantsCSV,
+  downloadParticipantsExcel,
+} from '@/lib/exportParticipants';
+import { getQuestionnaireItemIds } from '@/lib/questionnaire';
 
 export default function AdminPage() {
   const [allData, setAllData] = useState<ParticipantData[]>([]);
@@ -45,6 +50,9 @@ export default function AdminPage() {
     void loadData();
   };
 
+  const handleExportCSV = () => downloadParticipantsCSV(allData);
+  const handleExportExcel = () => downloadParticipantsExcel(allData);
+
   return (
     <div className="min-h-screen bg-gray-100 px-4 py-8">
       <div className="mx-auto max-w-7xl">
@@ -64,7 +72,21 @@ export default function AdminPage() {
               onClick={downloadJSON}
               className="rounded-lg bg-green-500 px-6 py-2 font-bold text-white hover:bg-green-600"
             >
-              匯出 JSON 檔案
+              匯出 JSON
+            </button>
+            <button
+              onClick={handleExportCSV}
+              disabled={allData.length === 0}
+              className="rounded-lg bg-emerald-500 px-6 py-2 font-bold text-white hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              匯出 CSV（SPSS）
+            </button>
+            <button
+              onClick={handleExportExcel}
+              disabled={allData.length === 0}
+              className="rounded-lg bg-teal-500 px-6 py-2 font-bold text-white hover:bg-teal-600 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              匯出 Excel
             </button>
             <button
               onClick={() => void loadData()}
@@ -81,7 +103,7 @@ export default function AdminPage() {
           </div>
         </div>
 
-        <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
+        <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-5">
           <div className="rounded-lg bg-white p-6 text-center shadow">
             <div className="text-3xl font-bold text-blue-600">{allData.length}</div>
             <div className="text-sm text-gray-600">受試者總數</div>
@@ -94,15 +116,21 @@ export default function AdminPage() {
           </div>
           <div className="rounded-lg bg-white p-6 text-center shadow">
             <div className="text-3xl font-bold text-green-600">
-              {allData.filter((d) => d.expectationMismatch === 0).length}
+              {allData.filter((d) => d.questionnaireCompletedAt).length}
             </div>
-            <div className="text-sm text-gray-600">預期吻合</div>
+            <div className="text-sm text-gray-600">已完成問卷</div>
           </div>
           <div className="rounded-lg bg-white p-6 text-center shadow">
             <div className="text-3xl font-bold text-orange-600">
+              {allData.filter((d) => d.expectationMismatch === 0).length}
+            </div>
+            <div className="text-sm text-gray-600">偏好吻合推薦</div>
+          </div>
+          <div className="rounded-lg bg-white p-6 text-center shadow">
+            <div className="text-3xl font-bold text-rose-600">
               {allData.filter((d) => d.expectationMismatch === 1).length}
             </div>
-            <div className="text-sm text-gray-600">預期不吻合</div>
+            <div className="text-sm text-gray-600">偏好不吻合推薦</div>
           </div>
         </div>
 
@@ -126,6 +154,7 @@ export default function AdminPage() {
                     <div className="truncate text-sm font-semibold">{data.participantId}</div>
                     <div className="text-xs opacity-75">
                       條件 {data.conditionId} · {data.surpriseMode}
+                      {data.questionnaireCompletedAt ? ' · 已填問卷' : ''}
                     </div>
                   </button>
                 ))
@@ -157,10 +186,9 @@ export default function AdminPage() {
                   <Field label="allowedOutfits" value={selectedParticipant.allowedOutfits.join(', ')} />
                   <Field label="blockedOutfits" value={selectedParticipant.blockedOutfits.join(', ')} />
                   <Field
-                    label="acceptableOutfits"
-                    value={selectedParticipant.acceptableOutfits.join(', ')}
+                    label="favoriteOutfitBeforeAI"
+                    value={selectedParticipant.favoriteOutfitBeforeAI}
                   />
-                  <Field label="expectedOutfit" value={selectedParticipant.expectedOutfit} />
                   <Field
                     label="surpriseCandidateOutfits"
                     value={selectedParticipant.surpriseCandidateOutfits.join(', ') || '—'}
@@ -198,7 +226,7 @@ export default function AdminPage() {
                   </Grid>
                 </Section>
 
-                <Section title="受試者回答">
+                <Section title="AI 對談回答">
                   <Field label="風格偏好" value={selectedParticipant.answers.stylePreferenceInput} />
                   <Field label="身形修飾" value={selectedParticipant.answers.bodyShapeInput} />
                   <Field
@@ -216,15 +244,22 @@ export default function AdminPage() {
                   <p className="text-sm text-gray-800">{selectedParticipant.finalRecommendationText}</p>
                 </Section>
 
-                <Section title="問卷">
+                <Section title="正式問卷">
                   <Field
-                    label="clickedSurveyButton"
-                    value={selectedParticipant.clickedSurveyButton ? '是' : '否'}
+                    label="questionnaireCompletedAt"
+                    value={selectedParticipant.questionnaireCompletedAt ?? '—'}
                   />
-                  <Field
-                    label="surveyRedirectUrl"
-                    value={selectedParticipant.surveyRedirectUrl ?? '—'}
-                  />
+                  <Field label="completionCode" value={selectedParticipant.completionCode ?? '—'} />
+                  <div className="mt-3 max-h-64 space-y-1 overflow-y-auto rounded-lg bg-gray-50 p-3 text-xs">
+                    {getQuestionnaireItemIds().map((itemId) => (
+                      <div key={itemId} className="flex justify-between gap-4 border-b border-gray-200 py-1 last:border-b-0">
+                        <span className="text-gray-500">{itemId}</span>
+                        <span className="font-medium text-gray-800">
+                          {selectedParticipant.questionnaireResponses[itemId] ?? '—'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 </Section>
 
                 <Section title="聊天紀錄">
