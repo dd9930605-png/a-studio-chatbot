@@ -157,6 +157,30 @@ function normalizeUserInput(input: string): string {
   return input.trim().replace(/[吧呢啊喔哦～~!！。,.，]/g, '');
 }
 
+/** 僅在「明顯離題」時拒絕；研究情境下寧可誤收、不要誤拒。 */
+export function isClearlyOffTopic(userInput: string): boolean {
+  const normalized = userInput.trim();
+  if (!normalized) {
+    return true;
+  }
+
+  const compact = normalizeUserInput(normalized);
+  if (!compact) {
+    return true;
+  }
+
+  if (OFF_TOPIC_KEYWORDS.some((keyword) => normalized.includes(keyword))) {
+    return true;
+  }
+
+  // 明顯亂打：同一字元重複 3 次以上且無其他內容
+  if (/^(.)\1{2,}$/.test(compact)) {
+    return true;
+  }
+
+  return false;
+}
+
 function matchesShortStyleTerm(normalized: string): boolean {
   const compact = normalizeUserInput(normalized);
   return SHORT_STYLE_TERMS.some(
@@ -197,29 +221,12 @@ export function validateChatInput(
   condition: Condition,
 ): ChatValidationResult {
   const normalized = userInput.trim();
-  const compact = normalizeUserInput(normalized);
 
-  if (compact.length < 1) {
-    const message =
-      condition.anthropomorphism === 'high'
-        ? '抱歉，你的回答太短了。請再多描述一點，讓我更能了解你的穿搭需求。'
-        : '輸入過短。請提供與面試穿搭相關的完整描述。';
-    return { valid: false, rejectionMessage: applyTone(message, condition) };
-  }
-
-  if (OFF_TOPIC_KEYWORDS.some((keyword) => normalized.includes(keyword))) {
+  if (isClearlyOffTopic(normalized)) {
     const message =
       condition.anthropomorphism === 'high'
         ? `抱歉，「${normalized}」似乎與面試穿搭無關。${STEP_HINTS[step]}`
         : `輸入內容與面試穿搭無關。${STEP_HINTS[step]}`;
-    return { valid: false, rejectionMessage: applyTone(message, condition) };
-  }
-
-  if (!hasRelevantContent(step, normalized)) {
-    const message =
-      condition.anthropomorphism === 'high'
-        ? `抱歉，我不太確定這是否與穿搭有關。${STEP_HINTS[step]}`
-        : `輸入內容無法判斷為穿搭相關。${STEP_HINTS[step]}`;
     return { valid: false, rejectionMessage: applyTone(message, condition) };
   }
 
