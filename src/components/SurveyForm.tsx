@@ -55,7 +55,9 @@ export function SurveyForm({ onSubmit, submitting = false }: SurveyFormProps) {
         <section key={section.sectionOrder} className="space-y-5">
           <div className="rounded-lg bg-gradient-to-r from-blue-50 to-purple-50 p-6">
             <p className="text-sm font-semibold text-blue-700">
-              第 {section.sectionOrder} 部分 · {section.displayTitle}
+              {section.sectionOrder === 0
+                ? section.displayTitle
+                : `第 ${section.sectionOrder} 部分 · ${section.displayTitle}`}
             </p>
             <p className="mt-2 text-sm text-gray-700">{section.instructions}</p>
           </div>
