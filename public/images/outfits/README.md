@@ -1,21 +1,40 @@
 # 穿搭圖片檔案
 
-檔名必須與 `outfitId` 一致：`M1.jpg` … `M6.jpg`、`F1.jpg` … `F6.jpg`。
+檔名必須與 `outfitId` 一致，且 **`outfits.json` 的 `outfitImage` 路徑必須與實際副檔名相同**。
 
-## Look 對照
+## 本次更新過的圖片（2024 上傳）
 
-| Look | outfitId | 目前名稱（outfits.json） |
-|------|----------|--------------------------|
-| 3 | M3 | 咖啡色外搭襯衫＋白T＋深藍寬褲牛仔褲 |
-| 5 | M5 | 淺藍條紋襯衫＋深藍領帶＋黑色寬褲 |
-| 6 | M6 | 黑色上衣＋白色寬褲 |
-| 11 | F5 | 白色襯衫＋黑色及膝裙 |
-| 12 | F6 | 淺藍襯衫＋米白及膝裙 |
+以下 5 套若網站仍顯示舊圖，代表 `outfits.json` 副檔名與實際檔案不一致：
 
-## 更換圖片
+| outfitId | 檔案 | Look | 名稱 |
+|----------|------|------|------|
+| M3 | M3.png | Look 3 | 咖啡色外搭襯衫＋白T＋深藍寬褲 |
+| M5 | M5.png | Look 5 | 淺藍條紋襯衫＋深藍領帶＋黑色寬褲 |
+| M6 | M6.png | Look 6 | 黑色上衣＋白色寬褲 |
+| F5 | F5.png | Look 11 | 白色襯衫＋黑色及膝裙 |
+| F6 | F6.png | Look 12 | 淺藍襯衫＋米白及膝裙 |
 
-1. 將新圖覆蓋 `public/images/outfits/M3.jpg`（等 5 個檔案）
-2. 建議使用與 Wix 網站相同的原圖，確保前台與 AI 系統一致
-3. 格式：JPG，直式商品圖，白底為佳
+## 全部 12 套對照
 
-文案由 `public/outfits.json` 的 `reason` / `benefit` / `limitation` / `suggestion` 自動產生，無需另改程式。
+| outfitId | 檔案 | Look |
+|----------|------|------|
+| M1 | M1.avif | Look 1 |
+| M2 | M2.jpg | Look 2 |
+| M3 | M3.png | Look 3 |
+| M4 | M4.jpg | Look 4 |
+| M5 | M5.png | Look 5 |
+| M6 | M6.png | Look 6 |
+| F1 | F1.jpg | Look 7 |
+| F2 | F2.png | Look 8 |
+| F3 | F3.png | Look 9 |
+| F4 | F4.png | Look 10 |
+| F5 | F5.png | Look 11 |
+| F6 | F6.png | Look 12 |
+
+## 上傳注意
+
+1. 若上傳 `M5.png`，請確認 `outfits.json` 寫的是 `/images/outfits/M5.png`（不是 `.jpg`）
+2. 建議與 Wix 網站使用相同原圖
+3. 上傳後可用無痕模式開啟 `/pre` 檢查 12 套是否更新
+
+舊的 `.jpg` 檔若未刪除不影響網站，只要 `outfits.json` 指向新檔即可。

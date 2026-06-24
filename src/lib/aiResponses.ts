@@ -22,7 +22,7 @@ const OFF_TOPIC_KEYWORDS = [
 const SHORT_STYLE_TERMS = [
   '美式', '韓系', '日系', '歐美', '休閒', '正式', '簡約', '街頭', '運動', '商務',
   '高冷', '帥氣', '甜美', '知性', '幹練', '專業', '自然', '親切', '俐落', '百搭',
-  '日常', '寬鬆', 'oversize', '西裝', '學院', '復古', '潮流',
+  '日常', '寬鬆', 'oversize', '西裝', '學院', '復古', '潮流', '古裝', '漢服', '民族',
 ];
 
 const BODY_SHAPE_TERMS = [
@@ -130,7 +130,7 @@ const KEYWORD_RULES: Record<ResponseStep, { keywords: string[]; response: string
       response: '了解，你偏好韓系風格，我會在面試穿搭需求下調整推薦方向。',
     },
     {
-      keywords: ['美式', '歐美', '日系', '街頭', '運動'],
+      keywords: ['美式', '歐美', '日系', '街頭', '運動', '古裝', '漢服'],
       response: '了解，你平時偏好這類風格，我會在面試穿搭需求下調整推薦方向。',
     },
     {
@@ -155,6 +155,30 @@ function applyTone(response: string, condition: Condition): string {
 
 function normalizeUserInput(input: string): string {
   return input.trim().replace(/[吧呢啊喔哦～~!！。,.，]/g, '');
+}
+
+/** 僅在「明顯離題」時拒絕；研究情境下寧可誤收、不要誤拒。 */
+export function isClearlyOffTopic(userInput: string): boolean {
+  const normalized = userInput.trim();
+  if (!normalized) {
+    return true;
+  }
+
+  const compact = normalizeUserInput(normalized);
+  if (!compact) {
+    return true;
+  }
+
+  if (OFF_TOPIC_KEYWORDS.some((keyword) => normalized.includes(keyword))) {
+    return true;
+  }
+
+  // 明顯亂打：同一字元重複 3 次以上且無其他內容
+  if (/^(.)\1{2,}$/.test(compact)) {
+    return true;
+  }
+
+  return false;
 }
 
 function matchesShortStyleTerm(normalized: string): boolean {
@@ -197,29 +221,12 @@ export function validateChatInput(
   condition: Condition,
 ): ChatValidationResult {
   const normalized = userInput.trim();
-  const compact = normalizeUserInput(normalized);
 
-  if (compact.length < 1) {
-    const message =
-      condition.anthropomorphism === 'high'
-        ? '抱歉，你的回答太短了。請再多描述一點，讓我更能了解你的穿搭需求。'
-        : '輸入過短。請提供與面試穿搭相關的完整描述。';
-    return { valid: false, rejectionMessage: applyTone(message, condition) };
-  }
-
-  if (OFF_TOPIC_KEYWORDS.some((keyword) => normalized.includes(keyword))) {
+  if (isClearlyOffTopic(normalized)) {
     const message =
       condition.anthropomorphism === 'high'
         ? `抱歉，「${normalized}」似乎與面試穿搭無關。${STEP_HINTS[step]}`
         : `輸入內容與面試穿搭無關。${STEP_HINTS[step]}`;
-    return { valid: false, rejectionMessage: applyTone(message, condition) };
-  }
-
-  if (!hasRelevantContent(step, normalized)) {
-    const message =
-      condition.anthropomorphism === 'high'
-        ? `抱歉，我不太確定這是否與穿搭有關。${STEP_HINTS[step]}`
-        : `輸入內容無法判斷為穿搭相關。${STEP_HINTS[step]}`;
     return { valid: false, rejectionMessage: applyTone(message, condition) };
   }
 

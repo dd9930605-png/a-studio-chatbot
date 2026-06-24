@@ -5,6 +5,7 @@ import { ResponseStep } from '@/lib/aiResponses';
 import { Condition } from '@/lib/conditions';
 import {
   generateAcknowledgment,
+  isClearlyOffTopic,
   validateChatInput,
 } from '@/lib/aiResponses';
 
@@ -84,7 +85,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: '缺少必要欄位' }, { status: 400 });
   }
 
-  if (trimmedInput.length < 2) {
+  if (isClearlyOffTopic(trimmedInput)) {
     const fallback = buildFallbackResponse(step, trimmedInput, condition);
     return NextResponse.json(fallback satisfies ChatResponseBody);
   }
@@ -119,6 +120,14 @@ export async function POST(request: NextRequest) {
     if (!parsed) {
       const fallback = buildFallbackResponse(step, trimmedInput, condition);
       return NextResponse.json(fallback satisfies ChatResponseBody);
+    }
+
+    if (!parsed.relevant && !isClearlyOffTopic(trimmedInput)) {
+      return NextResponse.json({
+        relevant: true,
+        reply: generateAcknowledgment(step, trimmedInput, condition as Condition),
+        source: 'fallback',
+      } satisfies ChatResponseBody);
     }
 
     return NextResponse.json({
