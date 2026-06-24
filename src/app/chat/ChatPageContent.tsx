@@ -102,8 +102,8 @@ export default function ChatPageContent() {
         )}
 
         {currentStep === 'chat' && (
-          <div className="space-y-6">
-            <BotHeader condition={condition} greeting={condition.greetingText} />
+          <div className="space-y-4">
+            <BotHeader condition={condition} variant="compact" />
             <ChatInterface
               participantData={participantData}
               condition={condition}
