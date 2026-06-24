@@ -13,6 +13,20 @@ export interface RecommendationSections {
   showBenefit: boolean;
   showLimitation: boolean;
   showSuggestion: boolean;
+  isUltraMinimal: boolean;
+  isMinimal: boolean;
+}
+
+export function isMinimalRecommendation(condition: Condition): boolean {
+  return (
+    condition.explainability === 'low' &&
+    condition.twoSidedMessage === 'low' &&
+    condition.proactivity === 'low'
+  );
+}
+
+export function isUltraMinimalRecommendation(condition: Condition): boolean {
+  return isMinimalRecommendation(condition) && condition.anthropomorphism === 'low';
 }
 
 export function buildRecommendationSections(
@@ -26,14 +40,23 @@ export function buildRecommendationSections(
   const showBenefit = condition.twoSidedMessage === 'high';
   const showLimitation = condition.twoSidedMessage === 'high';
   const showSuggestion = condition.proactivity === 'high';
+  const isMinimal = isMinimalRecommendation(condition);
+  const isUltraMinimal = isUltraMinimalRecommendation(condition);
 
-  const intro = isPersona
-    ? `我會推薦你選擇「${outfitName}」。這套搭配適合面試穿搭。`
-    : `系統推薦「${outfitName}」。此搭配符合面試穿搭需求。`;
+  let intro: string;
+  if (isUltraMinimal) {
+    intro = `系統推薦：${outfitName}`;
+  } else if (isMinimal && isPersona) {
+    intro = `我推薦「${outfitName}」。`;
+  } else if (isPersona) {
+    intro = `我會推薦你選擇「${outfitName}」。這套搭配適合面試穿搭。`;
+  } else {
+    intro = `系統推薦「${outfitName}」。此搭配符合面試穿搭需求。`;
+  }
 
   return {
     intro,
-    styleSummary: tags ? `整體風格：${tags}` : '',
+    styleSummary: isUltraMinimal ? '' : tags ? `整體風格：${tags}` : '',
     reason: showReason ? reason : null,
     benefit: showBenefit ? benefit : null,
     limitation: showLimitation ? limitation : null,
@@ -43,6 +66,8 @@ export function buildRecommendationSections(
     showBenefit,
     showLimitation,
     showSuggestion,
+    isUltraMinimal,
+    isMinimal,
   };
 }
 
@@ -70,4 +95,13 @@ export function sectionsToPlainText(sections: RecommendationSections): string {
 
 export function buildRecommendationText(condition: Condition, outfit: Outfit): string {
   return sectionsToPlainText(buildRecommendationSections(condition, outfit));
+}
+
+export function countRecommendationBlocks(sections: RecommendationSections): number {
+  let count = 1;
+  if (sections.showReason && sections.reason) count += 1;
+  if (sections.showBenefit && sections.benefit) count += 1;
+  if (sections.showLimitation && sections.limitation) count += 1;
+  if (sections.showSuggestion && sections.suggestion) count += 1;
+  return count;
 }

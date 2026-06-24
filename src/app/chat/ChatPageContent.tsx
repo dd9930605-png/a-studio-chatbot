@@ -16,6 +16,8 @@ import { getOutfit } from '@/lib/outfits';
 
 type Step = 'greeting' | 'chat' | 'recommendation';
 
+const GREETING_DISPLAY_MS = 3200;
+
 export default function ChatPageContent() {
   const router = useRouter();
   const [participantData, setParticipantData] = useState<ParticipantData | null>(null);
@@ -41,7 +43,7 @@ export default function ChatPageContent() {
 
     const timer = setTimeout(() => {
       setCurrentStep('chat');
-    }, 1500);
+    }, GREETING_DISPLAY_MS);
 
     return () => clearTimeout(timer);
   }, [router]);
@@ -91,19 +93,17 @@ export default function ChatPageContent() {
     <div className="min-h-screen px-4 py-8">
       <div className="mx-auto max-w-4xl">
         {currentStep === 'greeting' && (
-          <div className="space-y-4 py-20 text-center">
-            <div className="animate-pulse text-2xl text-gray-600">準備中...</div>
+          <div className="space-y-6 py-8">
+            <BotHeader condition={condition} greeting={condition.greetingText} />
+            <div className="rounded-xl border border-dashed border-gray-300 bg-white/80 p-6 text-center text-sm text-gray-600">
+              正在為你準備對話…請先確認上方的 AI 顧問類型
+            </div>
           </div>
         )}
 
         {currentStep === 'chat' && (
           <div className="space-y-6">
-            <BotHeader
-              botName={condition.botName}
-              avatarUrl={condition.avatarUrl}
-              avatarType={condition.avatarType}
-              greeting={condition.greetingText}
-            />
+            <BotHeader condition={condition} greeting={condition.greetingText} />
             <ChatInterface
               participantData={participantData}
               condition={condition}
