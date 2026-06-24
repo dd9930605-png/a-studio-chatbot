@@ -48,6 +48,40 @@ const SPECIFIC_RELEVANCE_KEYWORDS = [
   'look', '套',
 ];
 
+const UNCERTAIN_PHRASES = ['忘記', '忘了', '不記得', '記不得', '想不起', '不確定', '记不清'];
+
+function isUncertainAnswer(normalized: string): boolean {
+  return UNCERTAIN_PHRASES.some((phrase) => normalized.includes(phrase));
+}
+
+export function isUncertainUserAnswer(userInput: string): boolean {
+  return isUncertainAnswer(userInput.trim());
+}
+
+function matchesKeyword(normalized: string, keyword: string, step: ResponseStep): boolean {
+  if (!normalized.includes(keyword)) {
+    return false;
+  }
+
+  if (keyword === '喜歡' && (normalized.includes('不喜歡') || isUncertainAnswer(normalized))) {
+    return false;
+  }
+
+  if (keyword === '有' && step === 'koreanExperience') {
+    if (normalized.includes('沒有') || normalized.includes('沒買') || normalized.includes('不曾')) {
+      return false;
+    }
+  }
+
+  if (keyword === '有' && step === 'websitePreference') {
+    if (normalized.includes('沒有') || isUncertainAnswer(normalized)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 const STEP_HINTS: Record<ResponseStep, string> = {
   stylePreference: '請描述你希望這套面試穿搭給人的感覺（例如：專業、親切、自信）。',
   bodyShape: '請說明你希望修飾或強調的身形部位（例如：腰線、比例、顯瘦）。',
@@ -99,11 +133,19 @@ const KEYWORD_RULES: Record<ResponseStep, { keywords: string[]; response: string
   ],
   websitePreference: [
     {
+      keywords: ['忘記', '忘了', '不記得', '想不起', '不確定'],
+      response: '了解，你還不太確定喜歡哪一套，我會根據你其他的穿搭需求來推薦。',
+    },
+    {
       keywords: ['沒有', '不符', '不喜歡', '都不'],
       response: '了解，你覺得網站上的款式不太符合喜好，我會根據你的描述來調整推薦方向。',
     },
     {
-      keywords: ['有', '符合', '喜歡', '不錯'],
+      keywords: ['有', '符合', '不錯'],
+      response: '了解，你有找到符合喜好的款式，我會參考你的偏好來進行推薦。',
+    },
+    {
+      keywords: ['喜歡'],
       response: '了解，你有找到符合喜好的款式，我會參考你的偏好來進行推薦。',
     },
     {
@@ -273,10 +315,17 @@ export function generateAcknowledgment(
   }
 
   const rules = KEYWORD_RULES[step];
-  const normalized = userInput.toLowerCase();
+  const normalized = userInput.trim();
+
+  if (step === 'websitePreference' && isUncertainAnswer(normalized)) {
+    return applyTone(
+      '了解，你還不太確定喜歡哪一套，我會根據你其他的穿搭需求來推薦。',
+      condition,
+    );
+  }
 
   for (const rule of rules) {
-    if (rule.keywords.some((keyword) => normalized.includes(keyword))) {
+    if (rule.keywords.some((keyword) => matchesKeyword(normalized, keyword, step))) {
       return applyTone(rule.response, condition);
     }
   }

@@ -7,6 +7,7 @@ import {
   generateAcknowledgment,
   hasOutfitRelevanceSignal,
   isClearlyOffTopic,
+  isUncertainUserAnswer,
   validateChatInput,
 } from '@/lib/aiResponses';
 
@@ -124,6 +125,14 @@ export async function POST(request: NextRequest) {
     }
 
     if (!parsed.relevant && hasOutfitRelevanceSignal(step, trimmedInput)) {
+      return NextResponse.json({
+        relevant: true,
+        reply: generateAcknowledgment(step, trimmedInput, condition as Condition),
+        source: 'fallback',
+      } satisfies ChatResponseBody);
+    }
+
+    if (parsed.relevant && isUncertainUserAnswer(trimmedInput)) {
       return NextResponse.json({
         relevant: true,
         reply: generateAcknowledgment(step, trimmedInput, condition as Condition),
