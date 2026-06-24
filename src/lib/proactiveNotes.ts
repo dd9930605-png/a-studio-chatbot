@@ -1,19 +1,36 @@
 import { Condition } from '@/lib/conditions';
 import { ResponseStep } from '@/lib/aiResponses';
 
-const NOTE_BUILDERS: Record<ResponseStep, (input: string) => string> = {
-  stylePreference: (input) => `已記下你想營造的「${truncate(input)}」形象，推薦時會優先考慮面試第一印象。`,
-  bodyShape: (input) => `已記下你想修飾／強調的重點（${truncate(input)}），之後會留意版型與線條。`,
-  websitePreference: (input) => `已參考你對網站 12 套穿搭的看法（${truncate(input)}），用來調整推薦方向。`,
-  koreanExperience: (input) => `已記下你的韓系服飾經驗（${truncate(input)}），會平衡熟悉感與面試需求。`,
-  usualStyle: (input) => `已記下你平時的穿搭習慣（${truncate(input)}），會嘗試與面試場合取得平衡。`,
-};
+const UNCERTAIN_PHRASES = ['忘記', '忘了', '不記得', '記不得', '想不起', '不確定', '记不清'];
+
+function isUncertainAnswer(input: string): boolean {
+  const normalized = input.trim();
+  return UNCERTAIN_PHRASES.some((phrase) => normalized.includes(phrase));
+}
 
 function truncate(text: string, max = 24): string {
   const trimmed = text.trim();
   if (trimmed.length <= max) return trimmed;
   return `${trimmed.slice(0, max)}…`;
 }
+
+const NOTE_BUILDERS: Record<ResponseStep, (input: string) => string> = {
+  stylePreference: (input) => `已記下你想營造的「${truncate(input)}」形象，推薦時會優先考慮面試第一印象。`,
+  bodyShape: (input) => `已記下你想修飾／強調的重點（${truncate(input)}），之後會留意版型與線條。`,
+  websitePreference: (input) => {
+    if (isUncertainAnswer(input)) {
+      return '你表示還不確定網站款式的偏好，會改依其他需求調整推薦。';
+    }
+    return `已參考你對網站 12 套穿搭的看法（${truncate(input)}），用來調整推薦方向。`;
+  },
+  koreanExperience: (input) => {
+    if (isUncertainAnswer(input)) {
+      return '你表示對韓系購買經驗不太確定，會以容易接受的面試風格作為方向。';
+    }
+    return `已記下你的韓系服飾經驗（${truncate(input)}），會平衡熟悉感與面試需求。`;
+  },
+  usualStyle: (input) => `已記下你平時的穿搭習慣（${truncate(input)}），會嘗試與面試場合取得平衡。`,
+};
 
 export function generateProactiveNote(
   step: ResponseStep,
