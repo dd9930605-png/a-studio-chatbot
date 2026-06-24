@@ -5,6 +5,7 @@ import { ResponseStep } from '@/lib/aiResponses';
 import { Condition } from '@/lib/conditions';
 import {
   generateAcknowledgment,
+  hasOutfitRelevanceSignal,
   isClearlyOffTopic,
   validateChatInput,
 } from '@/lib/aiResponses';
@@ -122,7 +123,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(fallback satisfies ChatResponseBody);
     }
 
-    if (!parsed.relevant && !isClearlyOffTopic(trimmedInput)) {
+    if (!parsed.relevant && hasOutfitRelevanceSignal(step, trimmedInput)) {
       return NextResponse.json({
         relevant: true,
         reply: generateAcknowledgment(step, trimmedInput, condition as Condition),
