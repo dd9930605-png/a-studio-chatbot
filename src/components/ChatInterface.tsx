@@ -188,8 +188,8 @@ export function ChatInterface({
     : 'rounded-md bg-slate-700 px-6 py-3 font-mono font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50';
 
   return (
-    <div className={`flex h-full min-h-[28rem] flex-col ${theme.chatContainerClass}`}>
-      <div className="flex-1 space-y-4 overflow-y-auto p-6">
+    <div className={`flex flex-col ${theme.chatContainerClass}`}>
+      <div className="max-h-[32rem] flex-1 space-y-3 overflow-y-auto p-4 sm:space-y-4 sm:p-6">
         {participantData.chatLog.map((message, index) => (
           <div
             key={`${message.timestamp}-${index}`}
