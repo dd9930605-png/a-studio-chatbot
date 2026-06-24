@@ -58,6 +58,41 @@ export function isUncertainUserAnswer(userInput: string): boolean {
   return isUncertainAnswer(userInput.trim());
 }
 
+function isNegativeKoreanExperienceAnswer(normalized: string): boolean {
+  if (normalized === '沒有' || normalized === '无' || normalized === '沒') {
+    return true;
+  }
+  return ['沒買', '不曾', '沒買過', '從未', '从未', '都沒有', '沒有買'].some((phrase) =>
+    normalized.includes(phrase),
+  );
+}
+
+export function getDeterministicAcknowledgment(
+  step: ResponseStep,
+  userInput: string,
+  condition: Condition,
+): string | null {
+  const normalized = userInput.trim();
+
+  if (step === 'koreanExperience') {
+    if (isNegativeKoreanExperienceAnswer(normalized) || isUncertainAnswer(normalized)) {
+      return applyTone(
+        '了解，你過去沒有或較少購買韓系服飾，我會以容易接受且適合面試的韓系風格作為推薦方向。',
+        condition,
+      );
+    }
+  }
+
+  if (step === 'websitePreference' && isUncertainAnswer(normalized)) {
+    return applyTone(
+      '了解，你還不太確定喜歡哪一套，我會根據你其他的穿搭需求來推薦。',
+      condition,
+    );
+  }
+
+  return null;
+}
+
 function matchesKeyword(normalized: string, keyword: string, step: ResponseStep): boolean {
   if (!normalized.includes(keyword)) {
     return false;
@@ -68,7 +103,11 @@ function matchesKeyword(normalized: string, keyword: string, step: ResponseStep)
   }
 
   if (keyword === '有' && step === 'koreanExperience') {
-    if (normalized.includes('沒有') || normalized.includes('沒買') || normalized.includes('不曾')) {
+    if (
+      isNegativeKoreanExperienceAnswer(normalized) ||
+      normalized.includes('不曾') ||
+      isUncertainAnswer(normalized)
+    ) {
       return false;
     }
   }
@@ -155,16 +194,17 @@ const KEYWORD_RULES: Record<ResponseStep, { keywords: string[]; response: string
   ],
   koreanExperience: [
     {
-      keywords: ['有', '常買', '經常', '習慣'],
-      response: '了解，你有韓系服飾的購買經驗，我會參考你熟悉的風格來推薦。',
-    },
-    {
-      keywords: ['沒有', '沒買', '不曾', '不確定'],
-      response: '了解，我會以容易接受且適合面試的韓系風格作為推薦方向。',
+      keywords: ['沒有', '沒買', '不曾', '從未', '不確定'],
+      response:
+        '了解，你過去沒有或較少購買韓系服飾，我會以容易接受且適合面試的韓系風格作為推薦方向。',
     },
     {
       keywords: ['偶爾', '有時', '少數'],
       response: '了解，你有一些韓系服飾經驗，我會在推薦時平衡熟悉感與面試需求。',
+    },
+    {
+      keywords: ['有', '常買', '經常', '習慣'],
+      response: '了解，你有韓系服飾的購買經驗，我會參考你熟悉的風格來推薦。',
     },
   ],
   usualStyle: [
@@ -314,15 +354,13 @@ export function generateAcknowledgment(
     return applyTone(shortReply, condition);
   }
 
+  const deterministic = getDeterministicAcknowledgment(step, userInput, condition);
+  if (deterministic) {
+    return deterministic;
+  }
+
   const rules = KEYWORD_RULES[step];
   const normalized = userInput.trim();
-
-  if (step === 'websitePreference' && isUncertainAnswer(normalized)) {
-    return applyTone(
-      '了解，你還不太確定喜歡哪一套，我會根據你其他的穿搭需求來推薦。',
-      condition,
-    );
-  }
 
   for (const rule of rules) {
     if (rule.keywords.some((keyword) => matchesKeyword(normalized, keyword, step))) {
