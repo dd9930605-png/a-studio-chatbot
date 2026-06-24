@@ -121,6 +121,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(fallback satisfies ChatResponseBody);
     }
 
+    if (!parsed.relevant) {
+      const fallbackValidation = validateChatInput(
+        step,
+        trimmedInput,
+        condition as Condition,
+      );
+      if (fallbackValidation.valid) {
+        return NextResponse.json({
+          relevant: true,
+          reply: generateAcknowledgment(step, trimmedInput, condition as Condition),
+          source: 'fallback',
+        } satisfies ChatResponseBody);
+      }
+    }
+
     return NextResponse.json({
       relevant: parsed.relevant,
       reply: parsed.reply,

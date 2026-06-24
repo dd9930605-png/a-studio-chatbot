@@ -22,7 +22,7 @@ const OFF_TOPIC_KEYWORDS = [
 const SHORT_STYLE_TERMS = [
   '美式', '韓系', '日系', '歐美', '休閒', '正式', '簡約', '街頭', '運動', '商務',
   '高冷', '帥氣', '甜美', '知性', '幹練', '專業', '自然', '親切', '俐落', '百搭',
-  '日常', '寬鬆', 'oversize', '西裝', '學院', '復古', '潮流',
+  '日常', '寬鬆', 'oversize', '西裝', '學院', '復古', '潮流', '古裝', '漢服', '民族',
 ];
 
 const BODY_SHAPE_TERMS = [
@@ -130,7 +130,7 @@ const KEYWORD_RULES: Record<ResponseStep, { keywords: string[]; response: string
       response: '了解，你偏好韓系風格，我會在面試穿搭需求下調整推薦方向。',
     },
     {
-      keywords: ['美式', '歐美', '日系', '街頭', '運動'],
+      keywords: ['美式', '歐美', '日系', '街頭', '運動', '古裝', '漢服'],
       response: '了解，你平時偏好這類風格，我會在面試穿搭需求下調整推薦方向。',
     },
     {
