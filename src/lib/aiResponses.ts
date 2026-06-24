@@ -14,9 +14,16 @@ export interface ChatValidationResult {
 
 const OFF_TOPIC_KEYWORDS = [
   '獸醫', '醫師', '醫生', '護士', '護理', '會計', '工程師', '程式', '寫程式',
-  '天氣', '下雨', '晴天', '足球', '籃球', '棒球', '遊戲', '打電動', '股票', '投資',
+  '天氣', '下雨', '晴天', '足球', '籃球', '棒球', '遊戲', '打電動', '玩遊戲', '打遊戲',
   '電影', '追劇', '唱歌', '煮飯', '做菜', '寵物', '貓咪', '狗狗', '數學', '物理',
   '化學', '歷史', '地理', '考試', '作業', '上班', '加班', '薪水', '吐司', '吃東西', '想吃',
+  '英雄聯盟', '電競', '手遊', '魔獸', '寶可夢', '傳說對決', '吃雞', '打lol', '打LOL',
+];
+
+const OFF_TOPIC_PATTERNS = [
+  /\blol\b/i,
+  /打\s*lol/i,
+  /玩\s*lol/i,
 ];
 
 const SHORT_STYLE_TERMS = [
@@ -29,14 +36,16 @@ const BODY_SHAPE_TERMS = [
   '肚子', '腰腹', '腰', '腿', '肩', '手臂', '胸', '臀', '比例', '顯瘦', '顯高', '修飾',
 ];
 
-const BROAD_RELEVANCE_KEYWORDS = [
-  '穿', '搭', '服', '裝', '衣', '褲', '裙', '鞋', '外套', '西裝', '襯衫', '針織',
+const SPECIFIC_RELEVANCE_KEYWORDS = [
+  '穿', '搭', '服', '裝', '衣', '褲', '裙', '鞋', '外套', '西裝', '襯衫', '針織', '領帶',
   '面試', '正式', '休閒', '簡約', '風格', '款式', '穿搭', '造型', '形象', '顯瘦',
   '顯高', '修飾', '身材', '身形', '比例', '腰', '肩', '腿', '手臂', '韓系', '韓風',
-  '購買', '買過', '喜歡', '不喜歡', '偏好', '網站', '瀏覽', '感覺', '專業', '穩重',
+  '購買', '買過', '偏好', '網站', '瀏覽', '感覺', '專業', '穩重',
   '親切', '自然', '自信', '俐落', '時尚', '百搭', '日常', '商務', '合身',
   '寬鬆', '顏色', '色系', '黑白', '素色', '乾淨', '整齊', '得體', '場合', '公司',
-  '主管', '印象', '氣質', '精神', '好看', '適合', '不舒服', '沒有', '有',
+  '主管', '印象', '氣質', '精神', '好看', '苗條', '帥', '美', '酷',
+  '第一', '第二', '第三', '第四', '第五', '第六', '第七', '第八', '第九', '第十',
+  'look', '套',
 ];
 
 const STEP_HINTS: Record<ResponseStep, string> = {
@@ -157,7 +166,7 @@ function normalizeUserInput(input: string): string {
   return input.trim().replace(/[吧呢啊喔哦～~!！。,.，]/g, '');
 }
 
-/** 僅在「明顯離題」時拒絕；研究情境下寧可誤收、不要誤拒。 */
+/** 明顯離題：遊戲、職業、天氣等，優先於其他判斷。 */
 export function isClearlyOffTopic(userInput: string): boolean {
   const normalized = userInput.trim();
   if (!normalized) {
@@ -173,12 +182,40 @@ export function isClearlyOffTopic(userInput: string): boolean {
     return true;
   }
 
-  // 明顯亂打：同一字元重複 3 次以上且無其他內容
+  if (OFF_TOPIC_PATTERNS.some((pattern) => pattern.test(normalized))) {
+    return true;
+  }
+
   if (/^(.)\1{2,}$/.test(compact)) {
     return true;
   }
 
   return false;
+}
+
+/** 有穿搭／當前問題相關訊號：用於接受邊界有效回答（如古裝、第一套）。 */
+export function hasOutfitRelevanceSignal(step: ResponseStep, userInput: string): boolean {
+  const normalized = userInput.trim();
+  if (!normalized || isClearlyOffTopic(normalized)) {
+    return false;
+  }
+
+  if (matchesShortStyleTerm(normalized)) {
+    return true;
+  }
+
+  if (
+    (step === 'bodyShape' || step === 'stylePreference') &&
+    matchesBodyShapeTerm(normalized)
+  ) {
+    return true;
+  }
+
+  if (getStepKeywords(step).some((keyword) => normalized.includes(keyword))) {
+    return true;
+  }
+
+  return SPECIFIC_RELEVANCE_KEYWORDS.some((keyword) => normalized.includes(keyword));
 }
 
 function matchesShortStyleTerm(normalized: string): boolean {
@@ -196,25 +233,6 @@ function getStepKeywords(step: ResponseStep): string[] {
   return KEYWORD_RULES[step].flatMap((rule) => rule.keywords);
 }
 
-function hasRelevantContent(step: ResponseStep, normalized: string): boolean {
-  if (matchesShortStyleTerm(normalized)) {
-    return true;
-  }
-
-  if (
-    (step === 'bodyShape' || step === 'stylePreference') &&
-    matchesBodyShapeTerm(normalized)
-  ) {
-    return true;
-  }
-
-  if (getStepKeywords(step).some((keyword) => normalized.includes(keyword))) {
-    return true;
-  }
-
-  return BROAD_RELEVANCE_KEYWORDS.some((keyword) => normalized.includes(keyword));
-}
-
 export function validateChatInput(
   step: ResponseStep,
   userInput: string,
@@ -230,7 +248,15 @@ export function validateChatInput(
     return { valid: false, rejectionMessage: applyTone(message, condition) };
   }
 
-  return { valid: true };
+  if (hasOutfitRelevanceSignal(step, normalized)) {
+    return { valid: true };
+  }
+
+  const message =
+    condition.anthropomorphism === 'high'
+      ? `抱歉，我不太確定這是否與穿搭有關。${STEP_HINTS[step]}`
+      : `輸入內容無法判斷為穿搭相關。${STEP_HINTS[step]}`;
+  return { valid: false, rejectionMessage: applyTone(message, condition) };
 }
 
 export function generateAcknowledgment(
