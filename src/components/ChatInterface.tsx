@@ -2,7 +2,9 @@
 
 import React, { useState } from 'react';
 import { Condition } from '@/lib/conditions';
+import { getConditionTheme } from '@/lib/conditionTheme';
 import { CHAT_PROMPTS, ResponseStep } from '@/lib/aiResponses';
+import { generateProactiveNote, isProactiveNoteMessage } from '@/lib/proactiveNotes';
 import { ChatMessage, InvalidInputRecord, ParticipantData } from '@/lib/dataRecorder';
 
 interface ChatInterfaceProps {
@@ -39,6 +41,16 @@ function isRejectionMessage(message: string): boolean {
   );
 }
 
+function getBotBubbleClass(message: string, theme: ReturnType<typeof getConditionTheme>): string {
+  if (isRejectionMessage(message)) {
+    return 'border border-amber-300 bg-amber-50 text-amber-950';
+  }
+  if (isProactiveNoteMessage(message)) {
+    return theme.chatBotNoteClass;
+  }
+  return theme.chatBotBubbleClass;
+}
+
 export function ChatInterface({
   participantData,
   condition,
@@ -49,6 +61,7 @@ export function ChatInterface({
   const [inputValue, setInputValue] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  const theme = getConditionTheme(condition);
   const prompt = CHAT_PROMPTS[currentStep as ResponseStep];
 
   if (!prompt) {
@@ -129,6 +142,10 @@ export function ChatInterface({
       }
 
       const ackMessage = createMessage(currentStep, 'bot', result.reply);
+      const proactiveNote =
+        condition.proactivity === 'high'
+          ? createMessage(currentStep, 'bot', generateProactiveNote(step, answer, condition))
+          : null;
       const hadInvalidForStep = participantData.invalidInputs.some(
         (record) => record.step === currentStep,
       );
@@ -152,6 +169,7 @@ export function ChatInterface({
           ...(hasQuestionInLog ? [] : [questionMessage]),
           userMessage,
           ackMessage,
+          ...(proactiveNote ? [proactiveNote] : []),
         ],
       };
 
@@ -165,8 +183,12 @@ export function ChatInterface({
     }
   };
 
+  const submitButtonClass = theme.isPersona
+    ? 'rounded-xl bg-rose-500 px-6 py-3 font-bold text-white transition hover:bg-rose-600 disabled:cursor-not-allowed disabled:opacity-50'
+    : 'rounded-md bg-slate-700 px-6 py-3 font-mono font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50';
+
   return (
-    <div className="flex h-full min-h-[28rem] flex-col rounded-lg bg-white shadow-lg">
+    <div className={`flex h-full min-h-[28rem] flex-col ${theme.chatContainerClass}`}>
       <div className="flex-1 space-y-4 overflow-y-auto p-6">
         {participantData.chatLog.map((message, index) => (
           <div
@@ -174,12 +196,10 @@ export function ChatInterface({
             className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
           >
             <div
-              className={`max-w-[85%] rounded-2xl px-4 py-3 ${
+              className={`max-w-[85%] px-4 py-3 ${
                 message.sender === 'user'
-                  ? 'bg-blue-500 text-white'
-                  : isRejectionMessage(message.message)
-                    ? 'border border-amber-200 bg-amber-50 text-amber-900'
-                    : 'bg-gray-100 text-gray-800'
+                  ? theme.chatUserBubbleClass
+                  : getBotBubbleClass(message.message, theme)
               }`}
             >
               {message.message}
@@ -188,16 +208,26 @@ export function ChatInterface({
         ))}
 
         <div className="flex justify-start">
-          <div className="max-w-[85%] rounded-2xl bg-gray-100 px-4 py-3 text-gray-800">
-            {prompt.question}
+          <div className={`max-w-[85%] px-4 py-3 ${theme.chatBotBubbleClass}`}>
+            <p className="font-semibold">{prompt.question}</p>
+            {condition.proactivity === 'low' && (
+              <p className={`mt-2 text-xs ${theme.isPersona ? 'text-rose-700' : 'font-mono text-slate-600'}`}>
+                請針對上方問題簡短回答即可。
+              </p>
+            )}
             {condition.proactivity === 'high' && (
-              <p className="mt-2 text-sm text-gray-600">請以文字自由輸入你的回答。</p>
+              <p className={`mt-2 text-xs ${theme.isPersona ? 'text-rose-700' : 'font-mono text-slate-600'}`}>
+                回答後我會整理重點，協助你完成面試穿搭決策。
+              </p>
             )}
           </div>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="border-t border-gray-200 p-4">
+      <form
+        onSubmit={handleSubmit}
+        className={`border-t p-4 ${theme.isPersona ? 'border-rose-100' : 'border-slate-300'}`}
+      >
         {submitError && (
           <p className="mb-3 rounded-lg bg-red-50 p-3 text-sm text-red-600">{submitError}</p>
         )}
@@ -207,14 +237,14 @@ export function ChatInterface({
             value={inputValue}
             onChange={(event) => setInputValue(event.target.value)}
             disabled={isSubmitting}
-            className="flex-1 rounded-lg border border-gray-300 px-4 py-3 focus:border-blue-500 focus:outline-none disabled:bg-gray-100"
+            className={`flex-1 border px-4 py-3 focus:outline-none disabled:bg-gray-100 ${
+              theme.isPersona
+                ? 'rounded-xl border-rose-200 focus:border-rose-400'
+                : 'rounded-md border-slate-300 font-mono focus:border-slate-500'
+            }`}
             placeholder={isSubmitting ? 'AI 正在思考回覆...' : '請輸入你的回答...'}
           />
-          <button
-            type="submit"
-            disabled={!inputValue.trim() || isSubmitting}
-            className="rounded-lg bg-blue-500 px-6 py-3 font-bold text-white transition hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
-          >
+          <button type="submit" disabled={!inputValue.trim() || isSubmitting} className={submitButtonClass}>
             {isSubmitting ? '處理中...' : '送出'}
           </button>
         </div>

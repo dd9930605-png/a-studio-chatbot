@@ -21,11 +21,26 @@
           "questionText": "請問您的年齡為？",
           "required": true,
           "options": [
-            { "value": 1, "label": "18–20 歲" },
-            { "value": 2, "label": "21–23 歲" },
-            { "value": 3, "label": "24–26 歲" },
-            { "value": 4, "label": "27–29 歲" },
-            { "value": 5, "label": "30 歲以上" }
+            {
+              "value": 1,
+              "label": "18–20 歲"
+            },
+            {
+              "value": 2,
+              "label": "21–23 歲"
+            },
+            {
+              "value": 3,
+              "label": "24–26 歲"
+            },
+            {
+              "value": 4,
+              "label": "27–29 歲"
+            },
+            {
+              "value": 5,
+              "label": "30 歲以上"
+            }
           ]
         },
         {
@@ -34,10 +49,22 @@
           "questionText": "請問您的性別為？",
           "required": true,
           "options": [
-            { "value": 1, "label": "男性" },
-            { "value": 2, "label": "女性" },
-            { "value": 3, "label": "其他" },
-            { "value": 4, "label": "不便透露" }
+            {
+              "value": 1,
+              "label": "男性"
+            },
+            {
+              "value": 2,
+              "label": "女性"
+            },
+            {
+              "value": 3,
+              "label": "其他"
+            },
+            {
+              "value": 4,
+              "label": "不便透露"
+            }
           ]
         },
         {
@@ -46,10 +73,22 @@
           "questionText": "請問您目前的身分為？",
           "required": true,
           "options": [
-            { "value": 1, "label": "大學生" },
-            { "value": 2, "label": "研究生" },
-            { "value": 3, "label": "已就業" },
-            { "value": 4, "label": "其他" }
+            {
+              "value": 1,
+              "label": "大學生"
+            },
+            {
+              "value": 2,
+              "label": "研究生"
+            },
+            {
+              "value": 3,
+              "label": "已就業"
+            },
+            {
+              "value": 4,
+              "label": "其他"
+            }
           ]
         },
         {
@@ -58,11 +97,26 @@
           "questionText": "請問您過去是否曾有面試、實習面試、口試、簡報或其他正式場合的穿搭需求？",
           "required": true,
           "options": [
-            { "value": 1, "label": "從未有過" },
-            { "value": 2, "label": "很少有" },
-            { "value": 3, "label": "偶爾有" },
-            { "value": 4, "label": "經常有" },
-            { "value": 5, "label": "非常常有" }
+            {
+              "value": 1,
+              "label": "從未有過"
+            },
+            {
+              "value": 2,
+              "label": "很少有"
+            },
+            {
+              "value": 3,
+              "label": "偶爾有"
+            },
+            {
+              "value": 4,
+              "label": "經常有"
+            },
+            {
+              "value": 5,
+              "label": "非常常有"
+            }
           ]
         },
         {
@@ -71,11 +125,26 @@
           "questionText": "請問您過去是否曾在線上購買服飾？",
           "required": true,
           "options": [
-            { "value": 1, "label": "從未購買過" },
-            { "value": 2, "label": "很少購買" },
-            { "value": 3, "label": "偶爾購買" },
-            { "value": 4, "label": "經常購買" },
-            { "value": 5, "label": "非常常購買" }
+            {
+              "value": 1,
+              "label": "從未購買過"
+            },
+            {
+              "value": 2,
+              "label": "很少購買"
+            },
+            {
+              "value": 3,
+              "label": "偶爾購買"
+            },
+            {
+              "value": 4,
+              "label": "經常購買"
+            },
+            {
+              "value": 5,
+              "label": "非常常購買"
+            }
           ]
         },
         {
@@ -84,17 +153,106 @@
           "questionText": "請問您過去是否曾使用過 AI 工具？例如 ChatGPT、AI 客服、AI 推薦系統或其他 AI 助理。",
           "required": true,
           "options": [
-            { "value": 1, "label": "從未使用過" },
-            { "value": 2, "label": "很少使用" },
-            { "value": 3, "label": "偶爾使用" },
-            { "value": 4, "label": "經常使用" },
-            { "value": 5, "label": "非常常使用" }
+            {
+              "value": 1,
+              "label": "從未使用過"
+            },
+            {
+              "value": 2,
+              "label": "很少使用"
+            },
+            {
+              "value": 3,
+              "label": "偶爾使用"
+            },
+            {
+              "value": 4,
+              "label": "經常使用"
+            },
+            {
+              "value": 5,
+              "label": "非常常使用"
+            }
           ]
         }
       ]
     },
     {
       "sectionOrder": 1,
+      "academicVariable": "操弄檢驗",
+      "displayTitle": "剛才 AI 體驗確認",
+      "instructions": "請依照剛才與 AI 穿搭顧問互動的實際感受作答（非測驗題，沒有對錯）。",
+      "items": [
+        {
+          "itemId": "manipulationCheck_anthropomorphism",
+          "questionType": "likert_7",
+          "questionText": "剛才與您互動的 AI，整體而言比較像「真人穿搭顧問」還是「自動化推薦系統」？（1 = 完全是自動系統，7 = 完全是真人顧問）",
+          "required": true
+        },
+        {
+          "itemId": "manipulationCheck_explainability",
+          "questionType": "single_choice",
+          "questionText": "AI 最後的推薦說明中，是否有清楚解釋「為什麼推薦這套」？",
+          "required": true,
+          "options": [
+            {
+              "value": 1,
+              "label": "完全沒有"
+            },
+            {
+              "value": 2,
+              "label": "有一點，但不清楚"
+            },
+            {
+              "value": 3,
+              "label": "有，而且很清楚"
+            }
+          ]
+        },
+        {
+          "itemId": "manipulationCheck_twoSided",
+          "questionType": "single_choice",
+          "questionText": "AI 的推薦說明是否有同時提到這套穿搭的「優點」與「需要注意的地方」？",
+          "required": true,
+          "options": [
+            {
+              "value": 1,
+              "label": "都沒有提到"
+            },
+            {
+              "value": 2,
+              "label": "只提到其中一項"
+            },
+            {
+              "value": 3,
+              "label": "兩者都有提到"
+            }
+          ]
+        },
+        {
+          "itemId": "manipulationCheck_proactivity",
+          "questionType": "single_choice",
+          "questionText": "對話過程中，AI 是否有主動整理重點（例如顧問筆記／系統備註）？",
+          "required": true,
+          "options": [
+            {
+              "value": 1,
+              "label": "沒有，只有簡短確認"
+            },
+            {
+              "value": 2,
+              "label": "有一點"
+            },
+            {
+              "value": 3,
+              "label": "有，而且很明顯"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "sectionOrder": 2,
       "academicVariable": "網站服飾偏好、韓系服飾購買經驗",
       "displayTitle": "網站服飾偏好與購買經驗",
       "instructions": "請根據剛才瀏覽網站中的 12 套面試穿搭，以及您過去的服飾購買經驗回答以下問題。",
@@ -111,17 +269,32 @@
           "questionText": "請問您過去是否曾經購買過韓系風格的服飾？",
           "required": true,
           "options": [
-            { "value": 1, "label": "從未購買過" },
-            { "value": 2, "label": "很少購買" },
-            { "value": 3, "label": "偶爾購買" },
-            { "value": 4, "label": "經常購買" },
-            { "value": 5, "label": "非常常購買" }
+            {
+              "value": 1,
+              "label": "從未購買過"
+            },
+            {
+              "value": 2,
+              "label": "很少購買"
+            },
+            {
+              "value": 3,
+              "label": "偶爾購買"
+            },
+            {
+              "value": 4,
+              "label": "經常購買"
+            },
+            {
+              "value": 5,
+              "label": "非常常購買"
+            }
           ]
         }
       ]
     },
     {
-      "sectionOrder": 2,
+      "sectionOrder": 3,
       "academicVariable": "可解釋性",
       "displayTitle": "AI 推薦說明的清楚程度",
       "instructions": "請根據剛才 AI 穿搭顧問提供的推薦內容，評估以下敘述的同意程度。",
@@ -171,7 +344,7 @@
       ]
     },
     {
-      "sectionOrder": 3,
+      "sectionOrder": 4,
       "academicVariable": "擬人化程度",
       "displayTitle": "AI 互動的自然感",
       "instructions": "請根據剛才與 AI 穿搭助理互動的感受，評估以下敘述的同意程度。",
@@ -245,7 +418,7 @@
       ]
     },
     {
-      "sectionOrder": 4,
+      "sectionOrder": 5,
       "academicVariable": "回應主動性",
       "displayTitle": "AI 主動協助的程度",
       "instructions": "請根據剛才 AI 穿搭助理在互動與推薦過程中的表現，評估以下敘述的同意程度。",
@@ -295,7 +468,7 @@
       ]
     },
     {
-      "sectionOrder": 5,
+      "sectionOrder": 6,
       "academicVariable": "雙面訊息",
       "displayTitle": "AI 推薦內容的完整性",
       "instructions": "請根據 AI 穿搭助理最後提供的推薦內容，評估以下敘述的同意程度。",
@@ -321,7 +494,7 @@
       ]
     },
     {
-      "sectionOrder": 6,
+      "sectionOrder": 7,
       "academicVariable": "意外驚喜感",
       "displayTitle": "AI 推薦帶來的意外感受",
       "instructions": "請根據 AI 穿搭助理最後推薦的穿搭，以及您使用 AI 穿搭助理時的感受，評估以下敘述的同意程度。",
@@ -359,7 +532,7 @@
       ]
     },
     {
-      "sectionOrder": 7,
+      "sectionOrder": 8,
       "academicVariable": "感知有用性",
       "displayTitle": "AI 穿搭推薦的實用性",
       "instructions": "請根據剛才與 AI 穿搭助理的互動，以及 AI 最後推薦的那套面試穿搭，評估以下敘述的同意程度。",
@@ -397,7 +570,7 @@
       ]
     },
     {
-      "sectionOrder": 8,
+      "sectionOrder": 9,
       "academicVariable": "購買意圖",
       "displayTitle": "推薦穿搭的購買意願",
       "instructions": "請根據 AI 穿搭助理最後推薦的那套面試穿搭，評估以下敘述的同意程度。",

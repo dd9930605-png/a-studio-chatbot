@@ -264,6 +264,14 @@ export function generateAcknowledgment(
   userInput: string,
   condition: Condition,
 ): string {
+  if (condition.proactivity === 'low') {
+    const shortReply =
+      condition.anthropomorphism === 'high'
+        ? '了解，已記下你的回答。'
+        : '已記錄使用者輸入。';
+    return applyTone(shortReply, condition);
+  }
+
   const rules = KEYWORD_RULES[step];
   const normalized = userInput.toLowerCase();
 
