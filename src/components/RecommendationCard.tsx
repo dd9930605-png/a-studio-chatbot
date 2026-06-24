@@ -68,12 +68,14 @@ export function RecommendationCard({
       </div>
 
       {!imageFailed && outfit.outfitImage ? (
-        <img
-          src={outfit.outfitImage}
-          alt={outfit.outfitName}
-          onError={() => setImageFailed(true)}
-          className="mx-auto mb-6 max-h-80 rounded-lg border border-gray-200 object-cover"
-        />
+        <div className="mx-auto mb-6 flex max-w-md items-center justify-center rounded-lg border border-gray-200 bg-neutral-50 p-3">
+          <img
+            src={outfit.outfitImage}
+            alt={outfit.outfitName}
+            onError={() => setImageFailed(true)}
+            className="max-h-[28rem] w-full object-contain"
+          />
+        </div>
       ) : (
         <div className="mb-6 rounded-lg border border-dashed border-gray-300 bg-gray-50 p-8 text-center text-gray-500">
           {lookLabel || outfit.outfitId} — 圖片暫未提供

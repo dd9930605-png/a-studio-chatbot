@@ -25,7 +25,7 @@ export function FavoriteOutfitForm({ onSubmit }: FavoriteOutfitFormProps) {
   };
 
   return (
-    <div className="mx-auto max-w-4xl rounded-lg bg-white p-8 shadow-lg">
+    <div className="mx-auto max-w-6xl rounded-lg bg-white p-8 shadow-lg">
       <h2 className="mb-2 text-xl font-bold text-gray-900">前置問題 2</h2>
       <p className="mb-6 text-gray-700">
         在剛才瀏覽的穿搭中，使用 AI 前，你最喜歡哪一套？
