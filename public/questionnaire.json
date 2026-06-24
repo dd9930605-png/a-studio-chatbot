@@ -10,6 +10,90 @@
   },
   "sections": [
     {
+      "sectionOrder": 0,
+      "academicVariable": "基本資料與使用經驗",
+      "displayTitle": "基本資料與使用經驗",
+      "instructions": "以下題目僅作為樣本背景分析使用，所有資料皆以匿名方式處理。",
+      "items": [
+        {
+          "itemId": "background_age",
+          "questionType": "single_choice",
+          "questionText": "請問您的年齡為？",
+          "required": true,
+          "options": [
+            { "value": 1, "label": "18–20 歲" },
+            { "value": 2, "label": "21–23 歲" },
+            { "value": 3, "label": "24–26 歲" },
+            { "value": 4, "label": "27–29 歲" },
+            { "value": 5, "label": "30 歲以上" }
+          ]
+        },
+        {
+          "itemId": "background_gender",
+          "questionType": "single_choice",
+          "questionText": "請問您的性別為？",
+          "required": true,
+          "options": [
+            { "value": 1, "label": "男性" },
+            { "value": 2, "label": "女性" },
+            { "value": 3, "label": "其他" },
+            { "value": 4, "label": "不便透露" }
+          ]
+        },
+        {
+          "itemId": "background_identity",
+          "questionType": "single_choice",
+          "questionText": "請問您目前的身分為？",
+          "required": true,
+          "options": [
+            { "value": 1, "label": "大學生" },
+            { "value": 2, "label": "研究生" },
+            { "value": 3, "label": "已就業" },
+            { "value": 4, "label": "其他" }
+          ]
+        },
+        {
+          "itemId": "background_formalOutfitExperience",
+          "questionType": "single_choice",
+          "questionText": "請問您過去是否曾有面試、實習面試、口試、簡報或其他正式場合的穿搭需求？",
+          "required": true,
+          "options": [
+            { "value": 1, "label": "從未有過" },
+            { "value": 2, "label": "很少有" },
+            { "value": 3, "label": "偶爾有" },
+            { "value": 4, "label": "經常有" },
+            { "value": 5, "label": "非常常有" }
+          ]
+        },
+        {
+          "itemId": "background_onlinePurchase",
+          "questionType": "single_choice",
+          "questionText": "請問您過去是否曾在線上購買服飾？",
+          "required": true,
+          "options": [
+            { "value": 1, "label": "從未購買過" },
+            { "value": 2, "label": "很少購買" },
+            { "value": 3, "label": "偶爾購買" },
+            { "value": 4, "label": "經常購買" },
+            { "value": 5, "label": "非常常購買" }
+          ]
+        },
+        {
+          "itemId": "background_aiToolExperience",
+          "questionType": "single_choice",
+          "questionText": "請問您過去是否曾使用過 AI 工具？例如 ChatGPT、AI 客服、AI 推薦系統或其他 AI 助理。",
+          "required": true,
+          "options": [
+            { "value": 1, "label": "從未使用過" },
+            { "value": 2, "label": "很少使用" },
+            { "value": 3, "label": "偶爾使用" },
+            { "value": 4, "label": "經常使用" },
+            { "value": 5, "label": "非常常使用" }
+          ]
+        }
+      ]
+    },
+    {
       "sectionOrder": 1,
       "academicVariable": "網站服飾偏好、韓系服飾購買經驗",
       "displayTitle": "網站服飾偏好與購買經驗",

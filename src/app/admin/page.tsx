@@ -33,14 +33,17 @@ export default function AdminPage() {
   const handleClearData = async () => {
     if (!window.confirm('確定要清除所有資料嗎？此操作無法復原。')) return;
 
-    if (cloudConfigured) {
-      const secret = window.prompt('請輸入管理者密碼（若未設定可留空）：') ?? '';
-      const headers: HeadersInit = secret ? { 'x-admin-secret': secret } : {};
-      const response = await fetch('/api/participants', { method: 'DELETE', headers });
-      if (!response.ok) {
-        alert('清除雲端資料失敗，請確認管理者密碼是否正確。');
-        return;
-      }
+    const secret = window.prompt('請輸入管理者密碼：') ?? '';
+    if (!secret) {
+      alert('已取消清除。');
+      return;
+    }
+
+    const headers: HeadersInit = { 'x-admin-secret': secret };
+    const response = await fetch('/api/participants', { method: 'DELETE', headers });
+    if (!response.ok) {
+      alert('清除失敗，請確認管理者密碼是否正確。');
+      return;
     }
 
     localStorage.removeItem('participant_data');

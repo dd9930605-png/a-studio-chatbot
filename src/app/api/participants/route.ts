@@ -10,8 +10,7 @@ import {
 export const dynamic = 'force-dynamic';
 
 function verifyAdminSecret(request: NextRequest): boolean {
-  const secret = process.env.ADMIN_SECRET;
-  if (!secret) return true;
+  const secret = process.env.ADMIN_SECRET ?? '777';
   return request.headers.get('x-admin-secret') === secret;
 }
 
@@ -70,13 +69,9 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: '未授權' }, { status: 401 });
   }
 
-  if (!isCloudStorageConfigured()) {
-    return NextResponse.json(
-      { error: '雲端儲存尚未設定' },
-      { status: 503 },
-    );
+  if (isCloudStorageConfigured()) {
+    await clearAllParticipantsFromCloud();
   }
 
-  await clearAllParticipantsFromCloud();
   return NextResponse.json({ ok: true });
 }
