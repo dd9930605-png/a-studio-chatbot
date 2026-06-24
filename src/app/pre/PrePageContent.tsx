@@ -135,7 +135,7 @@ export default function PrePageContent() {
 
   return (
     <div className="min-h-screen bg-gray-50 px-4 py-8">
-      <div className="mx-auto max-w-4xl space-y-6">
+      <div className="mx-auto max-w-6xl space-y-6">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900">AI 穿搭顧問 — 前置問題</h1>
           <p className="mt-2 text-sm text-gray-500">請先回答以下問題，再開始與 AI 顧問互動</p>

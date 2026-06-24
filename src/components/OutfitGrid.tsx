@@ -36,7 +36,7 @@ export function OutfitGrid({
   const sortedIds = sortOutfitIdsByLook(outfitIds);
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">
       {sortedIds.map((id) => {
         const outfit = getOutfit(id);
         const lookNumber = getLookNumberFromOutfitId(id);
@@ -85,7 +85,7 @@ function OutfitCard({
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-lg border-2 p-2 text-left transition ${
+      className={`rounded-lg border-2 p-3 text-left transition ${
         selected
           ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200'
           : 'border-gray-200 bg-white hover:border-gray-300'
@@ -93,14 +93,16 @@ function OutfitCard({
     >
       <p className="mb-1 text-xs font-bold uppercase tracking-wide text-blue-600">{title}</p>
       {!imageFailed && outfitImage ? (
-        <img
-          src={outfitImage}
-          alt={outfitName}
-          onError={() => setImageFailed(true)}
-          className="mb-2 h-28 w-full rounded object-cover"
-        />
+        <div className="mb-2 flex aspect-[3/4] w-full items-center justify-center overflow-hidden rounded bg-neutral-50">
+          <img
+            src={outfitImage}
+            alt={outfitName}
+            onError={() => setImageFailed(true)}
+            className="max-h-full max-w-full object-contain"
+          />
+        </div>
       ) : (
-        <div className="mb-2 flex h-28 w-full items-center justify-center rounded bg-gray-100 text-sm text-gray-400">
+        <div className="mb-2 flex aspect-[3/4] w-full items-center justify-center rounded bg-gray-100 text-sm text-gray-400">
           {title}
         </div>
       )}

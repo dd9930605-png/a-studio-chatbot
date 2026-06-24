@@ -20,14 +20,16 @@ export function LookCard({ lookLabel, outfit }: LookCardProps) {
         <p className="text-sm font-bold text-blue-600">{lookLabel}</p>
       </div>
       {!imageFailed && outfit.outfitImage ? (
-        <img
-          src={outfit.outfitImage}
-          alt={outfit.outfitName}
-          onError={() => setImageFailed(true)}
-          className="h-48 w-full object-cover"
-        />
+        <div className="flex aspect-[3/4] w-full items-center justify-center bg-neutral-50">
+          <img
+            src={outfit.outfitImage}
+            alt={outfit.outfitName}
+            onError={() => setImageFailed(true)}
+            className="max-h-full max-w-full object-contain"
+          />
+        </div>
       ) : (
-        <div className="flex h-48 items-center justify-center bg-gray-100 text-gray-400">
+        <div className="flex aspect-[3/4] items-center justify-center bg-gray-100 text-gray-400">
           {lookLabel}
         </div>
       )}

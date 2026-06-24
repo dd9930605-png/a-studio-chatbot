@@ -25,7 +25,7 @@ export function ExpectedOutfitForm({ onSubmit }: ExpectedOutfitFormProps) {
   };
 
   return (
-    <div className="mx-auto max-w-4xl rounded-lg bg-white p-8 shadow-lg">
+    <div className="mx-auto max-w-6xl rounded-lg bg-white p-8 shadow-lg">
       <h2 className="mb-2 text-xl font-bold text-gray-900">前置問題 2</h2>
       <p className="mb-6 text-gray-700">
         在開始使用 AI 穿搭顧問前，你預期 AI 最可能推薦哪一套面試穿搭？
