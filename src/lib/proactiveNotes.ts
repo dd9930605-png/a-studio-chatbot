@@ -24,6 +24,10 @@ const NOTE_BUILDERS: Record<ResponseStep, (input: string) => string> = {
     return `已參考你對網站 12 套穿搭的看法（${truncate(input)}），用來調整推薦方向。`;
   },
   koreanExperience: (input) => {
+    const normalized = input.trim();
+    if (/沒有|沒買|不曾|從未|从未/.test(normalized)) {
+      return '你表示過去沒有購買韓系服飾，會以容易接受的面試風格作為方向。';
+    }
     if (isUncertainAnswer(input)) {
       return '你表示對韓系購買經驗不太確定，會以容易接受的面試風格作為方向。';
     }

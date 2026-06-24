@@ -5,9 +5,9 @@ import { ResponseStep } from '@/lib/aiResponses';
 import { Condition } from '@/lib/conditions';
 import {
   generateAcknowledgment,
+  getDeterministicAcknowledgment,
   hasOutfitRelevanceSignal,
   isClearlyOffTopic,
-  isUncertainUserAnswer,
   validateChatInput,
 } from '@/lib/aiResponses';
 
@@ -92,6 +92,19 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(fallback satisfies ChatResponseBody);
   }
 
+  const deterministic = getDeterministicAcknowledgment(
+    step,
+    trimmedInput,
+    condition as Condition,
+  );
+  if (deterministic) {
+    return NextResponse.json({
+      relevant: true,
+      reply: deterministic,
+      source: 'fallback',
+    } satisfies ChatResponseBody);
+  }
+
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     const fallback = buildFallbackResponse(step, trimmedInput, condition);
@@ -132,10 +145,15 @@ export async function POST(request: NextRequest) {
       } satisfies ChatResponseBody);
     }
 
-    if (parsed.relevant && isUncertainUserAnswer(trimmedInput)) {
+    const deterministicAfterAi = getDeterministicAcknowledgment(
+      step,
+      trimmedInput,
+      condition as Condition,
+    );
+    if (parsed.relevant && deterministicAfterAi) {
       return NextResponse.json({
         relevant: true,
-        reply: generateAcknowledgment(step, trimmedInput, condition as Condition),
+        reply: deterministicAfterAi,
         source: 'fallback',
       } satisfies ChatResponseBody);
     }

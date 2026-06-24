@@ -66,6 +66,7 @@ ${explainRules.map((rule) => `- ${rule}`).join('\n')}
 3. **無法判斷 → relevant=false**：與穿搭無關且無法合理連結到當前問題
 
 ### 邊界案例
+- 「沒有」「沒買過」「不曾買」→ relevant=true，回覆應理解為沒有購買經驗，不可說「你有購買經驗」
 - 「忘記我喜歡哪一套」「不確定」→ relevant=true，回覆應理解為「尚未確定偏好」，不可說「你有找到喜歡的款式」
 - 「古裝」「漢服」→ relevant=true
 - 「我喜歡打LOL」→ relevant=false
