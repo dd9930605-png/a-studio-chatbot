@@ -27,13 +27,13 @@
     "outfitId": "M3",
     "displayCategory": "male",
     "wearCategory": "neutral",
-    "outfitName": "黑色短款T恤＋淺藍迷彩寬褲牛仔褲",
+    "outfitName": "咖啡色外搭襯衫＋白T＋深藍寬褲牛仔褲",
     "outfitImage": "/images/outfits/M3.jpg",
-    "styleTags": ["韓系", "街頭", "寬鬆"],
-    "reason": "黑色上衣搭配淺色寬褲能營造韓系街頭感，視覺上較有個性。",
-    "benefit": "展現年輕、有活力的形象，適合創意或新創類面試場合。",
-    "limitation": "迷彩寬褲與短款上衣的休閒感較強，可能不適合非常正式的企業面試。",
-    "suggestion": "若面試場合偏正式，可考慮搭配簡約外套提升整體完成度。"
+    "styleTags": ["韓系", "層次穿搭", "休閒正式"],
+    "reason": "咖啡色外搭襯衫搭配白T與深藍寬褲，能透過上下層次與色塊對比營造俐落但不僵硬的形象。",
+    "benefit": "外搭可提升整體完成度，適合想展現自然自信、帶有些許時尚感的面試場合。",
+    "limitation": "寬褲牛仔褲與開襟外搭仍帶有休閒感，非常正式的企業面試可能略顯輕鬆。",
+    "suggestion": "建議將襯衫與褲裝熨燙平整，並搭配簡約皮鞋與皮帶，讓整體更俐落。"
   },
   {
     "outfitId": "M4",
@@ -51,25 +51,25 @@
     "outfitId": "M5",
     "displayCategory": "male",
     "wearCategory": "male_only",
-    "outfitName": "灰色襯衫西褲套裝",
+    "outfitName": "淺藍條紋襯衫＋深藍領帶＋黑色寬褲",
     "outfitImage": "/images/outfits/M5.jpg",
-    "styleTags": ["韓系", "套裝", "極簡"],
-    "reason": "同色系襯衫與西褲套裝能營造一致、協調的視覺效果。",
-    "benefit": "整體感強且簡潔，適合想呈現現代專業形象的場合。",
-    "limitation": "灰色系可能在某些場合顯得較為低調，缺乏亮點。",
-    "suggestion": "可搭配白色或淺色內搭、簡約鞋款提升層次感。"
+    "styleTags": ["正式專業", "襯衫領帶", "面試適用"],
+    "reason": "淺藍條紋襯衫搭配領帶與黑色寬褲，能清楚傳達專業、穩重的第一印象。",
+    "benefit": "整體正式度高且不易出錯，適合需要展現可靠感與專業度的面試情境。",
+    "limitation": "寬褲版型若過於鬆垮，可能削弱襯衫領帶帶來的正式感。",
+    "suggestion": "建議確認襯衫與領帶平整服貼，並搭配深色皮鞋完成整體造型。"
   },
   {
     "outfitId": "M6",
     "displayCategory": "male",
     "wearCategory": "male_only",
-    "outfitName": "深灰T恤＋深灰牛仔褲",
+    "outfitName": "黑色上衣＋白色寬褲",
     "outfitImage": "/images/outfits/M6.jpg",
-    "styleTags": ["俐落正式", "穩重自然", "面試適用"],
-    "reason": "深灰色系上下身搭配能呈現低調、一致的視覺效果。",
-    "benefit": "簡約不易出錯，適合較輕鬆的面試或創意產業。",
-    "limitation": "T恤加牛仔褲的休閒感較強，正式面試場合可能不夠專業。",
-    "suggestion": "若需提升正式感，可外搭深色西裝外套。"
+    "styleTags": ["極簡俐落", "韓系", "面試適用"],
+    "reason": "黑色上衣搭配白色寬褲，透過強烈黑白對比營造乾淨、現代的視覺效果。",
+    "benefit": "整體簡潔大方，適合想呈現俐落、有質感但不過度嚴肅的面試形象。",
+    "limitation": "T恤材質與寬褲版型若過於休閒，在傳統企業面試可能顯得不夠正式。",
+    "suggestion": "可搭配黑色皮帶與簡約皮鞋；若面試場合偏正式，建議外搭深色西裝外套。"
   },
   {
     "outfitId": "F1",
@@ -123,24 +123,24 @@
     "outfitId": "F5",
     "displayCategory": "female",
     "wearCategory": "female_only",
-    "outfitName": "黑色露肩上衣＋白色蕾絲裙＋黑褲",
+    "outfitName": "白色襯衫＋黑色及膝裙",
     "outfitImage": "/images/outfits/F5.jpg",
-    "styleTags": ["層次穿搭", "設計感", "面試適用"],
-    "reason": "露肩上衣搭配蕾絲裙與內搭褲能呈現具設計感的層次造型。",
-    "benefit": "視覺上較有記憶點，適合創意或重視個人風格的場合。",
-    "limitation": "露肩與蕾絲元素較為時尚，傳統企業面試可能不夠保守。",
-    "suggestion": "請確認面試場合是否接受較有設計感的穿搭風格。"
+    "styleTags": ["正式專業", "俐落幹練", "面試適用"],
+    "reason": "白色襯衫搭配黑色及膝裙，是經典的正式職場組合，能傳達專業與穩重感。",
+    "benefit": "整體線條俐落、辨識度高，適合需要展現可靠與專業形象的面試場合。",
+    "limitation": "黑白素色搭配較為保守，若面試場合重視創意表達，可能顯得略為制式。",
+    "suggestion": "建議將襯衫熨燙平整、袖口捲起俐落，並搭配簡約鞋款與妝容完成整體。"
   },
   {
     "outfitId": "F6",
     "displayCategory": "female",
     "wearCategory": "female_only",
-    "outfitName": "酒紅短T＋卡其工裝寬褲",
+    "outfitName": "淺藍襯衫＋米白及膝裙",
     "outfitImage": "/images/outfits/F6.jpg",
-    "styleTags": ["休閒街頭", "寬鬆俐落", "面試適用"],
-    "reason": "酒紅上衣搭配卡其工裝褲能呈現休閒但有個性的風格。",
-    "benefit": "展現年輕活力，適合新創或創意產業面試。",
-    "limitation": "休閒感較強，正式企業面試可能不合適。",
-    "suggestion": "若面試場合偏正式，可考慮外搭西裝外套提升專業度。"
+    "styleTags": ["柔和專業", "韓系通勤", "面試適用"],
+    "reason": "淺藍襯衫搭配米白及膝裙，能營造柔和、親切又不失專業的整體印象。",
+    "benefit": "色彩乾淨溫和，適合想呈現友善、好接近但仍有專業感的面試情境。",
+    "limitation": "淺色系在部分正式場合可能不如深色系來得穩重，需注意面料挺度。",
+    "suggestion": "建議選擇挺括面料並搭配細腰帶與簡約鞋款，讓整體更完整俐落。"
   }
 ]
