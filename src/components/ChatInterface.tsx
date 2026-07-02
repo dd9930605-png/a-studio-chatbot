@@ -98,6 +98,13 @@ export function ChatInterface({
           userInput: answer,
           conversationHistory: participantData.chatLog.slice(-12),
           canRevealFinalRecommendation: false,
+          experimentContext: {
+            selectedOutfitCategory: participantData.selectedOutfitCategory as 'male' | 'female',
+            allowedOutfits: participantData.allowedOutfits,
+            favoriteOutfitBeforeAI: participantData.favoriteOutfitBeforeAI,
+            finalRecommendedOutfit: participantData.finalRecommendedOutfit,
+            surpriseMode: participantData.surpriseMode as 'surprise' | 'no_surprise',
+          },
           condition: {
             conditionId: condition.conditionId,
             botName: condition.botName,

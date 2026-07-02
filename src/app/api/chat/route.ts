@@ -3,6 +3,7 @@ import OpenAI from 'openai';
 import { buildChatSystemPrompt, buildFreeChatSystemPrompt } from '@/lib/botPrompts';
 import { ResponseStep, generateFreeChatFallbackReply } from '@/lib/aiResponses';
 import { Condition } from '@/lib/conditions';
+import { ExperimentChatContext, buildExperimentKnowledgeBlock } from '@/lib/experimentKnowledge';
 import {
   generateAcknowledgment,
   getDeterministicAcknowledgment,
@@ -19,6 +20,7 @@ interface ChatRequestBody {
   userInput: string;
   conversationHistory?: Array<{ sender: 'user' | 'bot'; message: string }>;
   canRevealFinalRecommendation?: boolean;
+  experimentContext?: ExperimentChatContext;
   condition: Pick<
     Condition,
     | 'conditionId'
@@ -81,12 +83,17 @@ async function handleFreeChat(
   conversationHistory: Array<{ sender: 'user' | 'bot'; message: string }>,
   condition: ChatRequestBody['condition'],
   canRevealFinalRecommendation: boolean,
+  experimentContext?: ExperimentChatContext,
 ): Promise<ChatResponseBody> {
+  const experimentKnowledge = experimentContext
+    ? buildExperimentKnowledgeBlock(experimentContext)
+    : '';
+
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     return {
       relevant: true,
-      reply: generateFreeChatFallbackReply(trimmedInput, condition as Condition),
+      reply: generateFreeChatFallbackReply(trimmedInput, condition as Condition, experimentContext),
       source: 'fallback',
     };
   }
@@ -97,6 +104,7 @@ async function handleFreeChat(
     const systemPrompt = buildFreeChatSystemPrompt({
       condition: condition as Condition,
       canRevealFinalRecommendation,
+      experimentKnowledge,
     });
 
     const completion = await client.chat.completions.create({
@@ -122,7 +130,7 @@ async function handleFreeChat(
     if (!parsed) {
       return {
         relevant: true,
-        reply: generateFreeChatFallbackReply(trimmedInput, condition as Condition),
+        reply: generateFreeChatFallbackReply(trimmedInput, condition as Condition, experimentContext),
         source: 'fallback',
       };
     }
@@ -136,7 +144,7 @@ async function handleFreeChat(
     console.error('OpenAI free chat API failed:', error);
     return {
       relevant: true,
-      reply: generateFreeChatFallbackReply(trimmedInput, condition as Condition),
+      reply: generateFreeChatFallbackReply(trimmedInput, condition as Condition, experimentContext),
       source: 'fallback',
     };
   }
@@ -166,6 +174,7 @@ export async function POST(request: NextRequest) {
       conversationHistory,
       condition,
       canRevealFinalRecommendation,
+      body.experimentContext,
     );
     return NextResponse.json(response satisfies ChatResponseBody);
   }
