@@ -3,7 +3,6 @@
 import React, { useState } from 'react';
 import { Condition } from '@/lib/conditions';
 import { getConditionTheme } from '@/lib/conditionTheme';
-import { CHAT_PROMPTS, ResponseStep } from '@/lib/aiResponses';
 import { generateProactiveNote, isProactiveNoteMessage } from '@/lib/proactiveNotes';
 import { ChatMessage, InvalidInputRecord, ParticipantData } from '@/lib/dataRecorder';
 
@@ -11,8 +10,10 @@ interface ChatInterfaceProps {
   participantData: ParticipantData;
   condition: Condition;
   onUpdateData: (data: ParticipantData) => void;
-  onStepChange: (step: string, data?: ParticipantData) => void;
-  currentStep: string;
+  chatLocked: boolean;
+  minChatMs: number;
+  maxChatMs: number;
+  elapsedMs: number;
 }
 
 interface ChatApiResponse {
@@ -55,48 +56,47 @@ export function ChatInterface({
   participantData,
   condition,
   onUpdateData,
-  onStepChange,
-  currentStep,
+  chatLocked,
+  minChatMs,
+  maxChatMs,
+  elapsedMs,
 }: ChatInterfaceProps) {
   const [inputValue, setInputValue] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const theme = getConditionTheme(condition);
-  const prompt = CHAT_PROMPTS[currentStep as ResponseStep];
 
-  if (!prompt) {
-    return null;
-  }
+  const remainingMinMs = Math.max(0, minChatMs - elapsedMs);
+  const elapsedSec = Math.floor(elapsedMs / 1000);
+  const timeStatus =
+    elapsedMs >= maxChatMs
+      ? '已達 5 分鐘上限，請查看推薦結果。'
+      : elapsedMs >= minChatMs
+        ? '已達基本互動時間，現在可查看推薦結果。'
+        : `請至少再互動 ${Math.ceil(remainingMinMs / 1000)} 秒。`;
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     const answer = inputValue.trim();
-    if (!answer || isSubmitting) return;
+    if (!answer || isSubmitting || chatLocked) return;
 
     setIsSubmitting(true);
     setSubmitError('');
 
-    const step = currentStep as ResponseStep;
     const timestamp = new Date().toISOString();
-    const userMessage = createMessage(currentStep, 'user', answer);
-
-    const hasQuestionInLog = participantData.chatLog.some(
-      (message) =>
-        message.step === currentStep &&
-        message.sender === 'bot' &&
-        message.message === prompt.question,
-    );
-    const questionMessage = createMessage(currentStep, 'bot', prompt.question);
+    const userMessage = createMessage('freeChat', 'user', answer);
 
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          step,
-          question: prompt.question,
+          step: 'freeChat',
+          question: 'free_chat',
           userInput: answer,
+          conversationHistory: participantData.chatLog.slice(-12),
+          canRevealFinalRecommendation: false,
           condition: {
             conditionId: condition.conditionId,
             botName: condition.botName,
@@ -117,9 +117,9 @@ export function ChatInterface({
       const result = (await response.json()) as ChatApiResponse;
 
       if (!result.relevant) {
-        const rejectionMessage = createMessage(currentStep, 'bot', result.reply);
+        const rejectionMessage = createMessage('freeChat', 'bot', result.reply);
         const invalidRecord: InvalidInputRecord = {
-          step: currentStep,
+          step: 'freeChat',
           message: answer,
           timestamp,
         };
@@ -130,7 +130,6 @@ export function ChatInterface({
           invalidInputs: [...participantData.invalidInputs, invalidRecord],
           chatLog: [
             ...participantData.chatLog,
-            ...(hasQuestionInLog ? [] : [questionMessage]),
             userMessage,
             rejectionMessage,
           ],
@@ -141,32 +140,29 @@ export function ChatInterface({
         return;
       }
 
-      const ackMessage = createMessage(currentStep, 'bot', result.reply);
+      const ackMessage = createMessage('freeChat', 'bot', result.reply);
       const proactiveNote =
         condition.proactivity === 'high'
-          ? createMessage(currentStep, 'bot', generateProactiveNote(step, answer, condition))
+          ? createMessage(
+              'freeChat',
+              'bot',
+              generateProactiveNote('freeChat', answer, condition),
+            )
           : null;
-      const hadInvalidForStep = participantData.invalidInputs.some(
-        (record) => record.step === currentStep,
-      );
+      const hadInvalidForStep = participantData.invalidInputs.some((record) => record.step === 'freeChat');
       const correctedRecord: InvalidInputRecord = {
-        step: currentStep,
+        step: 'freeChat',
         message: answer,
         timestamp,
       };
 
       const updatedData: ParticipantData = {
         ...participantData,
-        answers: {
-          ...participantData.answers,
-          [prompt.answerKey]: answer,
-        },
         correctedInputs: hadInvalidForStep
           ? [...participantData.correctedInputs, correctedRecord]
           : participantData.correctedInputs,
         chatLog: [
           ...participantData.chatLog,
-          ...(hasQuestionInLog ? [] : [questionMessage]),
           userMessage,
           ackMessage,
           ...(proactiveNote ? [proactiveNote] : []),
@@ -175,7 +171,6 @@ export function ChatInterface({
 
       onUpdateData(updatedData);
       setInputValue('');
-      onStepChange(prompt.nextStep, updatedData);
     } catch {
       setSubmitError('送出失敗，請稍後再試。');
     } finally {
@@ -189,6 +184,20 @@ export function ChatInterface({
 
   return (
     <div className={`flex flex-col ${theme.chatContainerClass}`}>
+      <div
+        className={`mx-4 mt-4 rounded-lg border px-3 py-2 text-sm ${
+          elapsedMs >= minChatMs
+            ? 'border-green-200 bg-green-50 text-green-800'
+            : 'border-amber-200 bg-amber-50 text-amber-900'
+        }`}
+      >
+        <p className="font-semibold">
+          互動時間：{Math.floor(elapsedSec / 60).toString().padStart(2, '0')}:
+          {(elapsedSec % 60).toString().padStart(2, '0')} / 05:00
+        </p>
+        <p className="mt-1">{timeStatus}</p>
+      </div>
+
       <div className="max-h-[32rem] flex-1 space-y-3 overflow-y-auto p-4 sm:space-y-4 sm:p-6">
         {participantData.chatLog.map((message, index) => (
           <div
@@ -209,17 +218,12 @@ export function ChatInterface({
 
         <div className="flex justify-start">
           <div className={`max-w-[85%] px-4 py-3 ${theme.chatBotBubbleClass}`}>
-            <p className="font-semibold">{prompt.question}</p>
-            {condition.proactivity === 'low' && (
-              <p className={`mt-2 text-xs ${theme.isPersona ? 'text-rose-700' : 'font-mono text-slate-600'}`}>
-                請針對上方問題簡短回答即可。
-              </p>
-            )}
-            {condition.proactivity === 'high' && (
-              <p className={`mt-2 text-xs ${theme.isPersona ? 'text-rose-700' : 'font-mono text-slate-600'}`}>
-                回答後我會整理重點，協助你完成面試穿搭決策。
-              </p>
-            )}
+            <p className="font-semibold">
+              請自由描述你的面試穿搭需求（風格、正式度、顏色、身形修飾、擔心點都可以）。
+            </p>
+            <p className={`mt-2 text-xs ${theme.isPersona ? 'text-rose-700' : 'font-mono text-slate-600'}`}>
+              你可以像用 ChatGPT 一樣自由提問，我會根據你的需求持續回應。
+            </p>
           </div>
         </div>
       </div>
@@ -236,15 +240,25 @@ export function ChatInterface({
             type="text"
             value={inputValue}
             onChange={(event) => setInputValue(event.target.value)}
-            disabled={isSubmitting}
+            disabled={isSubmitting || chatLocked}
             className={`flex-1 border px-4 py-3 focus:outline-none disabled:bg-gray-100 ${
               theme.isPersona
                 ? 'rounded-xl border-rose-200 focus:border-rose-400'
                 : 'rounded-md border-slate-300 font-mono focus:border-slate-500'
             }`}
-            placeholder={isSubmitting ? 'AI 正在思考回覆...' : '請輸入你的回答...'}
+            placeholder={
+              chatLocked
+                ? '已達聊天上限，請查看推薦結果'
+                : isSubmitting
+                  ? 'AI 正在思考回覆...'
+                  : '請輸入你的回答...'
+            }
           />
-          <button type="submit" disabled={!inputValue.trim() || isSubmitting} className={submitButtonClass}>
+          <button
+            type="submit"
+            disabled={!inputValue.trim() || isSubmitting || chatLocked}
+            className={submitButtonClass}
+          >
             {isSubmitting ? '處理中...' : '送出'}
           </button>
         </div>

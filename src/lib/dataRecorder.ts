@@ -57,6 +57,13 @@ export interface ParticipantData {
   clickedSurveyButton: boolean;
   surveyClickedAt: string | null;
   surveyRedirectUrl: string | null;
+  chatPageEnteredAt: string | null;
+  chatPageExitedAt: string | null;
+  chatDurationSec: number;
+  metMinimumChatDuration: boolean;
+  clickedViewRecommendation: boolean;
+  viewRecommendationClickedAt: string | null;
+  finalRecommendationVersion: string | null;
   sessionStartTime: string;
   sessionEndTime: string | null;
 }
@@ -136,6 +143,13 @@ export function initializeParticipantData(
     clickedSurveyButton: false,
     surveyClickedAt: null,
     surveyRedirectUrl: null,
+    chatPageEnteredAt: null,
+    chatPageExitedAt: null,
+    chatDurationSec: 0,
+    metMinimumChatDuration: false,
+    clickedViewRecommendation: false,
+    viewRecommendationClickedAt: null,
+    finalRecommendationVersion: null,
     sessionStartTime: new Date().toISOString(),
     sessionEndTime: null,
   };
@@ -157,6 +171,13 @@ export function normalizeParticipantData(raw: ParticipantData): ParticipantData 
     clickedSurveyButton: raw.clickedSurveyButton ?? false,
     surveyClickedAt: raw.surveyClickedAt ?? null,
     surveyRedirectUrl: raw.surveyRedirectUrl ?? null,
+    chatPageEnteredAt: raw.chatPageEnteredAt ?? null,
+    chatPageExitedAt: raw.chatPageExitedAt ?? null,
+    chatDurationSec: raw.chatDurationSec ?? 0,
+    metMinimumChatDuration: raw.metMinimumChatDuration ?? false,
+    clickedViewRecommendation: raw.clickedViewRecommendation ?? false,
+    viewRecommendationClickedAt: raw.viewRecommendationClickedAt ?? null,
+    finalRecommendationVersion: raw.finalRecommendationVersion ?? null,
     sessionEndTime: raw.sessionEndTime ?? null,
     invalidInputCount: raw.invalidInputCount ?? 0,
     invalidInputs: raw.invalidInputs ?? [],

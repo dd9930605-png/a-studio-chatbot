@@ -34,6 +34,7 @@ const NOTE_BUILDERS: Record<ResponseStep, (input: string) => string> = {
     return `已記下你的韓系服飾經驗（${truncate(input)}），會平衡熟悉感與面試需求。`;
   },
   usualStyle: (input) => `已記下你平時的穿搭習慣（${truncate(input)}），會嘗試與面試場合取得平衡。`,
+  freeChat: (input) => `已整理你剛提到的重點（${truncate(input)}），會繼續依你的需求微調建議。`,
 };
 
 export function generateProactiveNote(

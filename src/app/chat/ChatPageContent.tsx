@@ -17,13 +17,17 @@ import { getOutfit } from '@/lib/outfits';
 type Step = 'greeting' | 'chat' | 'recommendation';
 
 const GREETING_DISPLAY_MS = 3200;
+const MIN_CHAT_MS = 3 * 60 * 1000;
+const MAX_CHAT_MS = 5 * 60 * 1000;
 
 export default function ChatPageContent() {
   const router = useRouter();
   const [participantData, setParticipantData] = useState<ParticipantData | null>(null);
   const [condition, setCondition] = useState<ReturnType<typeof getCondition>>(undefined);
   const [currentStep, setCurrentStep] = useState<Step>('greeting');
-  const [chatStep, setChatStep] = useState('stylePreference');
+  const [chatStartedAt, setChatStartedAt] = useState<number | null>(null);
+  const [elapsedMs, setElapsedMs] = useState(0);
+  const [timingNotice, setTimingNotice] = useState('');
 
   useEffect(() => {
     const draft = getParticipantDraft();
@@ -43,6 +47,15 @@ export default function ChatPageContent() {
 
     const timer = setTimeout(() => {
       setCurrentStep('chat');
+      const enteredAt = new Date().toISOString();
+      const startMs = Date.now();
+      setChatStartedAt(startMs);
+      const updatedDraft: ParticipantData = {
+        ...draft,
+        chatPageEnteredAt: enteredAt,
+      };
+      setParticipantData(updatedDraft);
+      saveParticipantDraft(updatedDraft);
     }, GREETING_DISPLAY_MS);
 
     return () => clearTimeout(timer);
@@ -59,18 +72,40 @@ export default function ChatPageContent() {
     );
   }
 
-  const handleChatStepChange = (step: string) => {
-    setChatStep(step);
-    if (step === 'recommendation') {
-      const saved = {
-        ...participantData,
-        sessionEndTime: new Date().toISOString(),
-      };
-      setParticipantData(saved);
-      saveParticipantDraft(saved);
-      void saveParticipantData(saved);
-      setCurrentStep('recommendation');
+  useEffect(() => {
+    if (currentStep !== 'chat' || !chatStartedAt) return;
+
+    const timer = window.setInterval(() => {
+      const nextElapsed = Date.now() - chatStartedAt;
+      setElapsedMs(nextElapsed);
+    }, 1000);
+
+    return () => window.clearInterval(timer);
+  }, [currentStep, chatStartedAt]);
+
+  const handleViewRecommendation = () => {
+    if (elapsedMs < MIN_CHAT_MS) {
+      setTimingNotice('您尚未完成本階段互動，請繼續與 AI 穿搭顧問聊天。');
+      return;
     }
+
+    const exitedAt = new Date().toISOString();
+    const durationSec = Math.min(Math.floor(elapsedMs / 1000), Math.floor(MAX_CHAT_MS / 1000));
+    const saved: ParticipantData = {
+      ...participantData,
+      chatPageExitedAt: exitedAt,
+      chatDurationSec: durationSec,
+      metMinimumChatDuration: durationSec >= Math.floor(MIN_CHAT_MS / 1000),
+      clickedViewRecommendation: true,
+      viewRecommendationClickedAt: exitedAt,
+      finalRecommendationVersion: `${participantData.conditionId}-${participantData.finalRecommendedOutfit}`,
+      sessionEndTime: exitedAt,
+    };
+
+    setParticipantData(saved);
+    saveParticipantDraft(saved);
+    void saveParticipantData(saved);
+    setCurrentStep('recommendation');
   };
 
   const handleSurveyClick = () => {
@@ -88,6 +123,8 @@ export default function ChatPageContent() {
   };
 
   const displayOutfit = getOutfit(participantData.finalRecommendedOutfit);
+  const chatLocked = elapsedMs >= MAX_CHAT_MS;
+  const canViewRecommendation = elapsedMs >= MIN_CHAT_MS;
 
   return (
     <div className="min-h-screen px-4 py-8">
@@ -104,6 +141,11 @@ export default function ChatPageContent() {
         {currentStep === 'chat' && (
           <div className="space-y-4">
             <BotHeader condition={condition} variant="compact" />
+            {timingNotice && (
+              <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                {timingNotice}
+              </div>
+            )}
             <ChatInterface
               participantData={participantData}
               condition={condition}
@@ -111,9 +153,29 @@ export default function ChatPageContent() {
                 setParticipantData(data);
                 saveParticipantDraft(data);
               }}
-              onStepChange={handleChatStepChange}
-              currentStep={chatStep}
+              chatLocked={chatLocked}
+              minChatMs={MIN_CHAT_MS}
+              maxChatMs={MAX_CHAT_MS}
+              elapsedMs={elapsedMs}
             />
+            <div className="rounded-lg border border-gray-200 bg-white p-4">
+              <p className="text-sm text-gray-600">
+                請至少互動 3 分鐘，最多互動 5 分鐘。達到 3 分鐘後即可查看推薦結果。
+              </p>
+              {chatLocked && (
+                <p className="mt-2 text-sm font-semibold text-rose-700">
+                  已達互動上限（5 分鐘），請查看推薦結果。
+                </p>
+              )}
+              <button
+                type="button"
+                onClick={handleViewRecommendation}
+                disabled={!canViewRecommendation}
+                className="mt-3 w-full rounded-lg bg-blue-600 px-4 py-3 font-bold text-white transition disabled:cursor-not-allowed disabled:bg-gray-300"
+              >
+                查看推薦結果
+              </button>
+            </div>
           </div>
         )}
 

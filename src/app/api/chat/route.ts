@@ -17,6 +17,8 @@ interface ChatRequestBody {
   step: ResponseStep;
   question: string;
   userInput: string;
+  conversationHistory?: Array<{ sender: 'user' | 'bot'; message: string }>;
+  canRevealFinalRecommendation?: boolean;
   condition: Pick<
     Condition,
     | 'conditionId'
@@ -82,6 +84,8 @@ export async function POST(request: NextRequest) {
 
   const { step, question, userInput, condition } = body;
   const trimmedInput = userInput?.trim() ?? '';
+  const canRevealFinalRecommendation = body.canRevealFinalRecommendation ?? false;
+  const conversationHistory = body.conversationHistory ?? [];
 
   if (!step || !question || !trimmedInput || !condition) {
     return NextResponse.json({ error: '缺少必要欄位' }, { status: 400 });
@@ -92,11 +96,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(fallback satisfies ChatResponseBody);
   }
 
-  const deterministic = getDeterministicAcknowledgment(
-    step,
-    trimmedInput,
-    condition as Condition,
-  );
+  const deterministic = getDeterministicAcknowledgment(step, trimmedInput, condition as Condition);
   if (deterministic) {
     return NextResponse.json({
       relevant: true,
@@ -114,7 +114,12 @@ export async function POST(request: NextRequest) {
   try {
     const client = new OpenAI({ apiKey });
     const model = process.env.OPENAI_MODEL || 'gpt-4o-mini';
-    const systemPrompt = buildChatSystemPrompt({ condition: condition as Condition, step, question });
+    const systemPrompt = buildChatSystemPrompt({
+      condition: condition as Condition,
+      step,
+      question,
+      canRevealFinalRecommendation,
+    });
 
     const completion = await client.chat.completions.create({
       model,
@@ -122,9 +127,13 @@ export async function POST(request: NextRequest) {
       response_format: { type: 'json_object' },
       messages: [
         { role: 'system', content: systemPrompt },
+        ...conversationHistory.slice(-10).map((entry) => ({
+          role: entry.sender === 'bot' ? ('assistant' as const) : ('user' as const),
+          content: entry.message,
+        })),
         {
           role: 'user',
-          content: `使用者回答：${trimmedInput}`,
+          content: `使用者最新輸入：${trimmedInput}`,
         },
       ],
     });
