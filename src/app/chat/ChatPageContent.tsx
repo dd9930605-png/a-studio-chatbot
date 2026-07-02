@@ -62,17 +62,6 @@ export default function ChatPageContent() {
     return () => clearTimeout(timer);
   }, [router]);
 
-  if (!participantData || !condition) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="text-center">
-          <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-blue-500" />
-          <p className="text-gray-600">準備 AI 穿搭顧問...</p>
-        </div>
-      </div>
-    );
-  }
-
   useEffect(() => {
     if (currentStep !== 'chat' || !chatStartedAt) return;
 
@@ -91,6 +80,17 @@ export default function ChatPageContent() {
       setTimingNotice('已達互動上限（5 分鐘），請查看推薦結果。');
     }
   }, [currentStep, elapsedMs, showMaxTimeDialog]);
+
+  if (!participantData || !condition) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-center">
+          <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-blue-500" />
+          <p className="text-gray-600">準備 AI 穿搭顧問...</p>
+        </div>
+      </div>
+    );
+  }
 
   const handleViewRecommendation = () => {
     if (elapsedMs < MIN_CHAT_MS) {
