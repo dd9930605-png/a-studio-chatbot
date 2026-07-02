@@ -360,6 +360,31 @@ export function validateChatInput(
   return { valid: false, rejectionMessage: applyTone(message, condition) };
 }
 
+/** 無 OpenAI 時的自由對話備援，不做關鍵字篩選。 */
+export function generateFreeChatFallbackReply(userInput: string, condition: Condition): string {
+  const trimmed = userInput.trim();
+  const topic = trimmed.length > 40 ? `${trimmed.slice(0, 40)}…` : trimmed;
+
+  if (condition.anthropomorphism === 'high') {
+    if (condition.proactivity === 'high') {
+      return applyTone(
+        `了解，你提到「${topic}」。我會把這個需求納入面試穿著的考量，並依你的職業與場合調整正式度與版型。你還想補充偏好的顏色或風格嗎？`,
+        condition,
+      );
+    }
+    return applyTone(`了解，我會把「${topic}」納入你的面試穿搭建議。`, condition);
+  }
+
+  if (condition.proactivity === 'high') {
+    return applyTone(
+      `已收到需求：「${topic}」。建議可從正式度、色系與身形修飾三方面調整面試穿搭。`,
+      condition,
+    );
+  }
+
+  return applyTone(`已收到：「${topic}」，將納入穿著建議參考。`, condition);
+}
+
 export function generateAcknowledgment(
   step: ResponseStep,
   userInput: string,
