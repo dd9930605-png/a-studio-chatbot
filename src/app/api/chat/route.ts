@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import { buildChatSystemPrompt } from '@/lib/botPrompts';
-import { ResponseStep } from '@/lib/aiResponses';
+import { buildChatSystemPrompt, buildFreeChatSystemPrompt } from '@/lib/botPrompts';
+import { ResponseStep, generateFreeChatFallbackReply } from '@/lib/aiResponses';
 import { Condition } from '@/lib/conditions';
 import {
   generateAcknowledgment,
@@ -41,18 +41,21 @@ interface ChatResponseBody {
 function parseModelJson(content: string): { relevant: boolean; reply: string } | null {
   try {
     const parsed = JSON.parse(content) as { relevant?: boolean; reply?: string };
-    if (typeof parsed.relevant !== 'boolean' || typeof parsed.reply !== 'string') {
+    if (typeof parsed.reply !== 'string') {
       return null;
     }
     const reply = parsed.reply.trim();
     if (!reply) return null;
-    return { relevant: parsed.relevant, reply };
+    return {
+      relevant: typeof parsed.relevant === 'boolean' ? parsed.relevant : true,
+      reply,
+    };
   } catch {
     return null;
   }
 }
 
-function buildFallbackResponse(
+function buildGuidedFallbackResponse(
   step: ResponseStep,
   userInput: string,
   condition: ChatRequestBody['condition'],
@@ -73,6 +76,72 @@ function buildFallbackResponse(
   };
 }
 
+async function handleFreeChat(
+  trimmedInput: string,
+  conversationHistory: Array<{ sender: 'user' | 'bot'; message: string }>,
+  condition: ChatRequestBody['condition'],
+  canRevealFinalRecommendation: boolean,
+): Promise<ChatResponseBody> {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    return {
+      relevant: true,
+      reply: generateFreeChatFallbackReply(trimmedInput, condition as Condition),
+      source: 'fallback',
+    };
+  }
+
+  try {
+    const client = new OpenAI({ apiKey });
+    const model = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+    const systemPrompt = buildFreeChatSystemPrompt({
+      condition: condition as Condition,
+      canRevealFinalRecommendation,
+    });
+
+    const completion = await client.chat.completions.create({
+      model,
+      temperature: 0.7,
+      response_format: { type: 'json_object' },
+      messages: [
+        { role: 'system', content: systemPrompt },
+        ...conversationHistory.slice(-12).map((entry) => ({
+          role: entry.sender === 'bot' ? ('assistant' as const) : ('user' as const),
+          content: entry.message,
+        })),
+        {
+          role: 'user',
+          content: trimmedInput,
+        },
+      ],
+    });
+
+    const content = completion.choices[0]?.message?.content ?? '';
+    const parsed = parseModelJson(content);
+
+    if (!parsed) {
+      return {
+        relevant: true,
+        reply: generateFreeChatFallbackReply(trimmedInput, condition as Condition),
+        source: 'fallback',
+      };
+    }
+
+    return {
+      relevant: true,
+      reply: parsed.reply,
+      source: 'openai',
+    };
+  } catch (error) {
+    console.error('OpenAI free chat API failed:', error);
+    return {
+      relevant: true,
+      reply: generateFreeChatFallbackReply(trimmedInput, condition as Condition),
+      source: 'fallback',
+    };
+  }
+}
+
 export async function POST(request: NextRequest) {
   let body: ChatRequestBody;
 
@@ -91,8 +160,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: '缺少必要欄位' }, { status: 400 });
   }
 
+  if (step === 'freeChat') {
+    const response = await handleFreeChat(
+      trimmedInput,
+      conversationHistory,
+      condition,
+      canRevealFinalRecommendation,
+    );
+    return NextResponse.json(response satisfies ChatResponseBody);
+  }
+
   if (isClearlyOffTopic(trimmedInput)) {
-    const fallback = buildFallbackResponse(step, trimmedInput, condition);
+    const fallback = buildGuidedFallbackResponse(step, trimmedInput, condition);
     return NextResponse.json(fallback satisfies ChatResponseBody);
   }
 
@@ -107,7 +186,7 @@ export async function POST(request: NextRequest) {
 
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
-    const fallback = buildFallbackResponse(step, trimmedInput, condition);
+    const fallback = buildGuidedFallbackResponse(step, trimmedInput, condition);
     return NextResponse.json(fallback satisfies ChatResponseBody);
   }
 
@@ -142,7 +221,7 @@ export async function POST(request: NextRequest) {
     const parsed = parseModelJson(content);
 
     if (!parsed) {
-      const fallback = buildFallbackResponse(step, trimmedInput, condition);
+      const fallback = buildGuidedFallbackResponse(step, trimmedInput, condition);
       return NextResponse.json(fallback satisfies ChatResponseBody);
     }
 
@@ -174,7 +253,7 @@ export async function POST(request: NextRequest) {
     } satisfies ChatResponseBody);
   } catch (error) {
     console.error('OpenAI chat API failed:', error);
-    const fallback = buildFallbackResponse(step, trimmedInput, condition);
+    const fallback = buildGuidedFallbackResponse(step, trimmedInput, condition);
     return NextResponse.json(fallback satisfies ChatResponseBody);
   }
 }

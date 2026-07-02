@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { Condition } from '@/lib/conditions';
 import { getConditionTheme } from '@/lib/conditionTheme';
 import { generateProactiveNote, isProactiveNoteMessage } from '@/lib/proactiveNotes';
-import { ChatMessage, InvalidInputRecord, ParticipantData } from '@/lib/dataRecorder';
+import { ChatMessage, ParticipantData } from '@/lib/dataRecorder';
 
 interface ChatInterfaceProps {
   participantData: ParticipantData;
@@ -86,7 +86,6 @@ export function ChatInterface({
     setIsSubmitting(true);
     setSubmitError('');
 
-    const timestamp = new Date().toISOString();
     const userMessage = createMessage('freeChat', 'user', answer);
 
     try {
@@ -118,31 +117,7 @@ export function ChatInterface({
 
       const result = (await response.json()) as ChatApiResponse;
 
-      if (!result.relevant) {
-        const rejectionMessage = createMessage('freeChat', 'bot', result.reply);
-        const invalidRecord: InvalidInputRecord = {
-          step: 'freeChat',
-          message: answer,
-          timestamp,
-        };
-
-        const updatedData: ParticipantData = {
-          ...participantData,
-          invalidInputCount: participantData.invalidInputCount + 1,
-          invalidInputs: [...participantData.invalidInputs, invalidRecord],
-          chatLog: [
-            ...participantData.chatLog,
-            userMessage,
-            rejectionMessage,
-          ],
-        };
-
-        onUpdateData(updatedData);
-        setInputValue('');
-        return;
-      }
-
-      const ackMessage = createMessage('freeChat', 'bot', result.reply);
+      const botMessage = createMessage('freeChat', 'bot', result.reply);
       const proactiveNote =
         condition.proactivity === 'high'
           ? createMessage(
@@ -151,22 +126,19 @@ export function ChatInterface({
               generateProactiveNote('freeChat', answer, condition),
             )
           : null;
-      const hadInvalidForStep = participantData.invalidInputs.some((record) => record.step === 'freeChat');
-      const correctedRecord: InvalidInputRecord = {
-        step: 'freeChat',
-        message: answer,
-        timestamp,
-      };
 
       const updatedData: ParticipantData = {
         ...participantData,
-        correctedInputs: hadInvalidForStep
-          ? [...participantData.correctedInputs, correctedRecord]
-          : participantData.correctedInputs,
+        answers: {
+          ...participantData.answers,
+          usualStyleInput: participantData.answers.usualStyleInput
+            ? `${participantData.answers.usualStyleInput}\n${answer}`
+            : answer,
+        },
         chatLog: [
           ...participantData.chatLog,
           userMessage,
-          ackMessage,
+          botMessage,
           ...(proactiveNote ? [proactiveNote] : []),
         ],
       };
