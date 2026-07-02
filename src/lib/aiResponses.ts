@@ -1,4 +1,5 @@
 import { Condition } from '@/lib/conditions';
+import { ExperimentChatContext } from '@/lib/experimentKnowledge';
 
 export type ResponseStep =
   | 'stylePreference'
@@ -360,10 +361,38 @@ export function validateChatInput(
   return { valid: false, rejectionMessage: applyTone(message, condition) };
 }
 
+const ACCESSORY_PATTERN =
+  /項鍊|耳環|戒指|手錶|墨鏡|太陽眼鏡|帽子|圍巾|包包|鞋|球鞋|皮鞋|高跟|靴|配件|銀飾|金飾/;
+
 /** 無 OpenAI 時的自由對話備援，不做關鍵字篩選。 */
-export function generateFreeChatFallbackReply(userInput: string, condition: Condition): string {
+export function generateFreeChatFallbackReply(
+  userInput: string,
+  condition: Condition,
+  experimentContext?: ExperimentChatContext,
+): string {
   const trimmed = userInput.trim();
   const topic = trimmed.length > 40 ? `${trimmed.slice(0, 40)}…` : trimmed;
+
+  if (ACCESSORY_PATTERN.test(trimmed)) {
+    return applyTone(
+      '本網站目前僅提供上衣與下裝（及套裝內含的領帶等）組合建議，不包含配件。我們可以專注在面試服裝的版型、顏色與正式度。',
+      condition,
+    );
+  }
+
+  if (/約會|咖啡廳|聚餐|旅遊/.test(trimmed)) {
+    return applyTone(
+      '了解你的場合需求。這次我們聚焦在面試穿搭，我會依你的職業與偏好，從網站上的 12 套 Look 方向來討論正式度與風格。',
+      condition,
+    );
+  }
+
+  if (experimentContext && condition.proactivity === 'high') {
+    return applyTone(
+      `了解，你提到「${topic}」。我會依面試情境，從網站上的 12 套穿搭方向來整理適合你的正式度與色系。你還想補充身形修飾或風格偏好嗎？`,
+      condition,
+    );
+  }
 
   if (condition.anthropomorphism === 'high') {
     if (condition.proactivity === 'high') {

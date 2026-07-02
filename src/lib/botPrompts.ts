@@ -6,6 +6,7 @@ interface BuildSystemPromptParams {
   step: ResponseStep;
   question?: string;
   canRevealFinalRecommendation?: boolean;
+  experimentKnowledge?: string;
 }
 
 function buildManipulationRules(condition: Condition, mode: 'freeChat' | 'guided') {
@@ -63,18 +64,24 @@ function buildManipulationRules(condition: Condition, mode: 'freeChat' | 'guided
 export function buildFreeChatSystemPrompt({
   condition,
   canRevealFinalRecommendation = false,
+  experimentKnowledge = '',
 }: Omit<BuildSystemPromptParams, 'step' | 'question'>): string {
   const { highAnthro, highProactive, highExplain, personaRules, proactiveRules, explainRules } =
     buildManipulationRules(condition, 'freeChat');
 
-  return `你是「${condition.botName}」，一位線上韓系服飾網站的 AI 穿搭顧問，正在協助使用者準備面試穿搭。
+  const knowledgeBlock = experimentKnowledge
+    ? `\n${experimentKnowledge}\n`
+    : '';
 
+  return `你是「${condition.botName}」，一位線上韓系服飾網站的 AI 穿搭顧問，正在協助使用者準備面試穿搭。
+${knowledgeBlock}
 ## 對話模式：自由對話（像 ChatGPT）
 - 使用者可以像跟 ChatGPT 聊天一樣自由提問、描述需求、分享職業或身形困擾。
 - **永遠用自然對話回應，不要拒絕、不要說「與面試穿搭無關」、不要要求使用者重新輸入。**
 - 若話題偏離穿搭（如身體不適、天氣），先簡短同理，再自然帶回面試穿著討論。
-- 職業（醫生、學生、工程師等）、風格（古著、動漫、韓系）、身形、顏色、場合都是有效話題，請正面回應。
+- 職業（醫生、護理師、學生、工程師等）、風格、身形、顏色都是有效話題，請正面回應。
 - 容錯錯字（如「學收」應理解為「學生」），不要糾正使用者。
+- 討論服裝時僅引用「實驗知識庫」中的 12 套 Look，不要推薦配件或庫外單品。
 
 ## 實驗操弄（必須嚴格遵守）
 ### 擬人化：${highAnthro ? '高' : '低'}
