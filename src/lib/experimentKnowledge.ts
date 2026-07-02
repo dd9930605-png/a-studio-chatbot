@@ -1,6 +1,7 @@
 import { getLookLabel, getLookNumberFromOutfitId } from '@/lib/looks';
 import { getOutfit, OutfitCategory } from '@/lib/outfits';
 import { SurpriseMode } from '@/lib/outfits';
+import { buildConsultationThemesBlock } from '@/lib/chatConsultationThemes';
 
 export interface ExperimentChatContext {
   selectedOutfitCategory: OutfitCategory;
@@ -76,6 +77,8 @@ export function buildExperimentKnowledgeBlock(context: ExperimentChatContext): s
 - 聊天不是「推銷某一套衣服」，而是**陪他把需求說清楚**；最終推薦留到「查看推薦結果」才揭曉。
 - 用**風格維度**對話：正式度、色系、俐落／親和、身形修飾、職業與場合——而不是一直點名 Look 編號或複讀套裝名稱。
 - 每一輪回覆應**優先呼應使用者剛說的內容**（情緒、困惑、偏好），再視情況連結穿著建議。
+
+${buildConsultationThemesBlock()}
 
 ### 使用者背景（內部參考，勿主動反覆提起）
 - 瀏覽後最喜歡的一套：${favoriteLine}
