@@ -28,6 +28,7 @@ export default function ChatPageContent() {
   const [chatStartedAt, setChatStartedAt] = useState<number | null>(null);
   const [elapsedMs, setElapsedMs] = useState(0);
   const [timingNotice, setTimingNotice] = useState('');
+  const [showMaxTimeDialog, setShowMaxTimeDialog] = useState(false);
 
   useEffect(() => {
     const draft = getParticipantDraft();
@@ -82,6 +83,14 @@ export default function ChatPageContent() {
 
     return () => window.clearInterval(timer);
   }, [currentStep, chatStartedAt]);
+
+  useEffect(() => {
+    if (currentStep !== 'chat') return;
+    if (elapsedMs >= MAX_CHAT_MS && !showMaxTimeDialog) {
+      setShowMaxTimeDialog(true);
+      setTimingNotice('已達互動上限（5 分鐘），請查看推薦結果。');
+    }
+  }, [currentStep, elapsedMs, showMaxTimeDialog]);
 
   const handleViewRecommendation = () => {
     if (elapsedMs < MIN_CHAT_MS) {
@@ -176,6 +185,24 @@ export default function ChatPageContent() {
                 查看推薦結果
               </button>
             </div>
+
+            {showMaxTimeDialog && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+                <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl">
+                  <h3 className="text-lg font-bold text-gray-900">已達互動上限</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-gray-700">
+                    你已完成 5 分鐘互動，為維持實驗一致性，現在請進入推薦結果頁面。
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleViewRecommendation}
+                    className="mt-4 w-full rounded-lg bg-blue-600 px-4 py-3 font-bold text-white"
+                  >
+                    前往查看推薦結果
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

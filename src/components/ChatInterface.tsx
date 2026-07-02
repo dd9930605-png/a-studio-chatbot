@@ -68,6 +68,8 @@ export function ChatInterface({
 
   const remainingMinMs = Math.max(0, minChatMs - elapsedMs);
   const elapsedSec = Math.floor(elapsedMs / 1000);
+  const elapsedPercent = Math.min(100, (elapsedMs / maxChatMs) * 100);
+  const minThresholdPercent = (minChatMs / maxChatMs) * 100;
   const timeStatus =
     elapsedMs >= maxChatMs
       ? '已達 5 分鐘上限，請查看推薦結果。'
@@ -195,6 +197,25 @@ export function ChatInterface({
           互動時間：{Math.floor(elapsedSec / 60).toString().padStart(2, '0')}:
           {(elapsedSec % 60).toString().padStart(2, '0')} / 05:00
         </p>
+        <div className="mt-2 h-2 w-full rounded-full bg-white/70">
+          <div
+            className={`h-2 rounded-full transition-all ${
+              elapsedMs >= minChatMs ? 'bg-green-500' : 'bg-amber-500'
+            }`}
+            style={{ width: `${elapsedPercent}%` }}
+          />
+        </div>
+        <div className="mt-1 flex items-center justify-between text-xs">
+          <span>開始</span>
+          <span>3:00 達標</span>
+          <span>5:00 結束</span>
+        </div>
+        <div className="relative mt-1 h-0">
+          <span
+            className="absolute -top-6 h-3 w-0.5 bg-gray-500/60"
+            style={{ left: `${minThresholdPercent}%` }}
+          />
+        </div>
         <p className="mt-1">{timeStatus}</p>
       </div>
 
