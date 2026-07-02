@@ -37,7 +37,6 @@ function buildManipulationRules(condition: Condition, mode: 'freeChat' | 'guided
         ? [
             '像 ChatGPT 一樣主動延伸：呼應對方用語、補充穿搭建議，並可適度追問（一次最多一個問題）。',
             '回覆 2-4 句，內容要有實質幫助，不要只確認收到。',
-            '系統會另外顯示「顧問筆記／系統備註」，你的回覆不要重複筆記內容。',
           ]
         : [
             '回覆 1-2 句，簡潔但要有實質內容，針對使用者提到的重點給穿著方向。',
