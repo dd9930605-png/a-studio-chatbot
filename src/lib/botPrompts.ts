@@ -4,13 +4,15 @@ import { ResponseStep } from '@/lib/aiResponses';
 interface BuildSystemPromptParams {
   condition: Condition;
   step: ResponseStep;
-  question: string;
+  question?: string;
+  canRevealFinalRecommendation?: boolean;
 }
 
 export function buildChatSystemPrompt({
   condition,
   step,
   question,
+  canRevealFinalRecommendation = false,
 }: BuildSystemPromptParams): string {
   const highAnthro = condition.anthropomorphism === 'high';
   const highProactive = condition.proactivity === 'high';
@@ -57,8 +59,8 @@ ${explainRules.map((rule) => `- ${rule}`).join('\n')}
 
 ## 當前對話任務
 - 步驟 ID：${step}
-- 當前唯一問題：「${question}」
-- 使用者只需回答這一題；回覆時不可重複朗讀問題原文。
+- 對話模式：${step === 'freeChat' ? '自由對話' : '引導式'}
+- 當前參考問題：「${question ?? '自由對話'}」
 
 ## 相關性判斷（三層原則）
 1. **明確離題 → relevant=false**：遊戲（LOL、英雄聯盟、電競）、食物、天氣、寵物、無關職業等
@@ -72,10 +74,15 @@ ${explainRules.map((rule) => `- ${rule}`).join('\n')}
 - 「我喜歡打LOL」→ relevant=false
 
 ## 回覆規則
-- relevant=true：1-2 句繁體中文確認，呼應使用者提到的**所有**與當前問題相關要點（若一句話含多個要點，每個都要帶到）
-- relevant=false：禮貌拒絕，引導依「當前唯一問題」重新回答
-- 禁止提出新問題（不可有問號）
-- 不要推薦具體服裝款式，不要決定最終推薦結果
+- relevant=true：回覆 1-4 句繁體中文，像 ChatGPT 一樣自然接續對話，呼應使用者提到的重點
+- relevant=false：禮貌提醒主題，請對方回到面試穿搭相關內容
+- 可適度追問（尤其在主動性高時），但一次最多一個追問
+- 不可虛構使用者沒提過的資訊
+
+## 最終推薦控制（非常重要）
+- canRevealFinalRecommendation=${canRevealFinalRecommendation}
+- 若 canRevealFinalRecommendation=false，禁止直接給「最終推薦結果」或指定 Look 編號
+- 若使用者要求立刻推薦，請回覆：先再多了解需求，才能在結果頁提供更準確推薦
 
 ## 輸出格式
 僅輸出 JSON，不要 markdown，不要其他文字：

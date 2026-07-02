@@ -5,7 +5,8 @@ export type ResponseStep =
   | 'bodyShape'
   | 'websitePreference'
   | 'koreanExperience'
-  | 'usualStyle';
+  | 'usualStyle'
+  | 'freeChat';
 
 export interface ChatValidationResult {
   valid: boolean;
@@ -74,6 +75,13 @@ export function getDeterministicAcknowledgment(
 ): string | null {
   const normalized = userInput.trim();
 
+  if (step === 'freeChat' && /直接推薦|立刻推薦|現在推薦|直接給結果|看結果/.test(normalized)) {
+    return applyTone(
+      '我可以幫你推薦，不過為了讓建議更符合你的面試需求，我想再多了解一點你的偏好。你可以說說你希望整體更正式、親和，還是更有個人風格嗎？',
+      condition,
+    );
+  }
+
   if (step === 'koreanExperience') {
     if (isNegativeKoreanExperienceAnswer(normalized) || isUncertainAnswer(normalized)) {
       return applyTone(
@@ -127,6 +135,7 @@ const STEP_HINTS: Record<ResponseStep, string> = {
   websitePreference: '請說明你對剛才瀏覽的 12 套穿搭是否有符合喜好的款式，以及原因。',
   koreanExperience: '請描述你過去購買韓系服飾的經驗（例如：有/沒有、經常或偶爾）。',
   usualStyle: '請描述你平時的服飾款式或穿搭風格（例如：簡約、正式、韓系）。',
+  freeChat: '請聚焦在面試穿搭需求，例如風格、正式度、顏色、身形修飾或搭配困擾。',
 };
 
 const KEYWORD_RULES: Record<ResponseStep, { keywords: string[]; response: string }[]> = {
@@ -227,6 +236,16 @@ const KEYWORD_RULES: Record<ResponseStep, { keywords: string[]; response: string
     {
       keywords: ['沒有', '不固定', '看場合'],
       response: '了解，我會根據面試情境的需求來提供適合的穿搭推薦。',
+    },
+  ],
+  freeChat: [
+    {
+      keywords: ['推薦', '建議', '面試', '穿搭'],
+      response: '了解，我會依照你剛提到的需求提供面試穿搭建議，並持續和你一起調整方向。',
+    },
+    {
+      keywords: ['顏色', '正式', '風格', '比例', '顯瘦'],
+      response: '了解，你的需求很明確，我會依這些條件整理更適合你的面試穿搭方向。',
     },
   ],
 };
@@ -404,5 +423,10 @@ export const CHAT_PROMPTS: Record<
     question: '請描述您平時較常購買的服飾款式或穿搭風格。',
     answerKey: 'usualStyleInput',
     nextStep: 'recommendation',
+  },
+  freeChat: {
+    question: '請自由描述你的面試穿搭需求。',
+    answerKey: 'usualStyleInput',
+    nextStep: 'freeChat',
   },
 };
