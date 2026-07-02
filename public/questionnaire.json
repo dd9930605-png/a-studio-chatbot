@@ -23,23 +23,27 @@
           "options": [
             {
               "value": 1,
-              "label": "18–20 歲"
+              "label": "18–23 歲"
             },
             {
               "value": 2,
-              "label": "21–23 歲"
+              "label": "24–29 歲"
             },
             {
               "value": 3,
-              "label": "24–26 歲"
+              "label": "30–34 歲"
             },
             {
               "value": 4,
-              "label": "27–29 歲"
+              "label": "35–39 歲"
             },
             {
               "value": 5,
-              "label": "30 歲以上"
+              "label": "40–44 歲"
+            },
+            {
+              "value": 6,
+              "label": "45 歲以上"
             }
           ]
         },
@@ -68,22 +72,22 @@
           ]
         },
         {
-          "itemId": "background_identity",
+          "itemId": "background_education",
           "questionType": "single_choice",
-          "questionText": "請問您目前的身分為？",
+          "questionText": "請問您目前就讀階段為？",
           "required": true,
           "options": [
             {
               "value": 1,
-              "label": "大學生"
+              "label": "大學部"
             },
             {
               "value": 2,
-              "label": "研究生"
+              "label": "碩士班"
             },
             {
               "value": 3,
-              "label": "已就業"
+              "label": "博士班"
             },
             {
               "value": 4,
@@ -186,13 +190,13 @@
         {
           "itemId": "manipulationCheck_anthropomorphism",
           "questionType": "likert_7",
-          "questionText": "剛才與您互動的 AI，整體而言比較像「真人穿搭顧問」還是「自動化推薦系統」？（1 = 完全是自動系統，7 = 完全是真人顧問）",
+          "questionText": "整體而言，剛才與我互動的 AI 給我的感覺像真人穿搭顧問。",
           "required": true
         },
         {
           "itemId": "manipulationCheck_explainability",
           "questionType": "single_choice",
-          "questionText": "AI 最後的推薦說明中，是否有清楚解釋「為什麼推薦這套」？",
+          "questionText": "剛才的 AI 穿搭顧問最後的推薦說明中，是否有清楚解釋「為什麼推薦這套」？",
           "required": true,
           "options": [
             {
@@ -212,7 +216,7 @@
         {
           "itemId": "manipulationCheck_twoSided",
           "questionType": "single_choice",
-          "questionText": "AI 的推薦說明是否有同時提到這套穿搭的「優點」與「需要注意的地方」？",
+          "questionText": "剛才的 AI 穿搭顧問的推薦說明是否有同時提到這套穿搭的「優點」與「需要注意的地方」？",
           "required": true,
           "options": [
             {
@@ -228,26 +232,6 @@
               "label": "兩者都有提到"
             }
           ]
-        },
-        {
-          "itemId": "manipulationCheck_proactivity",
-          "questionType": "single_choice",
-          "questionText": "對話過程中，AI 是否有主動整理重點（例如顧問筆記／系統備註）？",
-          "required": true,
-          "options": [
-            {
-              "value": 1,
-              "label": "沒有，只有簡短確認"
-            },
-            {
-              "value": 2,
-              "label": "有一點"
-            },
-            {
-              "value": 3,
-              "label": "有，而且很明顯"
-            }
-          ]
         }
       ]
     },
@@ -259,9 +243,35 @@
       "items": [
         {
           "itemId": "websitePreference_1",
-          "questionType": "likert_7",
-          "questionText": "整體而言，剛才網站中呈現的 12 套服裝符合我的穿搭喜好。",
-          "required": true
+          "questionType": "single_choice",
+          "questionText": "整體而言，剛才網站中呈現的 12 套服裝，大約有幾成符合您的穿搭喜好？",
+          "required": true,
+          "options": [
+            {
+              "value": 1,
+              "label": "0 成，幾乎都不符合"
+            },
+            {
+              "value": 2,
+              "label": "1–2 成，少部分符合"
+            },
+            {
+              "value": 3,
+              "label": "3–4 成，有一些符合"
+            },
+            {
+              "value": 4,
+              "label": "5–6 成，約一半符合"
+            },
+            {
+              "value": 5,
+              "label": "7–8 成，大部分符合"
+            },
+            {
+              "value": 6,
+              "label": "9–10 成，幾乎都符合"
+            }
+          ]
         },
         {
           "itemId": "koreanPurchaseExperience_1",
@@ -302,43 +312,43 @@
         {
           "itemId": "explainability_1",
           "questionType": "likert_7",
-          "questionText": "我認為此 AI 穿搭推薦系統容易理解。",
+          "questionText": "我覺得剛才的 AI 穿搭顧問所提供的推薦內容容易理解。",
           "required": true
         },
         {
           "itemId": "explainability_2",
           "questionType": "likert_7",
-          "questionText": "我認為此 AI 穿搭推薦系統的推薦邏輯是可以被理解與解釋的。",
+          "questionText": "我覺得剛才的 AI 穿搭顧問有讓我理解它為什麼推薦這套穿搭。",
           "required": true
         },
         {
           "itemId": "explainability_3",
           "questionType": "likert_7",
-          "questionText": "我能理解此 AI 穿搭推薦系統背後的推薦邏輯與運作方式。",
+          "questionText": "我能理解剛才的 AI 穿搭顧問推薦這套穿搭的主要原因。",
           "required": true
         },
         {
           "itemId": "explainability_4",
           "questionType": "likert_7",
-          "questionText": "我認為此 AI 穿搭推薦系統能清楚說明其推薦原因。",
+          "questionText": "我覺得剛才的 AI 穿搭顧問能清楚說明它的推薦理由。",
           "required": true
         },
         {
           "itemId": "explainability_5",
           "questionType": "likert_7",
-          "questionText": "AI 店員對於如何產生推薦的說明具有足夠細節。",
+          "questionText": "剛才的 AI 穿搭顧問對於推薦這套穿搭的說明有足夠細節。",
           "required": true
         },
         {
           "itemId": "explainability_6",
           "questionType": "likert_7",
-          "questionText": "AI 店員對於如何產生推薦的說明是完整的。",
+          "questionText": "剛才的 AI 穿搭顧問對於推薦這套穿搭的說明是完整的。",
           "required": true
         },
         {
           "itemId": "explainability_7",
           "questionType": "likert_7",
-          "questionText": "AI 店員會針對其推薦內容提供詳細解釋。",
+          "questionText": "剛才的 AI 穿搭顧問有針對它的推薦內容提供詳細解釋。",
           "required": true
         }
       ]
@@ -347,72 +357,72 @@
       "sectionOrder": 4,
       "academicVariable": "擬人化程度",
       "displayTitle": "AI 互動的自然感",
-      "instructions": "請根據剛才與 AI 穿搭助理互動的感受，評估以下敘述的同意程度。",
+      "instructions": "請根據剛才與 AI 穿搭顧問互動的感受，評估以下敘述的同意程度。",
       "items": [
         {
           "itemId": "anthropomorphism_1",
           "questionType": "likert_7",
-          "questionText": "我認為 AI 店員具有自主的想法與意圖。",
+          "questionText": "剛才的 AI 穿搭顧問給我的感覺像是有自己的想法。",
           "required": true
         },
         {
           "itemId": "anthropomorphism_2",
           "questionType": "likert_7",
-          "questionText": "我認為 AI 店員能感受到情緒。",
+          "questionText": "剛才的 AI 穿搭顧問給我的感覺像是能理解互動中的情緒。",
           "required": true
         },
         {
           "itemId": "anthropomorphism_3",
           "questionType": "likert_7",
-          "questionText": "我認為 AI 店員具有自由意志。",
+          "questionText": "剛才的 AI 穿搭顧問給我的感覺不像只是機械式回覆。",
           "required": true
         },
         {
           "itemId": "anthropomorphism_4",
           "questionType": "likert_7",
-          "questionText": "我認為 AI 店員具有意識。",
+          "questionText": "剛才的 AI 穿搭顧問給我的感覺像是有一定程度的意識。",
           "required": true
         },
         {
           "itemId": "anthropomorphism_5",
           "questionType": "likert_7",
-          "questionText": "我認為 AI 店員具有自己的心智。",
+          "questionText": "剛才的 AI 穿搭顧問給我的感覺像是有自己的判斷。",
           "required": true
         },
         {
           "itemId": "anthropomorphism_6",
           "questionType": "likert_7",
-          "questionText": "我認為與此 AI 穿搭助理的互動是自然的。",
+          "questionText": "我覺得與剛才的 AI 穿搭顧問互動是自然的。",
           "required": true
         },
         {
           "itemId": "anthropomorphism_7",
           "questionType": "likert_7",
-          "questionText": "我認為與此 AI 穿搭助理的互動像與真人互動一樣。",
+          "questionText": "我覺得與剛才的 AI 穿搭顧問互動，像是在和真人對話。",
           "required": true
         },
         {
           "itemId": "anthropomorphism_8",
           "questionType": "likert_7",
-          "questionText": "我認為此 AI 穿搭助理讓人感覺它理解正在與其互動的人。",
+          "questionText": "我覺得剛才的 AI 穿搭顧問讓人感覺它理解正在和它互動的人。",
           "required": true
         },
         {
           "itemId": "anthropomorphism_9",
           "questionType": "likert_7",
-          "questionText": "我認為此 AI 穿搭助理能像人類一樣說話。",
+          "questionText": "我覺得剛才的 AI 穿搭顧問說話方式像人類。",
           "required": true
         },
         {
           "itemId": "anthropomorphism_10",
           "questionType": "likert_7",
-          "questionText": "我認為此 AI 穿搭助理是友善的。",
+          "questionText": "我覺得剛才的 AI 穿搭顧問是友善的。",
           "required": true
         },
         {
           "itemId": "anthropomorphism_11",
           "questionType": "likert_7",
-          "questionText": "我認為此 AI 穿搭助理是尊重顧客的。",
+          "questionText": "我覺得剛才的 AI 穿搭顧問是尊重使用者的。",
           "required": true
         }
       ]
@@ -421,48 +431,48 @@
       "sectionOrder": 5,
       "academicVariable": "回應主動性",
       "displayTitle": "AI 主動協助的程度",
-      "instructions": "請根據剛才 AI 穿搭助理在互動與推薦過程中的表現，評估以下敘述的同意程度。",
+      "instructions": "請根據剛才 AI 穿搭顧問在互動與推薦過程中的表現，評估以下敘述的同意程度。",
       "items": [
         {
           "itemId": "proactivity_1",
           "questionType": "likert_7",
-          "questionText": "此 AI 穿搭助理會預測我在服裝選擇上可能遇到的問題或需求，並主動提供解決方案。",
+          "questionText": "剛才的 AI 穿搭顧問會主動想到我在服裝選擇上可能遇到的問題，並提供建議。",
           "required": true
         },
         {
           "itemId": "proactivity_2",
           "questionType": "likert_7",
-          "questionText": "此 AI 穿搭助理會主動提供相關資訊，以滿足我的服裝購買需求。",
+          "questionText": "剛才的 AI 穿搭顧問會主動提供與我服裝選擇相關的資訊。",
           "required": true
         },
         {
           "itemId": "proactivity_3",
           "questionType": "likert_7",
-          "questionText": "此 AI 穿搭助理會根據我的情境與需求，判斷何時需要主動調整或改善穿搭建議。",
+          "questionText": "剛才的 AI 穿搭顧問會依照我的情境與需求，主動調整或補充穿搭建議。",
           "required": true
         },
         {
           "itemId": "proactivity_4",
           "questionType": "likert_7",
-          "questionText": "此 AI 穿搭助理會持續追蹤我的需求，並協助我順利完成服裝選擇。",
+          "questionText": "剛才的 AI 穿搭顧問會主動協助我更順利地完成服裝選擇。",
           "required": true
         },
         {
           "itemId": "proactivity_5",
           "questionType": "likert_7",
-          "questionText": "此 AI 穿搭助理會主動整合其他相關資訊或建議，以更好地協助我的穿搭決策。",
+          "questionText": "剛才的 AI 穿搭顧問會主動補充我沒有想到、但可能有幫助的穿搭資訊。",
           "required": true
         },
         {
           "itemId": "proactivity_6",
           "questionType": "likert_7",
-          "questionText": "此 AI 穿搭助理會主動根據我的需求整合相關服務或商品資訊，並協助我找到合適的穿搭方案。",
+          "questionText": "剛才的 AI 穿搭顧問會主動整合與我需求相關的商品或搭配資訊，協助我找到合適的穿搭方案。",
           "required": true
         },
         {
           "itemId": "proactivity_7",
           "questionType": "likert_7",
-          "questionText": "此 AI 穿搭助理會主動確認它提供的穿搭建議是否符合我的期待。",
+          "questionText": "剛才的 AI 穿搭顧問會主動確認它提供的穿搭建議是否符合我的期待。",
           "required": true
         }
       ]
@@ -471,24 +481,24 @@
       "sectionOrder": 6,
       "academicVariable": "雙面訊息",
       "displayTitle": "AI 推薦內容的完整性",
-      "instructions": "請根據 AI 穿搭助理最後提供的推薦內容，評估以下敘述的同意程度。",
+      "instructions": "請根據剛才 AI 穿搭顧問最後提供的推薦內容，評估以下敘述的同意程度。",
       "items": [
         {
           "itemId": "twoSidedMessage_1",
           "questionType": "likert_7",
-          "questionText": "此 AI 穿搭助理的推薦是基於同時考慮推薦穿搭可能的優點與限制。",
+          "questionText": "剛才的 AI 穿搭顧問在推薦時，有同時考量這套穿搭的優點與需要注意的地方。",
           "required": true
         },
         {
           "itemId": "twoSidedMessage_2",
           "questionType": "likert_7",
-          "questionText": "此 AI 穿搭助理有呈現推薦穿搭的正面理由與負面提醒。",
+          "questionText": "剛才的 AI 穿搭顧問有說明這套穿搭的優點，也有提醒我可能需要注意的地方。",
           "required": true
         },
         {
           "itemId": "twoSidedMessage_3",
           "questionType": "likert_7",
-          "questionText": "此 AI 穿搭助理可以針對推薦穿搭提供正面或負面的評估內容。",
+          "questionText": "剛才的 AI 穿搭顧問能針對這套推薦穿搭，提供較完整的正反面評估。",
           "required": true
         }
       ]
@@ -497,36 +507,36 @@
       "sectionOrder": 7,
       "academicVariable": "意外驚喜感",
       "displayTitle": "AI 推薦帶來的意外感受",
-      "instructions": "請根據 AI 穿搭助理最後推薦的穿搭，以及您使用 AI 穿搭助理時的感受，評估以下敘述的同意程度。",
+      "instructions": "請根據剛才 AI 穿搭顧問最後推薦的穿搭，以及您使用 AI 穿搭顧問時的感受，評估以下敘述的同意程度。",
       "items": [
         {
           "itemId": "surprise_1",
           "questionType": "likert_7",
-          "questionText": "我透過此 AI 穿搭助理發現了出乎意料、且對我的面試穿搭準備有用的建議。",
+          "questionText": "剛才的 AI 穿搭顧問讓我發現原本沒想到、但對面試穿搭有幫助的建議。",
           "required": true
         },
         {
           "itemId": "surprise_2",
           "questionType": "likert_7",
-          "questionText": "當我使用此 AI 穿搭助理時，我遇到了原本沒有主動尋找、但有用的穿搭資訊或搭配想法。",
+          "questionText": "使用剛才的 AI 穿搭顧問時，我看到了一些原本沒有主動尋找、但對我有幫助的穿搭資訊或搭配想法。",
           "required": true
         },
         {
           "itemId": "surprise_3",
           "questionType": "likert_7",
-          "questionText": "我透過此 AI 穿搭助理獲得了對我有價值的意外穿搭見解。",
+          "questionText": "剛才的 AI 穿搭顧問讓我獲得一些出乎意料、但對我有價值的穿搭想法。",
           "required": true
         },
         {
           "itemId": "surprise_4",
           "questionType": "likert_7",
-          "questionText": "我覺得此 AI 穿搭助理推薦的穿搭是一個好的驚喜。",
+          "questionText": "我覺得剛才 AI 穿搭顧問推薦的這套穿搭，帶給我一種好的驚喜感。",
           "required": true
         },
         {
           "itemId": "surprise_5",
           "questionType": "likert_7",
-          "questionText": "我覺得此 AI 穿搭助理推薦的穿搭是一個出乎意料的發現。",
+          "questionText": "我覺得剛才 AI 穿搭顧問推薦的這套穿搭，是一個出乎意料但有價值的發現。",
           "required": true
         }
       ]
@@ -535,36 +545,36 @@
       "sectionOrder": 8,
       "academicVariable": "感知有用性",
       "displayTitle": "AI 穿搭推薦的實用性",
-      "instructions": "請根據剛才與 AI 穿搭助理的互動，以及 AI 最後推薦的那套面試穿搭，評估以下敘述的同意程度。",
+      "instructions": "請根據剛才與 AI 穿搭顧問的互動，以及 AI 穿搭顧問最後推薦的那套面試穿搭，評估以下敘述的同意程度。",
       "items": [
         {
           "itemId": "usefulness_1",
           "questionType": "likert_7",
-          "questionText": "使用此 AI 穿搭助理能幫助我更快完成面試穿搭的選擇。",
+          "questionText": "剛才的 AI 穿搭顧問能幫助我更快完成面試穿搭的選擇。",
           "required": true
         },
         {
           "itemId": "usefulness_2",
           "questionType": "likert_7",
-          "questionText": "使用此 AI 穿搭助理能提升我判斷哪套穿搭適合面試的能力。",
+          "questionText": "剛才的 AI 穿搭顧問能幫助我判斷哪套穿搭適合面試。",
           "required": true
         },
         {
           "itemId": "usefulness_3",
           "questionType": "likert_7",
-          "questionText": "使用此 AI 穿搭助理能提升我進行穿搭比較與決策的效率。",
+          "questionText": "剛才的 AI 穿搭顧問能讓我更有效率地比較與決定面試穿搭。",
           "required": true
         },
         {
           "itemId": "usefulness_4",
           "questionType": "likert_7",
-          "questionText": "使用此 AI 穿搭助理能讓我更容易選出合適的面試穿搭。",
+          "questionText": "剛才的 AI 穿搭顧問能讓我更容易選出合適的面試穿搭。",
           "required": true
         },
         {
           "itemId": "usefulness_5",
           "questionType": "likert_7",
-          "questionText": "整體而言，我認為此 AI 穿搭助理對我的面試穿搭決策是有用的。",
+          "questionText": "整體而言，我覺得剛才的 AI 穿搭顧問對我的面試穿搭決策是有幫助的。",
           "required": true
         }
       ]
@@ -573,30 +583,30 @@
       "sectionOrder": 9,
       "academicVariable": "購買意圖",
       "displayTitle": "推薦穿搭的購買意願",
-      "instructions": "請根據 AI 穿搭助理最後推薦的那套面試穿搭，評估以下敘述的同意程度。",
+      "instructions": "請根據剛才 AI 穿搭顧問最後推薦的那套面試穿搭，評估以下敘述的同意程度。",
       "items": [
         {
           "itemId": "purchaseIntention_1",
           "questionType": "likert_7",
-          "questionText": "我會考慮購買此 AI 穿搭助理推薦的這套穿搭。",
+          "questionText": "我會考慮購買剛才 AI 穿搭顧問推薦的這套穿搭。",
           "required": true
         },
         {
           "itemId": "purchaseIntention_2",
           "questionType": "likert_7",
-          "questionText": "若此套穿搭可供購買，我願意進一步了解或購買。",
+          "questionText": "如果剛才 AI 穿搭顧問推薦的這套穿搭可以購買，我願意進一步了解或購買。",
           "required": true
         },
         {
           "itemId": "purchaseIntention_3",
           "questionType": "likert_7",
-          "questionText": "如果我近期需要面試穿搭，我購買這套推薦穿搭的可能性很高。",
+          "questionText": "如果我近期需要面試穿搭，我購買這套 AI 穿搭顧問推薦穿搭的可能性很高。",
           "required": true
         },
         {
           "itemId": "purchaseIntention_4",
           "questionType": "likert_7",
-          "questionText": "我願意將此 AI 穿搭助理推薦的這套穿搭列為優先考慮的購買選項。",
+          "questionText": "我願意將這套 AI 穿搭顧問推薦的穿搭列為優先考慮的購買選項。",
           "required": true
         }
       ]
