@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { Condition } from '@/lib/conditions';
 import { getConditionTheme } from '@/lib/conditionTheme';
-import { generateProactiveNote, isProactiveNoteMessage } from '@/lib/proactiveNotes';
+import { isProactiveNoteMessage } from '@/lib/proactiveNotes';
 import { ChatMessage, ParticipantData } from '@/lib/dataRecorder';
 
 interface ChatInterfaceProps {
@@ -125,14 +125,6 @@ export function ChatInterface({
       const result = (await response.json()) as ChatApiResponse;
 
       const botMessage = createMessage('freeChat', 'bot', result.reply);
-      const proactiveNote =
-        condition.proactivity === 'high'
-          ? createMessage(
-              'freeChat',
-              'bot',
-              generateProactiveNote('freeChat', answer, condition),
-            )
-          : null;
 
       const updatedData: ParticipantData = {
         ...participantData,
@@ -142,12 +134,7 @@ export function ChatInterface({
             ? `${participantData.answers.usualStyleInput}\n${answer}`
             : answer,
         },
-        chatLog: [
-          ...participantData.chatLog,
-          userMessage,
-          botMessage,
-          ...(proactiveNote ? [proactiveNote] : []),
-        ],
+        chatLog: [...participantData.chatLog, userMessage, botMessage],
       };
 
       onUpdateData(updatedData);
@@ -199,7 +186,9 @@ export function ChatInterface({
       </div>
 
       <div className="max-h-[32rem] flex-1 space-y-3 overflow-y-auto p-4 sm:space-y-4 sm:p-6">
-        {participantData.chatLog.map((message, index) => (
+        {participantData.chatLog
+          .filter((message) => !isProactiveNoteMessage(message.message))
+          .map((message, index) => (
           <div
             key={`${message.timestamp}-${index}`}
             className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}

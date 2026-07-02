@@ -1,5 +1,6 @@
 import { Condition } from '@/lib/conditions';
 import { ExperimentChatContext } from '@/lib/experimentKnowledge';
+import { getOutfit } from '@/lib/outfits';
 
 export type ResponseStep =
   | 'stylePreference'
@@ -382,9 +383,19 @@ export function generateFreeChatFallbackReply(
 
   if (/約會|咖啡廳|聚餐|旅遊/.test(trimmed)) {
     return applyTone(
-      '了解你的場合需求。這次我們聚焦在面試穿搭，我會依你的職業與偏好，從網站上的 12 套 Look 方向來討論正式度與風格。',
+      '了解你的場合需求。這次我們聚焦在面試穿搭，我會依你的職業與偏好來討論正式度與風格。',
       condition,
     );
+  }
+
+  if (experimentContext && /推薦|推薦什麼|會推薦|穿什麼/.test(trimmed)) {
+    const final = getOutfit(experimentContext.finalRecommendedOutfit);
+    if (final) {
+      return applyTone(
+        `依我們剛才的對話，結果頁會為你呈現「${final.outfitName}」這類方向的面試搭配；詳細內容請在互動結束後查看推薦結果。`,
+        condition,
+      );
+    }
   }
 
   if (experimentContext && condition.proactivity === 'high') {
