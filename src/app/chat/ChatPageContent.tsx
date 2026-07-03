@@ -13,10 +13,11 @@ import {
 } from '@/lib/dataRecorder';
 import { getCondition } from '@/lib/conditions';
 import { getOutfit } from '@/lib/outfits';
-import { buildRecommendationText } from '@/lib/recommendationText';
+import { buildFinalRecommendationText } from '@/lib/surpriseRecommendation';
 import {
   extractPreferencesFromParticipant,
-  selectPreferenceAwareSurpriseOutfit,
+  formatPreferencesSummary,
+  selectSurpriseOutfitBPlus,
 } from '@/lib/chatPreferences';
 
 type Step = 'greeting' | 'chat' | 'recommendation';
@@ -118,35 +119,55 @@ export default function ChatPageContent() {
 
     if (participantData.surpriseMode === 'surprise') {
       const preferences = extractPreferencesFromParticipant(participantData);
-      const preChatOutfit =
-        participantData.surprisePreChatOutfit || participantData.finalRecommendedOutfit;
-      const { finalOutfit, adjusted } = selectPreferenceAwareSurpriseOutfit({
-        assignedOutfit: participantData.finalRecommendedOutfit,
+      const { finalOutfit, selectionMode, chatPreferenceAdjusted } = selectSurpriseOutfitBPlus({
+        expectedOutfitBeforeAI: participantData.expectedOutfitBeforeAI,
         candidates: participantData.surpriseCandidateOutfits,
         preferences,
       });
 
       const conditionForText = getCondition(participantData.conditionId);
-      const outfitForText = getOutfit(finalOutfit);
       const recommendationText =
-        conditionForText && outfitForText
-          ? buildRecommendationText(conditionForText, outfitForText)
+        conditionForText
+          ? buildFinalRecommendationText({
+              condition: conditionForText,
+              finalOutfitId: finalOutfit,
+              expectedOutfitBeforeAI: participantData.expectedOutfitBeforeAI,
+              surpriseMode: 'surprise',
+              preferences,
+            })
+          : '';
+
+      nextData = {
+        ...nextData,
+        finalRecommendedOutfit: finalOutfit,
+        finalRecommendationText: recommendationText,
+        expectationMismatch: 1,
+        chatPreferenceAdjusted,
+        surpriseSelectionMode: selectionMode,
+        chatPreferenceSummary: formatPreferencesSummary(preferences),
+        finalRecommendationVersion: `${participantData.conditionId}-${finalOutfit}`,
+      };
+    } else {
+      const preferences = extractPreferencesFromParticipant(participantData);
+      const conditionForText = getCondition(participantData.conditionId);
+      const recommendationText =
+        conditionForText
+          ? buildFinalRecommendationText({
+              condition: conditionForText,
+              finalOutfitId: participantData.expectedOutfitBeforeAI,
+              expectedOutfitBeforeAI: participantData.expectedOutfitBeforeAI,
+              surpriseMode: 'no_surprise',
+              preferences,
+            })
           : participantData.finalRecommendationText;
 
       nextData = {
         ...nextData,
-        surprisePreChatOutfit: preChatOutfit,
-        finalRecommendedOutfit: finalOutfit,
+        finalRecommendedOutfit: participantData.expectedOutfitBeforeAI,
         finalRecommendationText: recommendationText,
-        expectationMismatch:
-          participantData.expectedOutfitBeforeAI === finalOutfit ? 0 : 1,
-        chatPreferenceAdjusted: adjusted,
-        finalRecommendationVersion: `${participantData.conditionId}-${finalOutfit}`,
-      };
-    } else {
-      nextData = {
-        ...nextData,
-        finalRecommendationVersion: `${participantData.conditionId}-${participantData.finalRecommendedOutfit}`,
+        expectationMismatch: 0,
+        chatPreferenceSummary: formatPreferencesSummary(preferences),
+        finalRecommendationVersion: `${participantData.conditionId}-${participantData.expectedOutfitBeforeAI}`,
       };
     }
 

@@ -201,6 +201,14 @@ export default function AdminPage() {
                       value={selectedParticipant.surprisePreChatOutfit || '—'}
                     />
                     <Field
+                      label="chatPreferenceSummary"
+                      value={selectedParticipant.chatPreferenceSummary || '—'}
+                    />
+                    <Field
+                      label="surpriseSelectionMode"
+                      value={selectedParticipant.surpriseSelectionMode || '—'}
+                    />
+                    <Field
                       label="chatPreferenceAdjusted"
                       value={selectedParticipant.chatPreferenceAdjusted ? '是' : '否'}
                     />

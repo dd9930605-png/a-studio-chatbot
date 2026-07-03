@@ -74,6 +74,10 @@ export interface ParticipantData {
   surprisePreChatOutfit?: string;
   /** surprise 組：是否因聊天偏好而調整最終推薦 */
   chatPreferenceAdjusted?: boolean;
+  /** surprise 組：選款方式 random / preference_scored */
+  surpriseSelectionMode?: 'random' | 'preference_scored' | '';
+  /** 聊天偏好摘要（記錄用） */
+  chatPreferenceSummary?: string;
   sessionStartTime: string;
   sessionEndTime: string | null;
 }
@@ -199,6 +203,8 @@ export function normalizeParticipantData(raw: ParticipantData): ParticipantData 
     surveyPageEnteredAt: raw.surveyPageEnteredAt ?? null,
     surprisePreChatOutfit: raw.surprisePreChatOutfit ?? '',
     chatPreferenceAdjusted: raw.chatPreferenceAdjusted ?? false,
+    surpriseSelectionMode: raw.surpriseSelectionMode ?? '',
+    chatPreferenceSummary: raw.chatPreferenceSummary ?? '',
     sessionEndTime: raw.sessionEndTime ?? null,
     invalidInputCount: raw.invalidInputCount ?? 0,
     invalidInputs: raw.invalidInputs ?? [],

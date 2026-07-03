@@ -20,7 +20,7 @@ import {
   getRandomSurpriseMode,
   getOutfit,
 } from '@/lib/outfits';
-import { buildRecommendationText } from '@/lib/recommendationText';
+import { buildFinalRecommendationText } from '@/lib/surpriseRecommendation';
 import { captureSurveyEntry } from '@/lib/surveyReturn';
 
 type PreStep = 'category' | 'expected';
@@ -112,10 +112,18 @@ export default function PrePageContent() {
         blockedOutfits: participantData.blockedOutfits,
       });
 
-      const outfit = getOutfit(finalRecommendedOutfit);
-      const recommendationText = outfit
-        ? buildRecommendationText(condition, outfit)
-        : '';
+      const outfit = finalRecommendedOutfit ? getOutfit(finalRecommendedOutfit) : undefined;
+      const preferences = { dislikedColors: [], likedColors: [], wantsFormal: false, dislikesSkirt: false, dislikesJeans: false, matchedStyleKeywords: [] };
+      const recommendationText =
+        outfit && condition
+          ? buildFinalRecommendationText({
+              condition,
+              finalOutfitId: finalRecommendedOutfit,
+              expectedOutfitBeforeAI,
+              surpriseMode: participantData.surpriseMode as 'surprise' | 'no_surprise',
+              preferences,
+            })
+          : '';
 
       const completed: ParticipantData = {
         ...participantData,
@@ -123,7 +131,12 @@ export default function PrePageContent() {
         finalRecommendedOutfit,
         surpriseCandidateOutfits,
         finalRecommendationText: recommendationText,
-        expectationMismatch: expectedOutfitBeforeAI === finalRecommendedOutfit ? 0 : 1,
+        expectationMismatch:
+          participantData.surpriseMode === 'surprise'
+            ? null
+            : expectedOutfitBeforeAI === finalRecommendedOutfit
+              ? 0
+              : 1,
       };
 
       saveParticipantDraft(completed);

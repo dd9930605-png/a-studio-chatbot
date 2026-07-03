@@ -5,6 +5,7 @@ import { buildConsultationThemesBlock } from '@/lib/chatConsultationThemes';
 import {
   ChatPreferences,
   formatPreferencesSummary,
+  hasExplicitPreferences,
   outfitConflictsWithPreferences,
 } from '@/lib/chatPreferences';
 
@@ -36,20 +37,28 @@ function buildSurpriseModeRules(): string {
 - 若使用者**自己主動**提到某套 Look，可簡短呼應一句，隨即把焦點帶回他的需求與感受。`;
 }
 
+function buildSurprisePendingAlignmentBlock(context: ExperimentChatContext): string {
+  const expected = getOutfit(context.expectedOutfitBeforeAI);
+  return `### surprise 組聊天策略（最終推薦尚未決定，聊天結束後才選定）
+- 結果頁會從候選池中挑選**不同於**使用者預期的一套：${expected?.outfitName ?? context.expectedOutfitBeforeAI}
+- 聊天中**禁止**提前劇透 Look 編號或定案「就是某一套」。
+- 優先了解：面試場合、想給人的印象、色系與風格偏好、身形修飾、擔憂點。
+- 若使用者明確問「你會推薦什麼」，請說明會在互動結束後於結果頁呈現最適合的一套，並簡述判斷方向（正式度、俐落感），**不要**具體描述某一 Look 的完整單品組合。
+- 若聊天偏好與預期套裝衝突，先同理，改聊抽象需求；**禁止**為討好而推薦庫存以外服裝或配件。`;
+}
+
 function buildPreferenceTransitionBlock(context: ExperimentChatContext): string {
   const preferences = context.chatPreferences;
-  if (
-    !preferences ||
-    (preferences.dislikedColors.length === 0 && preferences.likedColors.length === 0)
-  ) {
+  if (!preferences || !hasExplicitPreferences(preferences)) {
     return '';
   }
 
   const summary = formatPreferencesSummary(preferences);
-  const finalConflicts = outfitConflictsWithPreferences(
-    context.finalRecommendedOutfit,
-    preferences,
-  );
+  const conflictTarget =
+    context.surpriseMode === 'surprise' && !context.finalRecommendedOutfit
+      ? context.expectedOutfitBeforeAI
+      : context.finalRecommendedOutfit;
+  const finalConflicts = outfitConflictsWithPreferences(conflictTarget, preferences);
 
   if (context.surpriseMode === 'surprise') {
     return `### 使用者聊天偏好（內部參考，用於轉折對話）
@@ -65,14 +74,22 @@ ${finalConflicts ? `- 目前預設套裝與使用者表達的「不喜歡」可�
 
 function buildNoSurpriseModeRules(): string {
   return `### no_surprise 組對話規則
-- 最終推薦與使用者最喜歡的一套相同，但對話仍要有「被顧問理解」的價值。
+- 最終推薦與使用者**使用 AI 前的預期穿搭**相同，但對話仍要有「被顧問理解」的價值。
 - **禁止從頭到尾反覆推銷或複讀最喜歡的那一套**；否則使用者會覺得「我選過了，不需要聊天」。
 - 聊天重點是：面試擔憂、想給人的印象、色系與風格偏好、身形困擾——讓他透過對話更釐清自己。
 - 若使用者主動提起最喜歡的那套，可自然回應，但不要每輪都繞回同一套名稱。`;
 }
 
 function buildFinalOutfitAlignmentBlock(context: ExperimentChatContext): string {
-  const final = getOutfit(context.finalRecommendedOutfit);
+  if (context.surpriseMode === 'surprise' && !context.finalRecommendedOutfit) {
+    return buildSurprisePendingAlignmentBlock(context);
+  }
+
+  const anchorOutfitId =
+    context.surpriseMode === 'no_surprise'
+      ? context.expectedOutfitBeforeAI
+      : context.finalRecommendedOutfit;
+  const final = getOutfit(anchorOutfitId);
   if (!final) {
     return `### 聊天與最終推薦必須一致
 - 聊天中若描述具體穿著，必須與結果頁將顯示的套裝一致。`;
