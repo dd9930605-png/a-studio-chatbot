@@ -39,8 +39,10 @@ export interface ParticipantData {
   conditionInfo: ParticipantConditionInfo;
   surpriseMode: SurpriseMode | '';
   acceptableOutfits: string[];
-  favoriteOutfitBeforeAI: string;
-  /** @deprecated 舊版欄位，讀取時會對應至 favoriteOutfitBeforeAI */
+  expectedOutfitBeforeAI: string;
+  /** @deprecated 舊版欄位，normalize 時會對應至 expectedOutfitBeforeAI */
+  favoriteOutfitBeforeAI?: string;
+  /** @deprecated 舊版欄位 */
   expectedOutfit?: string;
   surpriseCandidateOutfits: string[];
   finalRecommendedOutfit: string;
@@ -64,6 +66,10 @@ export interface ParticipantData {
   clickedViewRecommendation: boolean;
   viewRecommendationClickedAt: string | null;
   finalRecommendationVersion: string | null;
+  viewedChatLog: boolean;
+  viewedChatLogAt: string | null;
+  viewedChatLogFrom: 'recommendation' | 'survey' | '';
+  surveyPageEnteredAt: string | null;
   sessionStartTime: string;
   sessionEndTime: string | null;
 }
@@ -121,7 +127,7 @@ export function initializeParticipantData(
     conditionInfo,
     surpriseMode,
     acceptableOutfits: [],
-    favoriteOutfitBeforeAI: '',
+    expectedOutfitBeforeAI: '',
     surpriseCandidateOutfits: [],
     finalRecommendedOutfit: '',
     finalRecommendationText: '',
@@ -150,20 +156,25 @@ export function initializeParticipantData(
     clickedViewRecommendation: false,
     viewRecommendationClickedAt: null,
     finalRecommendationVersion: null,
+    viewedChatLog: false,
+    viewedChatLogAt: null,
+    viewedChatLogFrom: '',
+    surveyPageEnteredAt: null,
     sessionStartTime: new Date().toISOString(),
     sessionEndTime: null,
   };
 }
 
 export function normalizeParticipantData(raw: ParticipantData): ParticipantData {
-  const favoriteOutfitBeforeAI = raw.favoriteOutfitBeforeAI || raw.expectedOutfit || '';
+  const expectedOutfitBeforeAI =
+    raw.expectedOutfitBeforeAI || raw.favoriteOutfitBeforeAI || raw.expectedOutfit || '';
   const questionnaireResponses = {
     ...(raw.questionnaireResponses ?? {}),
   } as QuestionnaireResponses;
 
   return {
     ...raw,
-    favoriteOutfitBeforeAI,
+    expectedOutfitBeforeAI,
     questionnaireResponses,
     questionnaireCompletedAt: raw.questionnaireCompletedAt ?? null,
     completionCode: raw.completionCode ?? null,
@@ -178,6 +189,10 @@ export function normalizeParticipantData(raw: ParticipantData): ParticipantData 
     clickedViewRecommendation: raw.clickedViewRecommendation ?? false,
     viewRecommendationClickedAt: raw.viewRecommendationClickedAt ?? null,
     finalRecommendationVersion: raw.finalRecommendationVersion ?? null,
+    viewedChatLog: raw.viewedChatLog ?? false,
+    viewedChatLogAt: raw.viewedChatLogAt ?? null,
+    viewedChatLogFrom: raw.viewedChatLogFrom ?? '',
+    surveyPageEnteredAt: raw.surveyPageEnteredAt ?? null,
     sessionEndTime: raw.sessionEndTime ?? null,
     invalidInputCount: raw.invalidInputCount ?? 0,
     invalidInputs: raw.invalidInputs ?? [],

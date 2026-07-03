@@ -189,8 +189,8 @@ export default function AdminPage() {
                   <Field label="allowedOutfits" value={selectedParticipant.allowedOutfits.join(', ')} />
                   <Field label="blockedOutfits" value={selectedParticipant.blockedOutfits.join(', ')} />
                   <Field
-                    label="favoriteOutfitBeforeAI"
-                    value={selectedParticipant.favoriteOutfitBeforeAI}
+                    label="expectedOutfitBeforeAI"
+                    value={selectedParticipant.expectedOutfitBeforeAI}
                   />
                   <Field
                     label="surpriseCandidateOutfits"
@@ -246,6 +246,35 @@ export default function AdminPage() {
 
                 <Section title="推薦敘述">
                   <p className="text-sm text-gray-800">{selectedParticipant.finalRecommendationText}</p>
+                </Section>
+
+                <Section title="歷程追蹤">
+                  <Grid>
+                    <Field
+                      label="surveyPageEnteredAt"
+                      value={selectedParticipant.surveyPageEnteredAt ?? '—'}
+                    />
+                    <Field
+                      label="viewedChatLog"
+                      value={selectedParticipant.viewedChatLog ? '是' : '否'}
+                    />
+                    <Field
+                      label="viewedChatLogAt"
+                      value={selectedParticipant.viewedChatLogAt ?? '—'}
+                    />
+                    <Field
+                      label="viewedChatLogFrom"
+                      value={selectedParticipant.viewedChatLogFrom || '—'}
+                    />
+                    <Field
+                      label="chatDurationSec"
+                      value={String(selectedParticipant.chatDurationSec)}
+                    />
+                    <Field
+                      label="metMinimumChatDuration"
+                      value={selectedParticipant.metMinimumChatDuration ? '是' : '否'}
+                    />
+                  </Grid>
                 </Section>
 
                 <Section title="正式問卷">

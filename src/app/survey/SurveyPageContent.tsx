@@ -2,7 +2,9 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { RecommendationRecap } from '@/components/RecommendationRecap';
 import { SurveyForm } from '@/components/SurveyForm';
+import { getCondition } from '@/lib/conditions';
 import {
   ParticipantData,
   clearParticipantDraft,
@@ -10,7 +12,9 @@ import {
   getParticipantDraft,
   normalizeParticipantData,
   saveParticipantData,
+  saveParticipantDraft,
 } from '@/lib/dataRecorder';
+import { getOutfit } from '@/lib/outfits';
 
 export default function SurveyPageContent() {
   const router = useRouter();
@@ -27,7 +31,7 @@ export default function SurveyPageContent() {
     }
 
     const normalized = normalizeParticipantData(draft);
-    if (!normalized.favoriteOutfitBeforeAI || !normalized.finalRecommendedOutfit) {
+    if (!normalized.expectedOutfitBeforeAI || !normalized.finalRecommendedOutfit) {
       router.push('/chat');
       return;
     }
@@ -35,10 +39,37 @@ export default function SurveyPageContent() {
     if (normalized.questionnaireCompletedAt) {
       setCompletionCode(normalized.completionCode ?? '');
       setCompleted(true);
+      setParticipantData(normalized);
+      return;
+    }
+
+    if (!normalized.surveyPageEnteredAt) {
+      const withEntry: ParticipantData = {
+        ...normalized,
+        surveyPageEnteredAt: new Date().toISOString(),
+      };
+      setParticipantData(withEntry);
+      saveParticipantDraft(withEntry);
+      void saveParticipantData(withEntry);
+      return;
     }
 
     setParticipantData(normalized);
   }, [router]);
+
+  const handleViewChatLog = () => {
+    if (!participantData || participantData.viewedChatLog) return;
+
+    const updated: ParticipantData = {
+      ...participantData,
+      viewedChatLog: true,
+      viewedChatLogAt: new Date().toISOString(),
+      viewedChatLogFrom: 'survey',
+    };
+    setParticipantData(updated);
+    saveParticipantDraft(updated);
+    void saveParticipantData(updated);
+  };
 
   const handleSubmit = async (responses: Record<string, number>) => {
     if (!participantData || submitting) return;
@@ -85,6 +116,9 @@ export default function SurveyPageContent() {
     );
   }
 
+  const condition = getCondition(participantData.conditionId);
+  const outfit = getOutfit(participantData.finalRecommendedOutfit);
+
   return (
     <div className="min-h-screen bg-gray-50 px-4 py-8">
       <div className="mx-auto max-w-3xl space-y-6">
@@ -95,6 +129,16 @@ export default function SurveyPageContent() {
           </p>
           <p className="mt-1 text-xs text-gray-500">Participant ID: {participantData.participantId}</p>
         </header>
+
+        {condition && outfit && (
+          <RecommendationRecap
+            outfit={outfit}
+            condition={condition}
+            recommendationText={participantData.finalRecommendationText}
+            chatLog={participantData.chatLog}
+            onViewChatLog={handleViewChatLog}
+          />
+        )}
 
         <SurveyForm onSubmit={handleSubmit} submitting={submitting} />
       </div>

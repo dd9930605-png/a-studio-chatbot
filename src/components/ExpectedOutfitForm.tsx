@@ -5,7 +5,7 @@ import { OutfitGrid } from '@/components/OutfitGrid';
 import { getAllOutfitIds } from '@/lib/looks';
 
 interface ExpectedOutfitFormProps {
-  onSubmit: (expectedOutfit: string) => void;
+  onSubmit: (expectedOutfitBeforeAI: string) => void;
 }
 
 export function ExpectedOutfitForm({ onSubmit }: ExpectedOutfitFormProps) {
@@ -16,7 +16,7 @@ export function ExpectedOutfitForm({ onSubmit }: ExpectedOutfitFormProps) {
     event.preventDefault();
 
     if (selected.length !== 1) {
-      setError('請選擇 1 套你預期 AI 最可能推薦的穿搭。');
+      setError('請選擇 1 套您預期 AI 最可能推薦的穿搭。');
       return;
     }
 
@@ -25,13 +25,18 @@ export function ExpectedOutfitForm({ onSubmit }: ExpectedOutfitFormProps) {
   };
 
   return (
-    <div className="mx-auto max-w-6xl rounded-lg bg-white p-8 shadow-lg">
-      <h2 className="mb-2 text-xl font-bold text-gray-900">前置問題 2</h2>
-      <p className="mb-6 text-gray-700">
-        在開始使用 AI 穿搭顧問前，你預期 AI 最可能推薦哪一套面試穿搭？
+    <div className="mx-auto max-w-6xl rounded-xl border-2 border-indigo-100 bg-white p-6 shadow-lg sm:p-8">
+      <p className="text-sm font-semibold uppercase tracking-wide text-indigo-600">前置問題 2</p>
+
+      <h2 className="mt-3 text-2xl font-bold leading-snug text-gray-900 sm:text-3xl">
+        在使用 AI 穿搭顧問前，您預期 AI 最可能推薦給您的穿搭是哪一套？
+      </h2>
+
+      <p className="mt-3 text-base text-gray-600 sm:text-lg">
+        請依照您的直覺判斷 AI 會推薦哪一套，而不是選您個人最喜歡的一套。
       </p>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="mt-8 space-y-6">
         <OutfitGrid
           outfitIds={getAllOutfitIds()}
           selectedIds={selected}
@@ -45,7 +50,7 @@ export function ExpectedOutfitForm({ onSubmit }: ExpectedOutfitFormProps) {
         <button
           type="submit"
           disabled={selected.length !== 1}
-          className="w-full rounded-lg bg-gradient-to-r from-blue-500 to-purple-500 px-6 py-3 font-bold text-white transition hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
+          className="w-full rounded-lg bg-gradient-to-r from-blue-500 to-purple-500 px-6 py-3 text-lg font-bold text-white transition hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
         >
           開始 AI 穿搭顧問對話
         </button>

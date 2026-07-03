@@ -32,7 +32,7 @@ export default function ChatPageContent() {
 
   useEffect(() => {
     const draft = getParticipantDraft();
-    if (!draft || !draft.favoriteOutfitBeforeAI) {
+    if (!draft || !draft.expectedOutfitBeforeAI) {
       router.push('/pre');
       return;
     }
@@ -115,6 +115,20 @@ export default function ChatPageContent() {
     saveParticipantDraft(saved);
     void saveParticipantData(saved);
     setCurrentStep('recommendation');
+  };
+
+  const handleViewChatLog = () => {
+    if (!participantData || participantData.viewedChatLog) return;
+
+    const updated: ParticipantData = {
+      ...participantData,
+      viewedChatLog: true,
+      viewedChatLogAt: new Date().toISOString(),
+      viewedChatLogFrom: 'recommendation',
+    };
+    setParticipantData(updated);
+    saveParticipantDraft(updated);
+    void saveParticipantData(updated);
   };
 
   const handleSurveyClick = () => {
@@ -212,7 +226,9 @@ export default function ChatPageContent() {
             condition={condition}
             recommendationText={participantData.finalRecommendationText}
             participantData={participantData}
+            chatLog={participantData.chatLog}
             onSurveyClick={handleSurveyClick}
+            onViewChatLog={handleViewChatLog}
           />
         )}
       </div>
