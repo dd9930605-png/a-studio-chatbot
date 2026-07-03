@@ -4,7 +4,8 @@ import React, { useState } from 'react';
 import { Condition } from '@/lib/conditions';
 import { getConditionTheme } from '@/lib/conditionTheme';
 import { Outfit } from '@/lib/outfits';
-import { ParticipantData } from '@/lib/dataRecorder';
+import { ChatMessage, ParticipantData } from '@/lib/dataRecorder';
+import { ChatLogPanel } from '@/components/ChatLogPanel';
 import {
   buildRecommendationSections,
   countRecommendationBlocks,
@@ -16,7 +17,9 @@ interface RecommendationCardProps {
   condition: Condition;
   recommendationText: string;
   participantData: ParticipantData;
+  chatLog: ChatMessage[];
   onSurveyClick: () => void;
+  onViewChatLog?: () => void;
 }
 
 function SectionBlock({
@@ -55,7 +58,9 @@ export function RecommendationCard({
   condition,
   recommendationText,
   participantData,
+  chatLog,
   onSurveyClick,
+  onViewChatLog,
 }: RecommendationCardProps) {
   const [imageFailed, setImageFailed] = useState(false);
   const theme = getConditionTheme(condition);
@@ -187,7 +192,14 @@ export function RecommendationCard({
           )}
       </div>
 
-      <div className="mt-8 border-t pt-8">
+      <div className="mt-8 space-y-4 border-t pt-8">
+        <ChatLogPanel
+          chatLog={chatLog}
+          onToggle={(open) => {
+            if (open) onViewChatLog?.();
+          }}
+        />
+
         <button type="button" onClick={onSurveyClick} className={surveyButtonClass}>
           我已閱讀完畢，繼續填寫問卷 →
         </button>

@@ -6,7 +6,7 @@ import { buildConsultationThemesBlock } from '@/lib/chatConsultationThemes';
 export interface ExperimentChatContext {
   selectedOutfitCategory: OutfitCategory;
   allowedOutfits: string[];
-  favoriteOutfitBeforeAI: string;
+  expectedOutfitBeforeAI: string;
   finalRecommendedOutfit: string;
   surpriseMode: SurpriseMode;
 }
@@ -71,13 +71,13 @@ function buildFinalOutfitAlignmentBlock(context: ExperimentChatContext): string 
 export function buildExperimentKnowledgeBlock(context: ExperimentChatContext): string {
   const categoryLabel = context.selectedOutfitCategory === 'male' ? '男款' : '女款';
   const catalogLines = context.allowedOutfits.map(formatOutfitLine).join('\n');
-  const favorite = getOutfit(context.favoriteOutfitBeforeAI);
-  const favoriteLook = getLookNumberFromOutfitId(context.favoriteOutfitBeforeAI);
+  const expected = getOutfit(context.expectedOutfitBeforeAI);
+  const expectedLook = getLookNumberFromOutfitId(context.expectedOutfitBeforeAI);
 
-  const favoriteLine =
-    favorite && favoriteLook
-      ? `${getLookLabel(favoriteLook)}：${favorite.outfitName}`
-      : context.favoriteOutfitBeforeAI;
+  const expectedLine =
+    expected && expectedLook
+      ? `${getLookLabel(expectedLook)}：${expected.outfitName}`
+      : context.expectedOutfitBeforeAI;
 
   const modeRules =
     context.surpriseMode === 'surprise' ? buildSurpriseModeRules() : buildNoSurpriseModeRules();
@@ -100,7 +100,7 @@ ${buildFinalOutfitAlignmentBlock(context)}
 ${buildConsultationThemesBlock()}
 
 ### 使用者背景（內部參考，勿主動反覆提起）
-- 瀏覽後最喜歡的一套：${favoriteLine}
+- 瀏覽後預期 AI 會推薦的一套：${expectedLine}
 
 ${modeRules}
 

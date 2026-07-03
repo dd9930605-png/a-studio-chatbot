@@ -65,8 +65,10 @@ export function getSurpriseCandidates(
 
 export function resolveFinalOutfit(params: {
   surpriseMode: SurpriseMode;
-  favoriteOutfitBeforeAI: string;
-  /** @deprecated 請改用 favoriteOutfitBeforeAI */
+  expectedOutfitBeforeAI: string;
+  /** @deprecated 請改用 expectedOutfitBeforeAI */
+  favoriteOutfitBeforeAI?: string;
+  /** @deprecated */
   expectedOutfit?: string;
   allowedOutfits: string[];
   blockedOutfits: string[];
@@ -74,24 +76,25 @@ export function resolveFinalOutfit(params: {
   finalRecommendedOutfit: string;
   surpriseCandidateOutfits: string[];
 } {
-  const favoriteOutfitBeforeAI = params.favoriteOutfitBeforeAI || params.expectedOutfit || '';
+  const expectedOutfitBeforeAI =
+    params.expectedOutfitBeforeAI || params.favoriteOutfitBeforeAI || params.expectedOutfit || '';
   const { surpriseMode, allowedOutfits, blockedOutfits } = params;
 
-  const expectedError = validateExpectedOutfit(favoriteOutfitBeforeAI);
+  const expectedError = validateExpectedOutfit(expectedOutfitBeforeAI);
   if (expectedError) {
     throw new Error(expectedError);
   }
 
   if (surpriseMode === 'no_surprise') {
     return {
-      finalRecommendedOutfit: favoriteOutfitBeforeAI,
+      finalRecommendedOutfit: expectedOutfitBeforeAI,
       surpriseCandidateOutfits: [],
     };
   }
 
   const surpriseCandidateOutfits = getSurpriseCandidates(
     allowedOutfits,
-    favoriteOutfitBeforeAI,
+    expectedOutfitBeforeAI,
   );
 
   if (surpriseCandidateOutfits.length === 0) {

@@ -101,7 +101,7 @@ export function ChatInterface({
           experimentContext: {
             selectedOutfitCategory: participantData.selectedOutfitCategory as 'male' | 'female',
             allowedOutfits: participantData.allowedOutfits,
-            favoriteOutfitBeforeAI: participantData.favoriteOutfitBeforeAI,
+            expectedOutfitBeforeAI: participantData.expectedOutfitBeforeAI,
             finalRecommendedOutfit: participantData.finalRecommendedOutfit,
             surpriseMode: participantData.surpriseMode as 'surprise' | 'no_surprise',
           },

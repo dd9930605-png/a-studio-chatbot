@@ -21,8 +21,14 @@ export function LikertQuestion({
   const scale = getLikertScaleLabels();
 
   return (
-    <fieldset className="rounded-lg border border-gray-200 bg-white p-5">
-      <legend className="mb-4 text-base font-medium text-gray-900">{questionText}</legend>
+    <div
+      className="rounded-lg border border-gray-200 bg-white p-5"
+      role="group"
+      aria-labelledby={`${itemId}-label`}
+    >
+      <p id={`${itemId}-label`} className="mb-4 text-base font-medium leading-relaxed text-gray-900">
+        {questionText}
+      </p>
       <div className="space-y-2">
         {scale.map((option) => (
           <label
@@ -49,6 +55,6 @@ export function LikertQuestion({
       {showError && value === null && (
         <p className="mt-3 text-sm text-red-600">此題為必填，請選擇一個選項。</p>
       )}
-    </fieldset>
+    </div>
   );
 }
