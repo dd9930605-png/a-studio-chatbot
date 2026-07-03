@@ -109,9 +109,8 @@ export function resolveFinalOutfit(params: {
     throw new Error('surprise 模式下沒有符合 allowedOutfits 的候選穿搭。');
   }
 
-  const index = Math.floor(Math.random() * safeCandidates.length);
   return {
-    finalRecommendedOutfit: safeCandidates[index],
+    finalRecommendedOutfit: '',
     surpriseCandidateOutfits: safeCandidates,
   };
 }
