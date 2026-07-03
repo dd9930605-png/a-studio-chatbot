@@ -5,7 +5,7 @@ import { Condition } from '@/lib/conditions';
 import { getConditionTheme } from '@/lib/conditionTheme';
 import { Outfit } from '@/lib/outfits';
 import { ChatMessage, ParticipantData } from '@/lib/dataRecorder';
-import { ChatLogPanel } from '@/components/ChatLogPanel';
+import { RecommendationReviewTools } from '@/components/RecommendationReviewTools';
 import {
   buildRecommendationSections,
   countRecommendationBlocks,
@@ -193,11 +193,13 @@ export function RecommendationCard({
       </div>
 
       <div className="mt-8 space-y-4 border-t pt-8">
-        <ChatLogPanel
+        <RecommendationReviewTools
+          outfit={outfit}
+          condition={condition}
+          recommendationText={recommendationText}
           chatLog={chatLog}
-          onToggle={(open) => {
-            if (open) onViewChatLog?.();
-          }}
+          onViewChatLog={onViewChatLog}
+          hintText="進入問卷前，可用下方按鈕隨時回顧完整推薦說明或對話紀錄，無需離開本頁。"
         />
 
         <button type="button" onClick={onSurveyClick} className={surveyButtonClass}>

@@ -13,6 +13,11 @@ import {
 } from '@/lib/dataRecorder';
 import { getCondition } from '@/lib/conditions';
 import { getOutfit } from '@/lib/outfits';
+import { buildRecommendationText } from '@/lib/recommendationText';
+import {
+  extractPreferencesFromParticipant,
+  selectPreferenceAwareSurpriseOutfit,
+} from '@/lib/chatPreferences';
 
 type Step = 'greeting' | 'chat' | 'recommendation';
 
@@ -100,16 +105,52 @@ export default function ChatPageContent() {
 
     const exitedAt = new Date().toISOString();
     const durationSec = Math.min(Math.floor(elapsedMs / 1000), Math.floor(MAX_CHAT_MS / 1000));
-    const saved: ParticipantData = {
+
+    let nextData: ParticipantData = {
       ...participantData,
       chatPageExitedAt: exitedAt,
       chatDurationSec: durationSec,
       metMinimumChatDuration: durationSec >= Math.floor(MIN_CHAT_MS / 1000),
       clickedViewRecommendation: true,
       viewRecommendationClickedAt: exitedAt,
-      finalRecommendationVersion: `${participantData.conditionId}-${participantData.finalRecommendedOutfit}`,
       sessionEndTime: exitedAt,
     };
+
+    if (participantData.surpriseMode === 'surprise') {
+      const preferences = extractPreferencesFromParticipant(participantData);
+      const preChatOutfit =
+        participantData.surprisePreChatOutfit || participantData.finalRecommendedOutfit;
+      const { finalOutfit, adjusted } = selectPreferenceAwareSurpriseOutfit({
+        assignedOutfit: participantData.finalRecommendedOutfit,
+        candidates: participantData.surpriseCandidateOutfits,
+        preferences,
+      });
+
+      const conditionForText = getCondition(participantData.conditionId);
+      const outfitForText = getOutfit(finalOutfit);
+      const recommendationText =
+        conditionForText && outfitForText
+          ? buildRecommendationText(conditionForText, outfitForText)
+          : participantData.finalRecommendationText;
+
+      nextData = {
+        ...nextData,
+        surprisePreChatOutfit: preChatOutfit,
+        finalRecommendedOutfit: finalOutfit,
+        finalRecommendationText: recommendationText,
+        expectationMismatch:
+          participantData.expectedOutfitBeforeAI === finalOutfit ? 0 : 1,
+        chatPreferenceAdjusted: adjusted,
+        finalRecommendationVersion: `${participantData.conditionId}-${finalOutfit}`,
+      };
+    } else {
+      nextData = {
+        ...nextData,
+        finalRecommendationVersion: `${participantData.conditionId}-${participantData.finalRecommendedOutfit}`,
+      };
+    }
+
+    const saved = nextData;
 
     setParticipantData(saved);
     saveParticipantDraft(saved);

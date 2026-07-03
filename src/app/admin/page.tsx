@@ -196,10 +196,18 @@ export default function AdminPage() {
                     label="surpriseCandidateOutfits"
                     value={selectedParticipant.surpriseCandidateOutfits.join(', ') || '—'}
                   />
-                  <Field
-                    label="finalRecommendedOutfit"
-                    value={selectedParticipant.finalRecommendedOutfit}
-                  />
+                    <Field
+                      label="surprisePreChatOutfit"
+                      value={selectedParticipant.surprisePreChatOutfit || '—'}
+                    />
+                    <Field
+                      label="chatPreferenceAdjusted"
+                      value={selectedParticipant.chatPreferenceAdjusted ? '是' : '否'}
+                    />
+                    <Field
+                      label="finalRecommendedOutfit"
+                      value={selectedParticipant.finalRecommendedOutfit}
+                    />
                 </Section>
 
                 <Section title="操弄變數">

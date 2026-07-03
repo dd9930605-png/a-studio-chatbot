@@ -2,6 +2,11 @@ import { getLookLabel, getLookNumberFromOutfitId } from '@/lib/looks';
 import { getOutfit, OutfitCategory } from '@/lib/outfits';
 import { SurpriseMode } from '@/lib/outfits';
 import { buildConsultationThemesBlock } from '@/lib/chatConsultationThemes';
+import {
+  ChatPreferences,
+  formatPreferencesSummary,
+  outfitConflictsWithPreferences,
+} from '@/lib/chatPreferences';
 
 export interface ExperimentChatContext {
   selectedOutfitCategory: OutfitCategory;
@@ -9,6 +14,7 @@ export interface ExperimentChatContext {
   expectedOutfitBeforeAI: string;
   finalRecommendedOutfit: string;
   surpriseMode: SurpriseMode;
+  chatPreferences?: ChatPreferences;
 }
 
 function formatOutfitLine(outfitId: string): string {
@@ -28,6 +34,33 @@ function buildSurpriseModeRules(): string {
 - **禁止主動點名任何 Look 編號**（包含最喜歡的那套與其他套）。
 - 若使用者問「還有沒有別的」「哪套最好」，請說明會依剛才的對話在結果頁呈現最適合的一套，**不要**描述其他 Look 的具體內容。
 - 若使用者**自己主動**提到某套 Look，可簡短呼應一句，隨即把焦點帶回他的需求與感受。`;
+}
+
+function buildPreferenceTransitionBlock(context: ExperimentChatContext): string {
+  const preferences = context.chatPreferences;
+  if (
+    !preferences ||
+    (preferences.dislikedColors.length === 0 && preferences.likedColors.length === 0)
+  ) {
+    return '';
+  }
+
+  const summary = formatPreferencesSummary(preferences);
+  const finalConflicts = outfitConflictsWithPreferences(
+    context.finalRecommendedOutfit,
+    preferences,
+  );
+
+  if (context.surpriseMode === 'surprise') {
+    return `### 使用者聊天偏好（內部參考，用於轉折對話）
+- ${summary}
+- surprise 組：結果頁會依對話偏好從候選池中挑選最合適的一套；**聊天中請先理解需求，不要急著定案**。
+${finalConflicts ? `- 目前預設套裝與使用者表達的「不喜歡」可能有衝突：請**先同理並改聊抽象需求**（正式度、身形修飾、面試印象），**不要**反覆描述可能衝突的色系或單品；等使用者明確要求「那你推薦什麼」再描述結果頁套裝。` : `- 若使用者提到不喜歡的色系，請先同理，再以抽象維度（俐落、穩重、修飾身形）引導，不要硬推某一色系。`}`;
+  }
+
+  return `### 使用者聊天偏好（內部參考）
+- ${summary}
+- no_surprise 組最終推薦固定，但請透過對話讓使用者感到被理解；若偏好與最終套裝不同，先同理再帶回面試需求與該套裝的優點，不要每輪重複推銷。`;
 }
 
 function buildNoSurpriseModeRules(): string {
@@ -98,6 +131,8 @@ ${buildFinalOutfitAlignmentBlock(context)}
 - 使用者說怕胖、緊張、沒想法時，**先陪聊與釐清**，不要第一句就丟完整套裝推薦。
 
 ${buildConsultationThemesBlock()}
+
+${buildPreferenceTransitionBlock(context)}
 
 ### 使用者背景（內部參考，勿主動反覆提起）
 - 瀏覽後預期 AI 會推薦的一套：${expectedLine}
