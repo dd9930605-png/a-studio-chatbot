@@ -70,6 +70,10 @@ export interface ParticipantData {
   viewedChatLogAt: string | null;
   viewedChatLogFrom: 'recommendation' | 'survey' | '';
   surveyPageEnteredAt: string | null;
+  /** surprise 組：聊天前預先分派的穿搭（偏好過濾前） */
+  surprisePreChatOutfit?: string;
+  /** surprise 組：是否因聊天偏好而調整最終推薦 */
+  chatPreferenceAdjusted?: boolean;
   sessionStartTime: string;
   sessionEndTime: string | null;
 }
@@ -193,6 +197,8 @@ export function normalizeParticipantData(raw: ParticipantData): ParticipantData 
     viewedChatLogAt: raw.viewedChatLogAt ?? null,
     viewedChatLogFrom: raw.viewedChatLogFrom ?? '',
     surveyPageEnteredAt: raw.surveyPageEnteredAt ?? null,
+    surprisePreChatOutfit: raw.surprisePreChatOutfit ?? '',
+    chatPreferenceAdjusted: raw.chatPreferenceAdjusted ?? false,
     sessionEndTime: raw.sessionEndTime ?? null,
     invalidInputCount: raw.invalidInputCount ?? 0,
     invalidInputs: raw.invalidInputs ?? [],

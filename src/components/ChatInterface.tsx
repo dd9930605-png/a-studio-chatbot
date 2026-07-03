@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Condition } from '@/lib/conditions';
 import { getConditionTheme } from '@/lib/conditionTheme';
 import { isProactiveNoteMessage } from '@/lib/proactiveNotes';
+import { extractPreferencesFromParticipant } from '@/lib/chatPreferences';
 import { ChatMessage, ParticipantData } from '@/lib/dataRecorder';
 
 interface ChatInterfaceProps {
@@ -104,6 +105,7 @@ export function ChatInterface({
             expectedOutfitBeforeAI: participantData.expectedOutfitBeforeAI,
             finalRecommendedOutfit: participantData.finalRecommendedOutfit,
             surpriseMode: participantData.surpriseMode as 'surprise' | 'no_surprise',
+            chatPreferences: extractPreferencesFromParticipant(participantData),
           },
           condition: {
             conditionId: condition.conditionId,
