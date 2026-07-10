@@ -10,6 +10,7 @@ import {
 } from '@/lib/chatPreferences';
 import {
   buildCatalogBoundaryPromptBlock,
+  buildConversationRhythmBlock,
   buildProfessionalConsultantBlock,
 } from '@/lib/catalogBoundaries';
 
@@ -143,10 +144,11 @@ export function buildExperimentKnowledgeBlock(context: ExperimentChatContext): s
   return `## 實驗知識庫（你必須依此回答，不可違反）
 
 ### 實驗情境
-- 這是一個「韓系服飾網站 AI 穿搭顧問」的面試穿搭實驗。
+- 這是一個「韓系服飾網站 AI 穿搭顧問」的**模擬面試穿搭**實驗；使用者假想自己要去面試，**沒有真實的公司或職缺**。
 - 使用者剛瀏覽了 12 套面試穿搭（Look 1–12），並選了${categoryLabel}類別。
 - 你的任務是協助使用者釐清**面試穿著**需求，不是約會、聚餐、旅遊或其他場合。
 - 若使用者提到非面試場合，請先簡短同理，再自然帶回「面試穿搭」討論。
+- **禁止**追問公司名稱、新創或傳產、產業類型等現實求職資訊；只談穿著印象與偏好即可。
 
 ${buildFinalOutfitAlignmentBlock(context)}
 
@@ -158,6 +160,8 @@ ${buildFinalOutfitAlignmentBlock(context)}
 ${buildCatalogBoundaryPromptBlock()}
 
 ${buildProfessionalConsultantBlock()}
+
+${buildConversationRhythmBlock()}
 
 ${buildConsultationThemesBlock()}
 

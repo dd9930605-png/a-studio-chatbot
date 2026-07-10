@@ -1,6 +1,6 @@
 import { Condition } from '@/lib/conditions';
 import { ExperimentChatContext } from '@/lib/experimentKnowledge';
-import { messageMentionsUnavailableColor, CATALOG_COLOR_SUMMARY } from '@/lib/catalogBoundaries';
+import { messageMentionsUnavailableColor, messageMentionsUnavailableStyle, CATALOG_COLOR_SUMMARY } from '@/lib/catalogBoundaries';
 import { getOutfit } from '@/lib/outfits';
 
 export type ResponseStep =
@@ -392,14 +392,21 @@ export function generateFreeChatFallbackReply(
   const unavailableColor = messageMentionsUnavailableColor(trimmed);
   if (unavailableColor) {
     return applyTone(
-      `本網站目前的 12 套面試穿搭沒有${unavailableColor}單品；現有色系以${CATALOG_COLOR_SUMMARY}為主。若以面試顧問角度，我們可以從這些現有搭配中找符合您需求的方向，您想優先正式感還是清爽俐落呢？`,
+      `本網站目前的 12 套面試穿搭沒有${unavailableColor}單品；現有色系以${CATALOG_COLOR_SUMMARY}為主。若以面試顧問角度，我們可以從這些現有搭配中找符合您需求的方向——您想優先給人乾淨俐落，還是穩重專業的印象呢？`,
       condition,
     );
   }
 
-  if (/就是我選|不就是我選|我選的那套/.test(trimmed)) {
+  if (messageMentionsUnavailableStyle(trimmed)) {
     return applyTone(
-      '我理解您的意思。我們可以把重點放在面試需要的正式度與您剛才提到的偏好；完整推薦說明會在結果頁呈現，也可以繼續聊聊身形修飾或想給面試官的印象。',
+      `我理解您喜歡這類風格，但本網站 12 套面試穿搭以韓系、半正式與俐落正式為主，沒有賽車風或街頭龐克等單品。我們可以從現有色系與版型中，找適合面試、又能表現您個人用心的搭配方向。`,
+      condition,
+    );
+  }
+
+  if (/還行|行呀|可以呀|好啊|沒問題/.test(trimmed) && trimmed.length <= 8) {
+    return applyTone(
+      '了解！我會把您剛才提到的偏好記下來。互動結束後，結果頁會為您呈現最適合的面試穿搭說明；若還想聊面試前的緊張感或想給人的印象，也可以繼續說。',
       condition,
     );
   }
