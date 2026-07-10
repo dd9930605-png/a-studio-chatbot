@@ -1,15 +1,21 @@
 import { extractUserMessages, ParticipantData } from '@/lib/dataRecorder';
+import { detectBottomPreference, detectUnavailableColorRequests, outfitIsSkirt } from '@/lib/catalogBoundaries';
 import { getOutfit } from '@/lib/outfits';
 
 export type ColorKey = 'white' | 'black' | 'blue' | 'gray' | 'brown' | 'stripe';
 
 export interface ChatPreferences {
   dislikedColors: ColorKey[];
+  /** 使用者多次或強烈拒絕的色系（硬排除） */
+  strongDislikedColors: ColorKey[];
   likedColors: ColorKey[];
   wantsFormal: boolean;
   dislikesSkirt: boolean;
   dislikesJeans: boolean;
+  prefersPants: boolean;
+  prefersSkirt: boolean;
   matchedStyleKeywords: string[];
+  requestedUnavailableColors: string[];
 }
 
 const COLOR_TERMS: Record<ColorKey, string[]> = {
@@ -21,19 +27,8 @@ const COLOR_TERMS: Record<ColorKey, string[]> = {
   stripe: ['條紋'],
 };
 
-const DISLIKE_MARKERS = [
-  '不喜歡',
-  '不太喜歡',
-  '討厭',
-  '不要',
-  '忌諱',
-  '排斥',
-  '不想穿',
-  '不穿',
-  '很不喜',
-  '怕穿',
-  '討厭穿',
-];
+const STRONG_DISLIKE_MARKERS = ['討厭', '不要', '忌諱', '排斥', '不想穿', '不穿', '很不喜', '討厭穿', '絕對不要'];
+const SOFT_DISLIKE_MARKERS = ['不喜歡', '不太喜歡', '怕穿'];
 
 const LIKE_MARKERS = ['喜歡', '偏好', '想要', '希望', '傾向', '比較想', '愛'];
 
@@ -68,17 +63,50 @@ function detectColorsInText(text: string): ColorKey[] {
   return found;
 }
 
-function hasDislikeMarker(text: string): boolean {
-  return DISLIKE_MARKERS.some((marker) => text.includes(marker));
+function isStrongDislikeMessage(text: string): boolean {
+  return STRONG_DISLIKE_MARKERS.some((marker) => text.includes(marker));
+}
+
+function isAnyDislikeMessage(text: string): boolean {
+  return (
+    isStrongDislikeMessage(text) || SOFT_DISLIKE_MARKERS.some((marker) => text.includes(marker))
+  );
 }
 
 function hasLikeMarker(text: string): boolean {
-  if (hasDislikeMarker(text)) return false;
+  if (isAnyDislikeMessage(text)) return false;
   return LIKE_MARKERS.some((marker) => text.includes(marker));
+}
+
+function countColorDislikeMentions(userMessages: string[], color: ColorKey): number {
+  const terms = COLOR_TERMS[color];
+  let count = 0;
+  for (const message of userMessages) {
+    if (isAnyDislikeMessage(message) && terms.some((term) => message.includes(term))) {
+      count += 1;
+    }
+  }
+  return count;
+}
+
+export function emptyChatPreferences(): ChatPreferences {
+  return {
+    dislikedColors: [],
+    strongDislikedColors: [],
+    likedColors: [],
+    wantsFormal: false,
+    dislikesSkirt: false,
+    dislikesJeans: false,
+    prefersPants: false,
+    prefersSkirt: false,
+    matchedStyleKeywords: [],
+    requestedUnavailableColors: [],
+  };
 }
 
 export function extractChatPreferences(userMessages: string[]): ChatPreferences {
   const disliked = new Set<ColorKey>();
+  const strongDisliked = new Set<ColorKey>();
   const liked = new Set<ColorKey>();
   let wantsFormal = false;
   let dislikesSkirt = false;
@@ -88,8 +116,11 @@ export function extractChatPreferences(userMessages: string[]): ChatPreferences 
   for (const message of userMessages) {
     const colors = detectColorsInText(message);
 
-    if (colors.length > 0 && hasDislikeMarker(message)) {
+    if (colors.length > 0 && isAnyDislikeMessage(message)) {
       colors.forEach((color) => disliked.add(color));
+      if (isStrongDislikeMessage(message)) {
+        colors.forEach((color) => strongDisliked.add(color));
+      }
     } else if (colors.length > 0 && hasLikeMarker(message)) {
       colors.forEach((color) => liked.add(color));
     }
@@ -110,26 +141,43 @@ export function extractChatPreferences(userMessages: string[]): ChatPreferences 
     }
   }
 
-  disliked.forEach((color) => liked.delete(color));
+  disliked.forEach((color) => {
+    liked.delete(color);
+    if (countColorDislikeMentions(userMessages, color) >= 2) {
+      strongDisliked.add(color);
+    }
+  });
+
+  const bottomPref = detectBottomPreference(userMessages);
+  const prefersPants = bottomPref === 'pants' || dislikesSkirt;
+  const prefersSkirt = bottomPref === 'skirt' && !dislikesSkirt;
 
   return {
     dislikedColors: Array.from(disliked),
+    strongDislikedColors: Array.from(strongDisliked),
     likedColors: Array.from(liked),
     wantsFormal,
     dislikesSkirt,
     dislikesJeans,
+    prefersPants,
+    prefersSkirt,
     matchedStyleKeywords: Array.from(matchedStyleKeywords),
+    requestedUnavailableColors: detectUnavailableColorRequests(userMessages),
   };
 }
 
 export function hasExplicitPreferences(preferences: ChatPreferences): boolean {
   return (
     preferences.dislikedColors.length > 0 ||
+    preferences.strongDislikedColors.length > 0 ||
     preferences.likedColors.length > 0 ||
     preferences.wantsFormal ||
     preferences.dislikesSkirt ||
     preferences.dislikesJeans ||
-    preferences.matchedStyleKeywords.length > 0
+    preferences.prefersPants ||
+    preferences.prefersSkirt ||
+    preferences.matchedStyleKeywords.length > 0 ||
+    preferences.requestedUnavailableColors.length > 0
   );
 }
 
@@ -150,14 +198,18 @@ export function outfitConflictsWithPreferences(
 
   const text = `${outfit.outfitName} ${outfit.styleTags.join(' ')}`;
 
-  if (preferences.dislikedColors.length > 0) {
+  if (preferences.strongDislikedColors.length > 0) {
     const outfitColors = getOutfitColorKeys(outfitId);
-    if (preferences.dislikedColors.some((color) => outfitColors.includes(color))) {
+    if (preferences.strongDislikedColors.some((color) => outfitColors.includes(color))) {
       return true;
     }
   }
 
-  if (preferences.dislikesSkirt && text.includes('裙')) {
+  if ((preferences.dislikesSkirt || preferences.prefersPants) && outfitIsSkirt(outfitId)) {
+    return true;
+  }
+
+  if (preferences.prefersSkirt && !outfitIsSkirt(outfitId) && outfit.displayCategory === 'female') {
     return true;
   }
 
@@ -190,7 +242,23 @@ function scoreOutfitForPreferences(outfitId: string, preferences: ChatPreference
   }
 
   for (const disliked of preferences.dislikedColors) {
-    if (outfitColors.includes(disliked)) score -= 5;
+    if (outfitColors.includes(disliked)) score -= 2;
+  }
+
+  for (const strong of preferences.strongDislikedColors) {
+    if (outfitColors.includes(strong)) score -= 8;
+  }
+
+  if (preferences.prefersPants && outfitIsPants(outfitId)) {
+    score += 4;
+  }
+
+  if (preferences.prefersPants && outfitIsSkirt(outfitId)) {
+    score -= 10;
+  }
+
+  if (preferences.prefersSkirt && outfitIsSkirt(outfitId)) {
+    score += 4;
   }
 
   if (preferences.wantsFormal) {
@@ -206,6 +274,10 @@ function scoreOutfitForPreferences(outfitId: string, preferences: ChatPreference
   }
 
   return score;
+}
+
+function outfitIsPants(outfitId: string): boolean {
+  return !outfitIsSkirt(outfitId);
 }
 
 function pickRandom<T>(items: T[]): T {
@@ -263,14 +335,25 @@ export function extractPreferencesFromParticipant(
 export function formatPreferencesSummary(preferences: ChatPreferences): string {
   const parts: string[] = [];
 
-  if (preferences.dislikedColors.length > 0) {
-    parts.push(`不喜歡的色系：${preferences.dislikedColors.join('、')}`);
+  if (preferences.requestedUnavailableColors.length > 0) {
+    parts.push(`曾詢問庫存沒有的色系：${preferences.requestedUnavailableColors.join('、')}`);
+  }
+  if (preferences.strongDislikedColors.length > 0) {
+    parts.push(`強烈不喜歡的色系：${preferences.strongDislikedColors.join('、')}`);
+  } else if (preferences.dislikedColors.length > 0) {
+    parts.push(`較不喜歡的色系：${preferences.dislikedColors.join('、')}`);
   }
   if (preferences.likedColors.length > 0) {
     parts.push(`偏好的色系：${preferences.likedColors.join('、')}`);
   }
   if (preferences.wantsFormal) {
     parts.push('希望正式、專業感');
+  }
+  if (preferences.prefersPants) {
+    parts.push('偏好褲裝');
+  }
+  if (preferences.prefersSkirt) {
+    parts.push('偏好裙裝');
   }
   if (preferences.dislikesSkirt) {
     parts.push('不要裙裝');
@@ -283,4 +366,28 @@ export function formatPreferencesSummary(preferences: ChatPreferences): string {
   }
 
   return parts.join('；') || '（尚未明確表達偏好）';
+}
+
+export function finalOutfitConflictsWithSoftPreferences(
+  outfitId: string,
+  preferences: ChatPreferences,
+): { hasConflict: boolean; reasons: string[] } {
+  const reasons: string[] = [];
+  const outfitColors = getOutfitColorKeys(outfitId);
+
+  for (const color of preferences.dislikedColors) {
+    if (!preferences.strongDislikedColors.includes(color) && outfitColors.includes(color)) {
+      reasons.push(`含您較不喜歡的${COLOR_TERMS[color][0]}元素`);
+    }
+  }
+
+  if (preferences.prefersPants && outfitIsSkirt(outfitId)) {
+    reasons.push('您偏好褲裝，而本套為裙裝');
+  }
+
+  if (preferences.requestedUnavailableColors.length > 0) {
+    reasons.push(`網站沒有您詢問的${preferences.requestedUnavailableColors.join('、')}單品`);
+  }
+
+  return { hasConflict: reasons.length > 0, reasons };
 }

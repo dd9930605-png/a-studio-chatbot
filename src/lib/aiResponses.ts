@@ -1,5 +1,6 @@
 import { Condition } from '@/lib/conditions';
 import { ExperimentChatContext } from '@/lib/experimentKnowledge';
+import { messageMentionsUnavailableColor, CATALOG_COLOR_SUMMARY } from '@/lib/catalogBoundaries';
 import { getOutfit } from '@/lib/outfits';
 
 export type ResponseStep =
@@ -76,6 +77,13 @@ export function getDeterministicAcknowledgment(
   condition: Condition,
 ): string | null {
   const normalized = userInput.trim();
+
+  if (step === 'freeChat' && /就是我選|不就是我選|我選的那套|我選的這套/.test(normalized)) {
+    return applyTone(
+      '你對這套搭配的熟悉度我理解。接下來我會把重點放在面試場合需要的正式感，以及你剛才提到的身形、色系偏好；完整推薦會在互動結束後的結果頁呈現，我們也可以繼續聊聊你想給面試官的印象。',
+      condition,
+    );
+  }
 
   if (step === 'freeChat' && /直接推薦|立刻推薦|現在推薦|直接給結果|看結果/.test(normalized)) {
     return applyTone(
@@ -377,6 +385,21 @@ export function generateFreeChatFallbackReply(
   if (ACCESSORY_PATTERN.test(trimmed)) {
     return applyTone(
       '本網站目前僅提供上衣與下裝（及套裝內含的領帶等）組合建議，不包含配件。我們可以專注在面試服裝的版型、顏色與正式度。',
+      condition,
+    );
+  }
+
+  const unavailableColor = messageMentionsUnavailableColor(trimmed);
+  if (unavailableColor) {
+    return applyTone(
+      `本網站目前的 12 套面試穿搭沒有${unavailableColor}單品；現有色系以${CATALOG_COLOR_SUMMARY}為主。若以面試顧問角度，我們可以從這些現有搭配中找符合您需求的方向，您想優先正式感還是清爽俐落呢？`,
+      condition,
+    );
+  }
+
+  if (/就是我選|不就是我選|我選的那套/.test(trimmed)) {
+    return applyTone(
+      '我理解您的意思。我們可以把重點放在面試需要的正式度與您剛才提到的偏好；完整推薦說明會在結果頁呈現，也可以繼續聊聊身形修飾或想給面試官的印象。',
       condition,
     );
   }
