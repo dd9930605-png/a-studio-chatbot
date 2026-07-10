@@ -20,6 +20,7 @@ import {
   getRandomSurpriseMode,
   getOutfit,
 } from '@/lib/outfits';
+import { emptyChatPreferences } from '@/lib/chatPreferences';
 import { buildFinalRecommendationText } from '@/lib/surpriseRecommendation';
 import { captureSurveyEntry } from '@/lib/surveyReturn';
 
@@ -113,7 +114,7 @@ export default function PrePageContent() {
       });
 
       const outfit = finalRecommendedOutfit ? getOutfit(finalRecommendedOutfit) : undefined;
-      const preferences = { dislikedColors: [], likedColors: [], wantsFormal: false, dislikesSkirt: false, dislikesJeans: false, matchedStyleKeywords: [] };
+      const preferences = emptyChatPreferences();
       const recommendationText =
         outfit && condition
           ? buildFinalRecommendationText({

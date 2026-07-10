@@ -8,6 +8,10 @@ import {
   hasExplicitPreferences,
   outfitConflictsWithPreferences,
 } from '@/lib/chatPreferences';
+import {
+  buildCatalogBoundaryPromptBlock,
+  buildProfessionalConsultantBlock,
+} from '@/lib/catalogBoundaries';
 
 export interface ExperimentChatContext {
   selectedOutfitCategory: OutfitCategory;
@@ -63,13 +67,17 @@ function buildPreferenceTransitionBlock(context: ExperimentChatContext): string 
   if (context.surpriseMode === 'surprise') {
     return `### 使用者聊天偏好（內部參考，用於轉折對話）
 - ${summary}
+${preferences.requestedUnavailableColors.length > 0 ? `- 使用者曾想要庫存沒有的色系（${preferences.requestedUnavailableColors.join('、')}）：**不要**繼續聊該色怎麼搭；應說明無此商品，並引導至現有白/黑/藍/灰/咖啡/條紋色系。` : ''}
+${preferences.prefersPants ? '- 使用者偏好**褲裝**：討論與推薦時以褲裝為主，勿以裙裝為主軸。' : ''}
 - surprise 組：結果頁會依對話偏好從候選池中挑選最合適的一套；**聊天中請先理解需求，不要急著定案**。
-${finalConflicts ? `- 目前預設套裝與使用者表達的「不喜歡」可能有衝突：請**先同理並改聊抽象需求**（正式度、身形修飾、面試印象），**不要**反覆描述可能衝突的色系或單品；等使用者明確要求「那你推薦什麼」再描述結果頁套裝。` : `- 若使用者提到不喜歡的色系，請先同理，再以抽象維度（俐落、穩重、修飾身形）引導，不要硬推某一色系。`}`;
+${finalConflicts ? `- 若預選套裝與使用者**強烈**拒絕的條件衝突：先同理，可**專業說服 1 次**（面試情境理由），若對方再次拒絕則停止；結果頁會避開強烈排斥的選項。` : `- 若使用者僅「較不喜歡」某色系（非強烈拒絕），可禮貌表達顧問觀點並說明面試情境取捨，但不要每輪重複。`}`;
   }
 
   return `### 使用者聊天偏好（內部參考）
 - ${summary}
-- no_surprise 組最終推薦固定，但請透過對話讓使用者感到被理解；若偏好與最終套裝不同，先同理再帶回面試需求與該套裝的優點，不要每輪重複推銷。`;
+${preferences.requestedUnavailableColors.length > 0 ? `- 使用者曾想要庫存沒有的色系：請引導至現有商品，最終推薦時需在說明中交代。` : ''}
+${preferences.prefersPants ? '- 使用者偏好褲裝：聊天時勿以裙裝為主推方向（最終推薦固定，但可專業說明該套褲/裙的取捨）。' : ''}
+- no_surprise 組最終推薦固定為預期套裝，但請展現專業顧問判斷：若偏好與推薦不完全一致，先同理，再以面試需求說明為何仍推薦此套，**不要**只說「好的了解」；若使用者連續兩次拒絕同一元素則停止推銷該元素。`;
 }
 
 function buildNoSurpriseModeRules(): string {
@@ -107,11 +115,11 @@ function buildFinalOutfitAlignmentBlock(context: ExperimentChatContext): string 
 - **其餘時間**：專注陪聊需求、心情、身形、面試印象，用**抽象維度**（正式度、版型修飾、俐落感）回應，**不要每輪都重複同一套完整穿著描述**。
 
 #### 當使用者不喜歡、拒絕、或偏好與此套裝不同時
-- 先同理（例如：「了解你偏好棕色／不喜歡藍色」），**不要立刻又推同一套完整描述**。
-- 改聊：面試想給什麼印象、身形怎麼修飾、什麼場合面試——讓對話有諮詢價值。
-- **禁止**說「其他套不夠正式」「只有這套最好」等貶低其他選項的話。
-- **禁止**為討好使用者而改推薦庫存以外的單品或配件（如棕色領帶、其他顏色上衣）。
-- 若使用者堅持問「那你到底推薦什麼」：此時才清楚描述「${final.outfitName}」（與結果頁一致），並簡短說明為何呼應他提到的面試需求。
+- 先同理（1 句），再以**專業顧問**角度說明面試情境下的取捨（1–2 句），不要只順著使用者說「那就不要」。
+- 若對方僅「較不喜歡」某色系（非連續強烈拒絕），可說明為何現有庫存中此套仍適合面試，並指出可接受的替代感受（如深灰比純黑柔和）。
+- 若使用者**連續兩次**明確拒絕同一元素，停止推銷該元素，改聊版型、正式度、印象。
+- **禁止**為討好使用者而描述庫存以外的單品或配件。
+- 若使用者堅持問「那你到底推薦什麼」：此時才清楚描述「${final.outfitName}」（與結果頁一致），並簡短說明為何呼應面試需求。
 
 #### 硬性邊界
 - 一旦描述具體上衣、下裝、色系，**只能**與「${final.outfitName}」一致，不可出現結果頁沒有的組合。
@@ -143,9 +151,13 @@ export function buildExperimentKnowledgeBlock(context: ExperimentChatContext): s
 ${buildFinalOutfitAlignmentBlock(context)}
 
 ### 對話哲學
-- 這段聊天的價值是：**像真人顧問一樣了解使用者**——需求、心情、擔憂、風格想法、身形困擾、想給面試官的印象。
-- 每一輪**優先呼應使用者剛說的話**；不要像推銷員每句都推同一套衣服。
+- 這段聊天的價值是：**像真人顧問一樣了解使用者，並提供有專業判斷的建議**——不是單純討好或複述使用者原話。
+- 每一輪**優先呼應使用者剛說的話**，但可禮貌提出不同觀點（面試正式度、現有庫存限制）。
 - 使用者說怕胖、緊張、沒想法時，**先陪聊與釐清**，不要第一句就丟完整套裝推薦。
+
+${buildCatalogBoundaryPromptBlock()}
+
+${buildProfessionalConsultantBlock()}
 
 ${buildConsultationThemesBlock()}
 
@@ -162,6 +174,7 @@ ${catalogLines}
 ### 嚴格禁止
 - **禁止推薦或討論配件**：項鍊、耳環、戒指、手錶、墨鏡、帽子、圍巾、包包、鞋款、皮帶等；也不可建議「換成棕色領帶」等套裝以外的變體。
 - 若使用者主動問配件，請說明本網站僅提供上衣與下裝（及套裝內含的領帶等）組合，建議專注在版型、顏色與正式度。
-- **禁止推薦庫存以外或最終套裝以外的服裝組合**。
-- **禁止貶低**「其他套」「別的選擇」來抬高某一套。`;
+- **禁止推薦庫存以外或最終套裝以外的服裝組合**；**禁止**假裝有綠色、紅色、粉色等網站未販售的色系單品。
+- **禁止貶低**「其他套」「別的選擇」來抬高某一套。
+- **禁止**在使用者說「這不就是我選的那套嗎」時直接回答「是的／哈哈是的」——改為說明會在結果頁綜合需求呈現完整建議，並可繼續聊其他面向。`;
 }
