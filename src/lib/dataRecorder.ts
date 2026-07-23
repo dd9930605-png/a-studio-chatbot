@@ -97,9 +97,18 @@ export function generateParticipantId(): string {
   return `P-${timestamp}-${random}`;
 }
 
+/**
+ * 產生 6 位數字完成碼（100000–999999），供 SurveyCake 後測第一題填寫。
+ * 由 participantId 穩定推導，同一受試者重算會得到相同數字。
+ */
 export function generateCompletionCode(participantId: string): string {
-  const suffix = participantId.replace(/[^A-Z0-9]/gi, '').slice(-6).toUpperCase();
-  return `THX-${suffix}`;
+  let hash = 2166136261;
+  for (let i = 0; i < participantId.length; i += 1) {
+    hash ^= participantId.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  const sixDigits = (Math.abs(hash) % 900000) + 100000;
+  return String(sixDigits);
 }
 
 export function saveExperimentSession(session: ExperimentSession): void {

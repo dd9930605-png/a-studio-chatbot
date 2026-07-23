@@ -207,25 +207,35 @@ export function RecommendationCard({
         />
 
         {externalSurvey && (
-          <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950">
-            <p className="font-semibold">接下來將前往後測問卷（SurveyCake）</p>
-            <p className="mt-1 text-blue-800">
-              請先記下完成碼；若問卷有要求填寫，請貼上此碼，方便與網站資料對應。
+          <div className="rounded-xl border-2 border-amber-400 bg-amber-50 p-5 text-amber-950 shadow-sm">
+            <p className="text-center text-base font-bold">⚠️ 請務必先記下你的專屬編號</p>
+            <p className="mt-2 text-center text-sm leading-relaxed text-amber-900">
+              下一份問卷（後測）的<strong>第一題</strong>會請你填入這個數字。
+              <br />
+              請先抄在紙上、截圖，或用手機備忘錄存下來，再點下方按鈕。
             </p>
-            <p className="mt-3 text-center font-mono text-2xl font-bold tracking-wide text-blue-700">
+            <p className="mt-4 text-center text-xs font-semibold uppercase tracking-wider text-amber-700">
+              你的專屬編號
+            </p>
+            <p className="mt-1 text-center font-mono text-4xl font-black tracking-[0.2em] text-amber-950">
               {completionCode}
+            </p>
+            <p className="mt-3 text-center text-xs text-amber-800">
+              此編號用來對應你在本網站的體驗資料與後測問卷答案，請勿與他人共用。
             </p>
           </div>
         )}
 
         <button type="button" onClick={onSurveyClick} className={surveyButtonClass}>
-          {externalSurvey ? '我已閱讀完畢，前往後測問卷 →' : '我已閱讀完畢，繼續填寫問卷 →'}
+          {externalSurvey
+            ? '我已記下編號，前往後測問卷 →'
+            : '我已閱讀完畢，繼續填寫問卷 →'}
         </button>
       </div>
 
       <div className="mt-6 rounded-lg bg-gray-50 p-4 text-xs text-gray-500">
         <p>Participant ID: {participantData.participantId}</p>
-        {externalSurvey && <p>Completion Code: {completionCode}</p>}
+        {externalSurvey && <p>專屬編號: {completionCode}</p>}
         <p>
           Condition: {participantData.conditionId} · Surprise: {participantData.surpriseMode}
         </p>

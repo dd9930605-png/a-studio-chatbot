@@ -173,7 +173,11 @@ export default function ChatPageContent() {
       };
     }
 
-    const saved = nextData;
+    const saved: ParticipantData = {
+      ...nextData,
+      completionCode:
+        nextData.completionCode || generateCompletionCode(nextData.participantId),
+    };
 
     setParticipantData(saved);
     saveParticipantDraft(saved);
