@@ -82,7 +82,8 @@ async function writeSerialCounter(next: number): Promise<void> {
 
 /**
  * 發放下一個短流水號：001、002、003…
- * 以既有受試者編號與 counter 檔取 max+1，降低並發撞號機率。
+ * - 已有資料：接續最大編號 + 1（例如 001–005 都在 → 下一號 006）
+ * - 資料全清空：從頭發 001
  */
 export async function allocateNextSerialCode(): Promise<string> {
   if (!isCloudStorageConfigured()) {
@@ -90,6 +91,13 @@ export async function allocateNextSerialCode(): Promise<string> {
   }
 
   const participants = await getAllParticipantsFromCloud();
+
+  // 沒有任何受試者資料 → 編號歸零重來
+  if (participants.length === 0) {
+    await writeSerialCounter(1);
+    return formatSerialCode(1);
+  }
+
   let maxUsed = 0;
   for (const participant of participants) {
     const n = parseSerialCode(participant.completionCode);
