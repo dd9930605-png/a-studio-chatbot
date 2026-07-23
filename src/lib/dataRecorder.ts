@@ -98,8 +98,8 @@ export function generateParticipantId(): string {
 }
 
 /**
- * 產生 6 位數字完成碼（100000–999999），供 SurveyCake 後測第一題填寫。
- * 由 participantId 穩定推導，同一受試者重算會得到相同數字。
+ * 舊版相容：若未走伺服器流水號，仍盡量產出短碼（不保證全域唯一）。
+ * 正式流程請用 fetchNextSerialCode() → 001、002、003…
  */
 export function generateCompletionCode(participantId: string): string {
   let hash = 2166136261;
@@ -107,8 +107,50 @@ export function generateCompletionCode(participantId: string): string {
     hash ^= participantId.charCodeAt(i);
     hash = Math.imul(hash, 16777619);
   }
-  const sixDigits = (Math.abs(hash) % 900000) + 100000;
-  return String(sixDigits);
+  const n = (Math.abs(hash) % 999) + 1;
+  return String(n).padStart(3, '0');
+}
+
+const LOCAL_SERIAL_KEY = 'local_serial_counter';
+const SESSION_SERIAL_KEY = 'participant_serial_code';
+
+/** 向伺服器申請 001、002、003…；同一瀏覽器分頁只發一次 */
+export async function fetchNextSerialCode(): Promise<string> {
+  if (typeof window !== 'undefined') {
+    const existing = sessionStorage.getItem(SESSION_SERIAL_KEY);
+    if (existing && /^\d{1,4}$/.test(existing)) {
+      return existing.padStart(3, '0');
+    }
+  }
+
+  let code: string | null = null;
+
+  try {
+    const response = await fetch('/api/serial-code', { method: 'POST', cache: 'no-store' });
+    if (response.ok) {
+      const result = (await response.json()) as { code?: string };
+      if (result.code && /^\d{1,4}$/.test(result.code)) {
+        code = result.code.padStart(3, '0');
+      }
+    }
+  } catch {
+    // fall through to local
+  }
+
+  if (!code) {
+    if (typeof window === 'undefined') {
+      return '001';
+    }
+    const current = parseInt(localStorage.getItem(LOCAL_SERIAL_KEY) || '0', 10);
+    const next = (Number.isFinite(current) ? current : 0) + 1;
+    localStorage.setItem(LOCAL_SERIAL_KEY, String(next));
+    code = String(next).padStart(3, '0');
+  }
+
+  if (typeof window !== 'undefined') {
+    sessionStorage.setItem(SESSION_SERIAL_KEY, code);
+  }
+  return code;
 }
 
 export function saveExperimentSession(session: ExperimentSession): void {
@@ -240,6 +282,7 @@ export function getParticipantDraft(): ParticipantData | null {
 export function clearParticipantDraft(): void {
   if (typeof window === 'undefined') return;
   sessionStorage.removeItem(PARTICIPANT_DRAFT_KEY);
+  sessionStorage.removeItem(SESSION_SERIAL_KEY);
 }
 
 export function extractUserMessages(data: ParticipantData): string[] {

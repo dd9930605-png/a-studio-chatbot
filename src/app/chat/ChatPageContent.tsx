@@ -175,8 +175,7 @@ export default function ChatPageContent() {
 
     const saved: ParticipantData = {
       ...nextData,
-      completionCode:
-        nextData.completionCode || generateCompletionCode(nextData.participantId),
+      completionCode: nextData.completionCode || generateCompletionCode(nextData.participantId),
     };
 
     setParticipantData(saved);

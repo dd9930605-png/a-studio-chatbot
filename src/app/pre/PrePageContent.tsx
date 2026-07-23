@@ -9,7 +9,9 @@ import {
   generateParticipantId,
   getExperimentSession,
   initializeParticipantData,
+  fetchNextSerialCode,
   saveExperimentSession,
+  saveParticipantData,
   saveParticipantDraft,
 } from '@/lib/dataRecorder';
 import { getCondition, getRandomConditionId } from '@/lib/conditions';
@@ -67,8 +69,13 @@ export default function PrePageContent() {
       return;
     }
 
-    setParticipantData(
-      initializeParticipantData(
+    let cancelled = false;
+
+    const bootstrap = async () => {
+      const serialCode = await fetchNextSerialCode();
+      if (cancelled) return;
+
+      const base = initializeParticipantData(
         generateParticipantId(),
         session.conditionId,
         session.surpriseMode,
@@ -78,8 +85,19 @@ export default function PrePageContent() {
           anthropomorphism: cond.anthropomorphism,
           proactivity: cond.proactivity,
         },
-      ),
-    );
+      );
+
+      setParticipantData({
+        ...base,
+        completionCode: serialCode,
+      });
+    };
+
+    void bootstrap();
+
+    return () => {
+      cancelled = true;
+    };
   }, [router, searchParams]);
 
   if (!participantData) {
@@ -141,6 +159,7 @@ export default function PrePageContent() {
       };
 
       saveParticipantDraft(completed);
+      void saveParticipantData(completed);
       router.push('/chat');
     } catch (error) {
       alert(error instanceof Error ? error.message : '推薦邏輯發生錯誤');
