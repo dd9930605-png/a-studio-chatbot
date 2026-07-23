@@ -54,6 +54,8 @@ export interface SurveyParams {
   finalRecommendedOutfit: string;
   expectationMismatch: number | null;
   selectedOutfitCategory: string;
+  /** 完成碼，方便與 SurveyCake 後測對帳 */
+  completionCode?: string | null;
 }
 
 export function buildSurveyUrl(surveyUrl: string, params: SurveyParams): string | null {
@@ -73,5 +75,8 @@ export function buildSurveyUrl(surveyUrl: string, params: SurveyParams): string 
   url.searchParams.set('final', params.finalRecommendedOutfit);
   url.searchParams.set('mismatch', String(params.expectationMismatch ?? ''));
   url.searchParams.set('category', params.selectedOutfitCategory);
+  if (params.completionCode) {
+    url.searchParams.set('code', params.completionCode);
+  }
   return url.toString();
 }

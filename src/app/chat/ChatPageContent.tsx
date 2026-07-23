@@ -7,11 +7,12 @@ import { ChatInterface } from '@/components/ChatInterface';
 import { RecommendationCard } from '@/components/RecommendationCard';
 import {
   ParticipantData,
+  generateCompletionCode,
   getParticipantDraft,
   saveParticipantData,
   saveParticipantDraft,
 } from '@/lib/dataRecorder';
-import { getCondition } from '@/lib/conditions';
+import { buildSurveyUrl, getCondition } from '@/lib/conditions';
 import { getOutfit } from '@/lib/outfits';
 import { buildFinalRecommendationText } from '@/lib/surpriseRecommendation';
 import {
@@ -19,6 +20,7 @@ import {
   formatPreferencesSummary,
   selectSurpriseOutfitBPlus,
 } from '@/lib/chatPreferences';
+import { isExternalSurveyMode, resolveExternalSurveyUrl } from '@/lib/surveyMode';
 
 type Step = 'greeting' | 'chat' | 'recommendation';
 
@@ -194,12 +196,50 @@ export default function ChatPageContent() {
   };
 
   const handleSurveyClick = () => {
+    if (!participantData) return;
+
+    const completionCode =
+      participantData.completionCode || generateCompletionCode(participantData.participantId);
+    const now = new Date().toISOString();
+
+    if (isExternalSurveyMode()) {
+      const baseUrl = resolveExternalSurveyUrl(condition?.surveyContinueUrl || condition?.surveyUrl);
+      const externalUrl =
+        buildSurveyUrl(baseUrl, {
+          participantId: participantData.participantId,
+          conditionId: participantData.conditionId,
+          surpriseMode: participantData.surpriseMode,
+          expectedOutfitBeforeAI: participantData.expectedOutfitBeforeAI,
+          finalRecommendedOutfit: participantData.finalRecommendedOutfit,
+          expectationMismatch: participantData.expectationMismatch,
+          selectedOutfitCategory: participantData.selectedOutfitCategory,
+          completionCode,
+        }) || baseUrl;
+
+      const readyForSurvey: ParticipantData = {
+        ...participantData,
+        clickedSurveyButton: true,
+        surveyClickedAt: now,
+        surveyRedirectUrl: externalUrl,
+        sessionEndTime: now,
+        completionCode,
+      };
+      setParticipantData(readyForSurvey);
+      saveParticipantDraft(readyForSurvey);
+      void saveParticipantData(readyForSurvey);
+
+      // Plan B：固定導向後測 SurveyCake B（不回前導問卷 A）
+      window.location.assign(externalUrl);
+      return;
+    }
+
     const readyForSurvey: ParticipantData = {
       ...participantData,
       clickedSurveyButton: true,
-      surveyClickedAt: new Date().toISOString(),
+      surveyClickedAt: now,
       surveyRedirectUrl: '/survey',
-      sessionEndTime: new Date().toISOString(),
+      sessionEndTime: now,
+      completionCode,
     };
     setParticipantData(readyForSurvey);
     saveParticipantDraft(readyForSurvey);
