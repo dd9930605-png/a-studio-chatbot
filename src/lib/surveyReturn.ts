@@ -31,6 +31,7 @@ export interface SurveyReturnParams {
   finalRecommendedOutfit: string;
   expectationMismatch: number | null;
   selectedOutfitCategory: string;
+  completionCode?: string | null;
 }
 
 function appendTrackingParams(baseUrl: string, params: SurveyReturnParams): string {
@@ -42,6 +43,9 @@ function appendTrackingParams(baseUrl: string, params: SurveyReturnParams): stri
   url.searchParams.set('final', params.finalRecommendedOutfit);
   url.searchParams.set('mismatch', String(params.expectationMismatch ?? ''));
   url.searchParams.set('category', params.selectedOutfitCategory);
+  if (params.completionCode) {
+    url.searchParams.set('code', params.completionCode);
+  }
   return url.toString();
 }
 

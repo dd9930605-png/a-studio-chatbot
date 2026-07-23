@@ -4,13 +4,14 @@ import React, { useState } from 'react';
 import { Condition } from '@/lib/conditions';
 import { getConditionTheme } from '@/lib/conditionTheme';
 import { Outfit } from '@/lib/outfits';
-import { ChatMessage, ParticipantData } from '@/lib/dataRecorder';
+import { ChatMessage, ParticipantData, generateCompletionCode } from '@/lib/dataRecorder';
 import { RecommendationReviewTools } from '@/components/RecommendationReviewTools';
 import {
   buildRecommendationSections,
   countRecommendationBlocks,
 } from '@/lib/recommendationText';
 import { getLookLabel, getLookNumberFromOutfitId } from '@/lib/looks';
+import { isExternalSurveyMode } from '@/lib/surveyMode';
 
 interface RecommendationCardProps {
   outfit: Outfit;
@@ -71,6 +72,9 @@ export function RecommendationCard({
   );
   const sections = buildRecommendationSections(condition, outfit);
   const blockCount = countRecommendationBlocks(sections);
+  const externalSurvey = isExternalSurveyMode();
+  const completionCode =
+    participantData.completionCode || generateCompletionCode(participantData.participantId);
 
   const surveyButtonClass = theme.isPersona
     ? 'w-full rounded-xl bg-gradient-to-r from-rose-500 to-orange-500 px-6 py-4 text-lg font-bold text-white transition hover:shadow-lg'
@@ -202,13 +206,26 @@ export function RecommendationCard({
           hintText="進入問卷前，可用下方按鈕隨時回顧完整推薦說明或對話紀錄，無需離開本頁。"
         />
 
+        {externalSurvey && (
+          <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950">
+            <p className="font-semibold">接下來將前往後測問卷（SurveyCake）</p>
+            <p className="mt-1 text-blue-800">
+              請先記下完成碼；若問卷有要求填寫，請貼上此碼，方便與網站資料對應。
+            </p>
+            <p className="mt-3 text-center font-mono text-2xl font-bold tracking-wide text-blue-700">
+              {completionCode}
+            </p>
+          </div>
+        )}
+
         <button type="button" onClick={onSurveyClick} className={surveyButtonClass}>
-          我已閱讀完畢，繼續填寫問卷 →
+          {externalSurvey ? '我已閱讀完畢，前往後測問卷 →' : '我已閱讀完畢，繼續填寫問卷 →'}
         </button>
       </div>
 
       <div className="mt-6 rounded-lg bg-gray-50 p-4 text-xs text-gray-500">
         <p>Participant ID: {participantData.participantId}</p>
+        {externalSurvey && <p>Completion Code: {completionCode}</p>}
         <p>
           Condition: {participantData.conditionId} · Surprise: {participantData.surpriseMode}
         </p>
