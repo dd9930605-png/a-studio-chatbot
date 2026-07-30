@@ -78,9 +78,9 @@ function RecommendationFullContent({
       )}
 
       {blocks.map((block) => (
-        <div key={block.title} className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-          <h4 className="text-sm font-bold text-gray-900">{block.title}</h4>
-          <p className="mt-2 text-sm leading-relaxed text-gray-800 sm:text-base">{block.content}</p>
+        <div key={block.title} className="rounded-xl border border-gray-200 bg-gray-50 p-5">
+          <h4 className="text-lg font-bold text-gray-900">{block.title}</h4>
+          <p className="mt-3 text-base leading-[1.85] text-gray-900 sm:text-lg">{block.content}</p>
         </div>
       ))}
     </div>
@@ -141,13 +141,13 @@ export function RecommendationReviewTools({
 
   return (
     <>
-      <div className="rounded-lg border border-blue-100 bg-blue-50/60 px-4 py-3">
-        <p className="text-sm leading-relaxed text-blue-900">{hintText}</p>
-        <div className="mt-3 flex flex-wrap gap-2">
+      <div className="rounded-xl border-2 border-blue-300 bg-blue-50 px-5 py-5">
+        <p className="text-base font-semibold leading-relaxed text-blue-950">{hintText}</p>
+        <div className="mt-4 space-y-3">
           <button
             type="button"
             onClick={openRecommendation}
-            className="inline-flex items-center rounded-full border border-blue-300 bg-white px-4 py-2 text-sm font-semibold text-blue-800 shadow-sm transition hover:bg-blue-50"
+            className="flex w-full items-center justify-center rounded-xl bg-blue-700 px-6 py-4 text-lg font-black text-white shadow-md transition hover:bg-blue-800"
           >
             查看完整推薦說明
           </button>
@@ -155,7 +155,7 @@ export function RecommendationReviewTools({
             <button
               type="button"
               onClick={openChat}
-              className="inline-flex items-center rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-slate-50"
+              className="flex w-full items-center justify-center rounded-xl border-2 border-slate-400 bg-white px-6 py-3.5 text-base font-bold text-slate-900 transition hover:bg-slate-50"
             >
               查看對話紀錄
             </button>
