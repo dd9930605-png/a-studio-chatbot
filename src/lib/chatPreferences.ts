@@ -1,5 +1,10 @@
 import { extractUserMessages, ParticipantData } from '@/lib/dataRecorder';
-import { detectBottomPreference, detectUnavailableColorRequests, outfitIsSkirt } from '@/lib/catalogBoundaries';
+import {
+  detectBottomPreference,
+  detectUnavailableBottomRequests,
+  detectUnavailableColorRequests,
+  outfitIsSkirt,
+} from '@/lib/catalogBoundaries';
 import { getOutfit } from '@/lib/outfits';
 
 export type ColorKey = 'white' | 'black' | 'blue' | 'gray' | 'brown' | 'stripe';
@@ -28,16 +33,24 @@ export interface ChatPreferences {
   dislikesJeans: boolean;
   /** 不喜歡西褲 */
   dislikesDressPants: boolean;
+  /** 不喜歡寬褲 */
+  dislikesWidePants: boolean;
+  /** 不喜歡名稱含工裝的搭配（工裝不進加分池，厭惡時仍可排除） */
+  dislikesCargo: boolean;
   /** 不喜歡穿褲（女裝可改推裙） */
   dislikesPants: boolean;
   /** 偏好牛仔褲 */
   prefersJeans: boolean;
   /** 偏好西褲 */
   prefersDressPants: boolean;
+  /** 偏好寬褲（庫存評分池內） */
+  prefersWidePants: boolean;
   prefersPants: boolean;
   prefersSkirt: boolean;
   matchedStyleKeywords: string[];
   requestedUnavailableColors: string[];
+  /** 想要但庫存沒有／不納入評分池的下裝（如工裝褲） */
+  requestedUnavailableBottoms: string[];
 }
 
 const COLOR_TERMS: Record<ColorKey, string[]> = {
@@ -113,28 +126,59 @@ const DRESS_PANTS_LIKE_MARKERS = [
   '想穿西褲',
   '比較喜歡西褲',
 ];
+const WIDE_PANTS_DISLIKE_MARKERS = [
+  '不要寬褲',
+  '不喜歡寬褲',
+  '討厭寬褲',
+  '不穿寬褲',
+  '別推寬褲',
+];
+const WIDE_PANTS_LIKE_MARKERS = [
+  '喜歡寬褲',
+  '想要寬褲',
+  '偏好寬褲',
+  '想穿寬褲',
+  '比較喜歡寬褲',
+];
+/** 不喜歡商品名稱含「工裝」的搭配（不把工裝當加分偏好） */
+const CARGO_DISLIKE_MARKERS = [
+  '不要工裝',
+  '不喜歡工裝',
+  '討厭工裝',
+  '不穿工裝',
+  '別推工裝',
+];
 
-/** 下裝種類：依商品名稱人工標註 */
-export type BottomKind = 'jeans' | 'dress_pants' | 'pants_other' | 'skirt';
+/**
+ * 下裝種類（評分池）：僅對齊庫存實際有的類型
+ * - jeans / dress_pants / wide_pants / skirt
+ * - 工裝褲等不在此列，喜歡時只記「庫存沒有」，不加分
+ */
+export type BottomKind = 'jeans' | 'dress_pants' | 'wide_pants' | 'skirt';
 
 const OUTFIT_BOTTOM_KIND: Record<string, BottomKind> = {
   M1: 'jeans',
-  M2: 'pants_other',
+  M2: 'wide_pants', // 名稱含工裝，但評分池歸「寬褲」；「喜歡工裝」不加分
   M3: 'jeans',
   M4: 'dress_pants',
-  M5: 'pants_other',
-  M6: 'pants_other',
+  M5: 'wide_pants',
+  M6: 'wide_pants',
   F1: 'jeans',
   F2: 'dress_pants',
-  F3: 'pants_other',
-  F4: 'pants_other',
+  F3: 'wide_pants',
+  F4: 'wide_pants',
   F5: 'skirt',
   F6: 'skirt',
 };
 
 export function getOutfitBottomKind(outfitId: string): BottomKind {
   if (OUTFIT_BOTTOM_KIND[outfitId]) return OUTFIT_BOTTOM_KIND[outfitId];
-  return outfitIsSkirt(outfitId) ? 'skirt' : 'pants_other';
+  return outfitIsSkirt(outfitId) ? 'skirt' : 'wide_pants';
+}
+
+function outfitNameHasCargo(outfitId: string): boolean {
+  const outfit = getOutfit(outfitId);
+  return Boolean(outfit?.outfitName.includes('工裝'));
 }
 
 const STYLE_KEYWORDS = ['簡約', '乾淨', '俐落', '韓系', '清爽', '時尚', '知性', '親切', '自然'];
@@ -309,13 +353,17 @@ export function emptyChatPreferences(): ChatPreferences {
     dislikesSkirt: false,
     dislikesJeans: false,
     dislikesDressPants: false,
+    dislikesWidePants: false,
+    dislikesCargo: false,
     dislikesPants: false,
     prefersJeans: false,
     prefersDressPants: false,
+    prefersWidePants: false,
     prefersPants: false,
     prefersSkirt: false,
     matchedStyleKeywords: [],
     requestedUnavailableColors: [],
+    requestedUnavailableBottoms: [],
   };
 }
 
@@ -330,9 +378,12 @@ export function extractChatPreferences(userMessages: string[]): ChatPreferences 
   let dislikesSkirt = false;
   let dislikesJeans = false;
   let dislikesDressPants = false;
+  let dislikesWidePants = false;
+  let dislikesCargo = false;
   let dislikesPants = false;
   let prefersJeans = false;
   let prefersDressPants = false;
+  let prefersWidePants = false;
   const matchedStyleKeywords = new Set<string>();
 
   for (const message of userMessages) {
@@ -395,10 +446,19 @@ export function extractChatPreferences(userMessages: string[]): ChatPreferences 
     } else if (DRESS_PANTS_LIKE_MARKERS.some((marker) => message.includes(marker))) {
       prefersDressPants = true;
     }
-    // 泛指不喜歡「褲子」（不是單指牛仔／西褲）
+    if (WIDE_PANTS_DISLIKE_MARKERS.some((marker) => message.includes(marker))) {
+      dislikesWidePants = true;
+      prefersWidePants = false;
+    } else if (WIDE_PANTS_LIKE_MARKERS.some((marker) => message.includes(marker))) {
+      prefersWidePants = true;
+    }
+    if (CARGO_DISLIKE_MARKERS.some((marker) => message.includes(marker))) {
+      dislikesCargo = true;
+    }
+    // 泛指不喜歡「褲子」（不是單指牛仔／西褲／寬褲／工裝等）
     if (
       /不喜歡褲|不喜歡穿褲|不要褲|不要穿褲|討厭褲|不穿褲|不想穿褲/.test(message) &&
-      !/牛仔|西褲/.test(message)
+      !/牛仔|西褲|寬褲|工裝|運動褲|衛褲|皮褲|短褲|卡其|喇叭|緊身|內搭/.test(message)
     ) {
       dislikesPants = true;
     }
@@ -422,7 +482,11 @@ export function extractChatPreferences(userMessages: string[]): ChatPreferences 
 
   const bottomPref = detectBottomPreference(userMessages);
   const prefersPants =
-    bottomPref === 'pants' || dislikesSkirt || prefersJeans || prefersDressPants;
+    bottomPref === 'pants' ||
+    dislikesSkirt ||
+    prefersJeans ||
+    prefersDressPants ||
+    prefersWidePants;
   const prefersSkirt =
     (bottomPref === 'skirt' || dislikesPants) && !dislikesSkirt;
 
@@ -437,13 +501,17 @@ export function extractChatPreferences(userMessages: string[]): ChatPreferences 
     dislikesSkirt,
     dislikesJeans,
     dislikesDressPants,
+    dislikesWidePants,
+    dislikesCargo,
     dislikesPants,
     prefersJeans,
     prefersDressPants,
+    prefersWidePants,
     prefersPants,
     prefersSkirt,
     matchedStyleKeywords: Array.from(matchedStyleKeywords),
     requestedUnavailableColors: detectUnavailableColorRequests(userMessages),
+    requestedUnavailableBottoms: detectUnavailableBottomRequests(userMessages),
   };
 }
 
@@ -459,13 +527,17 @@ export function hasExplicitPreferences(preferences: ChatPreferences): boolean {
     preferences.dislikesSkirt ||
     preferences.dislikesJeans ||
     preferences.dislikesDressPants ||
+    preferences.dislikesWidePants ||
+    preferences.dislikesCargo ||
     preferences.dislikesPants ||
     preferences.prefersJeans ||
     preferences.prefersDressPants ||
+    preferences.prefersWidePants ||
     preferences.prefersPants ||
     preferences.prefersSkirt ||
     preferences.matchedStyleKeywords.length > 0 ||
-    preferences.requestedUnavailableColors.length > 0
+    preferences.requestedUnavailableColors.length > 0 ||
+    preferences.requestedUnavailableBottoms.length > 0
   );
 }
 
@@ -521,6 +593,12 @@ export function outfitConflictsWithPreferences(
     return true;
   }
   if (preferences.dislikesDressPants && bottomKind === 'dress_pants') {
+    return true;
+  }
+  if (preferences.dislikesWidePants && bottomKind === 'wide_pants') {
+    return true;
+  }
+  if (preferences.dislikesCargo && outfitNameHasCargo(outfitId)) {
     return true;
   }
 
@@ -605,10 +683,20 @@ function scoreOutfitForPreferences(outfitId: string, preferences: ChatPreference
   if (preferences.prefersDressPants && bottomKind === 'dress_pants') {
     score += 5;
   }
+  if (preferences.prefersWidePants && bottomKind === 'wide_pants') {
+    score += 5;
+  }
+  // 喜歡工裝褲：不在評分池加分（僅記錄庫存沒有）
   if (preferences.dislikesJeans && bottomKind === 'jeans') {
     score -= 8;
   }
   if (preferences.dislikesDressPants && bottomKind === 'dress_pants') {
+    score -= 8;
+  }
+  if (preferences.dislikesWidePants && bottomKind === 'wide_pants') {
+    score -= 8;
+  }
+  if (preferences.dislikesCargo && outfitNameHasCargo(outfitId)) {
     score -= 8;
   }
 
@@ -689,6 +777,11 @@ export function formatPreferencesSummary(preferences: ChatPreferences): string {
   if (preferences.requestedUnavailableColors.length > 0) {
     parts.push(`曾詢問庫存沒有的色系：${preferences.requestedUnavailableColors.join('、')}`);
   }
+  if (preferences.requestedUnavailableBottoms.length > 0) {
+    parts.push(
+      `曾詢問庫存沒有的下裝：${preferences.requestedUnavailableBottoms.join('、')}`,
+    );
+  }
   if (preferences.strongDislikedColors.length > 0) {
     parts.push(`強烈不喜歡的色系：${preferences.strongDislikedColors.map(colorLabel).join('、')}`);
   }
@@ -728,11 +821,20 @@ export function formatPreferencesSummary(preferences: ChatPreferences): string {
   if (preferences.prefersDressPants) {
     parts.push('偏好西褲');
   }
+  if (preferences.prefersWidePants) {
+    parts.push('偏好寬褲');
+  }
   if (preferences.dislikesJeans) {
     parts.push('不要牛仔褲');
   }
   if (preferences.dislikesDressPants) {
     parts.push('不要西褲');
+  }
+  if (preferences.dislikesWidePants) {
+    parts.push('不要寬褲');
+  }
+  if (preferences.dislikesCargo) {
+    parts.push('不要工裝風格');
   }
   if (preferences.matchedStyleKeywords.length > 0) {
     parts.push(`風格關鍵字：${preferences.matchedStyleKeywords.join('、')}`);
@@ -775,6 +877,12 @@ export function finalOutfitConflictsWithSoftPreferences(
   }
   if (preferences.dislikesDressPants && bottomKind === 'dress_pants') {
     reasons.push('本套為西褲，與您提到的偏好不同');
+  }
+  if (preferences.dislikesWidePants && bottomKind === 'wide_pants') {
+    reasons.push('本套為寬褲，與您提到的偏好不同');
+  }
+  if (preferences.dislikesCargo && outfitNameHasCargo(outfitId)) {
+    reasons.push('本套帶有工裝風格，與您提到的偏好不同');
   }
 
   if (preferences.avoidedFitLevels.includes(fitLevel)) {
@@ -822,8 +930,14 @@ export function buildPreferenceMemoryLine(
   if (preferences.prefersSkirt || preferences.dislikesPants) bits.push('偏好裙裝');
   if (preferences.prefersJeans) bits.push('喜歡牛仔褲');
   if (preferences.prefersDressPants) bits.push('喜歡西褲');
+  if (preferences.prefersWidePants) bits.push('喜歡寬褲');
   if (preferences.dislikesJeans) bits.push('不太想要牛仔褲');
   if (preferences.dislikesDressPants) bits.push('不太想要西褲');
+  if (preferences.dislikesWidePants) bits.push('不太想要寬褲');
+  if (preferences.dislikesCargo) bits.push('不太想要工裝風格');
+  if (preferences.requestedUnavailableBottoms.length > 0) {
+    bits.push(`想過${preferences.requestedUnavailableBottoms.join('、')}（網站沒有）`);
+  }
   if (preferences.matchedStyleKeywords.length > 0) {
     bits.push(`提到${preferences.matchedStyleKeywords.slice(0, 2).join('、')}風格`);
   }

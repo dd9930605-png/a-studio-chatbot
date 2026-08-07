@@ -69,7 +69,12 @@ function buildPreferenceTransitionBlock(context: ExperimentChatContext): string 
     return `### 使用者聊天偏好（內部參考，用於轉折對話）
 - ${summary}
 ${preferences.requestedUnavailableColors.length > 0 ? `- 使用者曾想要庫存沒有的色系（${preferences.requestedUnavailableColors.join('、')}）：**不要**繼續聊該色怎麼搭；應說明無此商品，並引導至現有白/黑/藍/灰/咖啡/條紋色系。` : ''}
+${preferences.requestedUnavailableBottoms.length > 0 ? `- 使用者曾想要庫存沒有的下裝（${preferences.requestedUnavailableBottoms.join('、')}）：**第一句說明沒有**，引導至牛仔褲／西褲／寬褲／及膝裙；禁止把現有商品硬說成該類型。` : ''}
 ${preferences.prefersPants ? '- 使用者偏好**褲裝**：討論與推薦時以褲裝為主，勿以裙裝為主軸。' : ''}
+${preferences.prefersJeans ? '- 使用者偏好牛仔褲：回扣此偏好，優先討論牛仔褲搭配。' : ''}
+${preferences.prefersDressPants ? '- 使用者偏好西褲：回扣此偏好，優先討論西褲搭配。' : ''}
+${preferences.prefersWidePants ? '- 使用者偏好寬褲：回扣此偏好，優先討論寬褲搭配。' : ''}
+${preferences.prefersSkirt ? '- 使用者偏好裙裝／不太想穿褲：女裝優先討論及膝裙。' : ''}
 - surprise 組：結果頁會依對話偏好從候選池中挑選最合適的一套；**聊天中請先理解需求，不要急著定案**。
 ${finalConflicts ? `- 若預選／候選與使用者拒絕的色系或條件衝突：先**回扣對方說過的話**（例如「因為您說不喜歡藍色」），可專業說服 1 次並給替代方案；若再次拒絕則停止該色。結果頁會優先避開這些色系。` : `- 若使用者表達喜歡／不喜歡：回覆時務必點名回扣（「因為您提到…所以…」），讓對方感覺偏好有被記住；同一排斥最多說服 1 次。`}`;
   }
@@ -77,6 +82,7 @@ ${finalConflicts ? `- 若預選／候選與使用者拒絕的色系或條件衝�
   return `### 使用者聊天偏好（內部參考）
 - ${summary}
 ${preferences.requestedUnavailableColors.length > 0 ? `- 使用者曾想要庫存沒有的色系：請引導至現有商品，最終推薦時需在說明中交代。` : ''}
+${preferences.requestedUnavailableBottoms.length > 0 ? `- 使用者曾想要庫存沒有的下裝（${preferences.requestedUnavailableBottoms.join('、')}）：說明沒有並引導至現有下裝類型。` : ''}
 ${preferences.prefersPants ? '- 使用者偏好褲裝：聊天時勿以裙裝為主推方向（最終推薦固定，但可專業說明該套褲/裙的取捨）。' : ''}
 - no_surprise 組最終推薦固定為預期套裝，但請展現專業顧問判斷：若偏好與推薦不完全一致，先**回扣對方說過的喜歡／不喜歡**，再以面試需求說明為何仍推薦此套；**不要**只說「好的了解」。若使用者連續兩次拒絕同一元素則停止推銷該元素。
 - 說話時多用「因為您剛才提到…，所以我…」句型。`;

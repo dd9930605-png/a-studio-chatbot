@@ -5,7 +5,7 @@ import {
   finalOutfitConflictsWithSoftPreferences,
   formatPreferencesSummary,
 } from '@/lib/chatPreferences';
-import { CATALOG_COLOR_SUMMARY } from '@/lib/catalogBoundaries';
+import { CATALOG_BOTTOM_SUMMARY, CATALOG_COLOR_SUMMARY } from '@/lib/catalogBoundaries';
 import { getOutfit } from '@/lib/outfits';
 import {
   buildRecommendationSections,
@@ -13,9 +13,20 @@ import {
   sectionsToPlainText,
 } from '@/lib/recommendationText';
 
-function buildUnavailableColorNote(preferences: ChatPreferences): string {
-  if (preferences.requestedUnavailableColors.length === 0) return '';
-  return `本網站目前沒有${preferences.requestedUnavailableColors.join('、')}的單品；以下推薦是依您提到的面試需求，從現有${CATALOG_COLOR_SUMMARY}等色系搭配中挑選的合理方案。`;
+function buildUnavailableCatalogNote(preferences: ChatPreferences): string {
+  const bits: string[] = [];
+  if (preferences.requestedUnavailableColors.length > 0) {
+    bits.push(
+      `沒有${preferences.requestedUnavailableColors.join('、')}的單品（現有色系以${CATALOG_COLOR_SUMMARY}為主）`,
+    );
+  }
+  if (preferences.requestedUnavailableBottoms.length > 0) {
+    bits.push(
+      `沒有${preferences.requestedUnavailableBottoms.join('、')}（現有下裝以${CATALOG_BOTTOM_SUMMARY}為主）`,
+    );
+  }
+  if (bits.length === 0) return '';
+  return `本網站目前${bits.join('；')}。以下推薦是依您提到的面試需求，從現有商品中挑選的合理方案。`;
 }
 
 function buildSoftConflictNote(
@@ -51,7 +62,7 @@ function buildBridgeIntro(
   const isPersona = condition.anthropomorphism === 'high';
   const parts: string[] = [];
 
-  const unavailableNote = buildUnavailableColorNote(preferences);
+  const unavailableNote = buildUnavailableCatalogNote(preferences);
   if (unavailableNote) parts.push(unavailableNote);
 
   const softConflictNote = buildSoftConflictNote(finalOutfitId, preferences);
@@ -78,7 +89,7 @@ function buildNoSurpriseBridge(
   finalOutfitId: string,
 ): string {
   const parts: string[] = [];
-  const unavailableNote = buildUnavailableColorNote(preferences);
+  const unavailableNote = buildUnavailableCatalogNote(preferences);
   if (unavailableNote) parts.push(unavailableNote);
 
   const softConflictNote = buildSoftConflictNote(finalOutfitId, preferences);
@@ -179,7 +190,7 @@ export function buildResultPreferenceIntro(
 ): string {
   const memory = buildPreferenceMemoryLine(preferences, finalOutfitId);
   const conflict = buildSoftConflictNote(finalOutfitId, preferences);
-  const unavailable = buildUnavailableColorNote(preferences);
+  const unavailable = buildUnavailableCatalogNote(preferences);
 
   const parts = [unavailable, memory, conflict].filter(Boolean);
   if (parts.length > 0) return parts.join(' ');
