@@ -7,6 +7,7 @@ import { ChatInterface } from '@/components/ChatInterface';
 import { RecommendationCard } from '@/components/RecommendationCard';
 import {
   ParticipantData,
+  clearParticipantDraft,
   generateCompletionCode,
   getParticipantDraft,
   saveParticipantData,
@@ -229,10 +230,13 @@ export default function ChatPageContent() {
       };
       setParticipantData(readyForSurvey);
       saveParticipantDraft(readyForSurvey);
-      void saveParticipantData(readyForSurvey);
 
-      // Plan B：固定導向後測 SurveyCake B（不回前導問卷 A）
-      window.location.assign(externalUrl);
+      // 先存雲端再清本機編號快取，避免同瀏覽器下一筆重用同一個 001
+      void (async () => {
+        await saveParticipantData(readyForSurvey);
+        clearParticipantDraft();
+        window.location.assign(externalUrl);
+      })();
       return;
     }
 

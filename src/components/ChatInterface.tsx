@@ -4,8 +4,8 @@ import React, { useState } from 'react';
 import { Condition } from '@/lib/conditions';
 import { getConditionTheme } from '@/lib/conditionTheme';
 import { isProactiveNoteMessage } from '@/lib/proactiveNotes';
-import { extractPreferencesFromParticipant } from '@/lib/chatPreferences';
-import { ChatMessage, ParticipantData } from '@/lib/dataRecorder';
+import { extractChatPreferences } from '@/lib/chatPreferences';
+import { ChatMessage, ParticipantData, extractUserMessages } from '@/lib/dataRecorder';
 
 interface ChatInterfaceProps {
   participantData: ParticipantData;
@@ -89,6 +89,12 @@ export function ChatInterface({
 
     const userMessage = createMessage('freeChat', 'user', answer);
 
+    // 含本輪訊息，避免偏好落後一回合（否則剛說「不喜歡黑」當下仍像沒被記住）
+    const livePreferences = extractChatPreferences([
+      ...extractUserMessages(participantData),
+      answer,
+    ]);
+
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
@@ -105,7 +111,7 @@ export function ChatInterface({
             expectedOutfitBeforeAI: participantData.expectedOutfitBeforeAI,
             finalRecommendedOutfit: participantData.finalRecommendedOutfit,
             surpriseMode: participantData.surpriseMode as 'surprise' | 'no_surprise',
-            chatPreferences: extractPreferencesFromParticipant(participantData),
+            chatPreferences: livePreferences,
           },
           condition: {
             conditionId: condition.conditionId,

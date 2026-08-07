@@ -27,6 +27,10 @@ const COLOR_TERMS: Record<ColorKey, string[]> = {
   stripe: ['條紋'],
 };
 
+function colorLabel(color: ColorKey): string {
+  return COLOR_TERMS[color][0];
+}
+
 const STRONG_DISLIKE_MARKERS = [
   '討厭',
   '不要',
@@ -128,15 +132,35 @@ export function extractChatPreferences(userMessages: string[]): ChatPreferences 
   const matchedStyleKeywords = new Set<string>();
 
   for (const message of userMessages) {
-    const colors = detectColorsInText(message);
+    // 依子句判斷極性，避免「不喜歡黑，比較喜歡白」把白色也算討厭
+    const clauses = message.split(/[，,。！？?!；;]|但是|不過|可是|而且/);
+    let clauseMatched = false;
 
-    if (colors.length > 0 && isAnyDislikeMessage(message)) {
-      colors.forEach((color) => disliked.add(color));
-      if (isStrongDislikeMessage(message)) {
-        colors.forEach((color) => strongDisliked.add(color));
+    for (const clause of clauses) {
+      const colors = detectColorsInText(clause);
+      if (colors.length === 0) continue;
+      clauseMatched = true;
+
+      if (isAnyDislikeMessage(clause)) {
+        colors.forEach((color) => disliked.add(color));
+        if (isStrongDislikeMessage(clause)) {
+          colors.forEach((color) => strongDisliked.add(color));
+        }
+      } else if (hasLikeMarker(clause)) {
+        colors.forEach((color) => liked.add(color));
       }
-    } else if (colors.length > 0 && hasLikeMarker(message)) {
-      colors.forEach((color) => liked.add(color));
+    }
+
+    if (!clauseMatched) {
+      const colors = detectColorsInText(message);
+      if (colors.length > 0 && isAnyDislikeMessage(message)) {
+        colors.forEach((color) => disliked.add(color));
+        if (isStrongDislikeMessage(message)) {
+          colors.forEach((color) => strongDisliked.add(color));
+        }
+      } else if (colors.length > 0 && hasLikeMarker(message)) {
+        colors.forEach((color) => liked.add(color));
+      }
     }
 
     if (FORMAL_MARKERS.some((marker) => message.includes(marker))) {
@@ -357,12 +381,16 @@ export function formatPreferencesSummary(preferences: ChatPreferences): string {
     parts.push(`曾詢問庫存沒有的色系：${preferences.requestedUnavailableColors.join('、')}`);
   }
   if (preferences.strongDislikedColors.length > 0) {
-    parts.push(`強烈不喜歡的色系：${preferences.strongDislikedColors.join('、')}`);
-  } else if (preferences.dislikedColors.length > 0) {
-    parts.push(`較不喜歡的色系：${preferences.dislikedColors.join('、')}`);
+    parts.push(`強烈不喜歡的色系：${preferences.strongDislikedColors.map(colorLabel).join('、')}`);
+  }
+  const softOnly = preferences.dislikedColors.filter(
+    (color) => !preferences.strongDislikedColors.includes(color),
+  );
+  if (softOnly.length > 0) {
+    parts.push(`較不喜歡的色系：${softOnly.map(colorLabel).join('、')}`);
   }
   if (preferences.likedColors.length > 0) {
-    parts.push(`偏好的色系：${preferences.likedColors.join('、')}`);
+    parts.push(`偏好的色系：${preferences.likedColors.map(colorLabel).join('、')}`);
   }
   if (preferences.wantsFormal) {
     parts.push('希望正式、專業感');
@@ -393,9 +421,15 @@ export function finalOutfitConflictsWithSoftPreferences(
   const reasons: string[] = [];
   const outfitColors = getOutfitColorKeys(outfitId);
 
+  for (const color of preferences.strongDislikedColors) {
+    if (outfitColors.includes(color)) {
+      reasons.push(`含您明確不喜歡的${colorLabel(color)}元素`);
+    }
+  }
+
   for (const color of preferences.dislikedColors) {
     if (!preferences.strongDislikedColors.includes(color) && outfitColors.includes(color)) {
-      reasons.push(`含您較不喜歡的${COLOR_TERMS[color][0]}元素`);
+      reasons.push(`含您較不喜歡的${colorLabel(color)}元素`);
     }
   }
 
@@ -408,4 +442,38 @@ export function finalOutfitConflictsWithSoftPreferences(
   }
 
   return { hasConflict: reasons.length > 0, reasons };
+}
+
+/** 回扣使用者說過的喜歡／不喜歡，產生「有被記住」的短句 */
+export function buildPreferenceMemoryLine(
+  preferences: ChatPreferences,
+  finalOutfitId?: string,
+): string {
+  if (!hasExplicitPreferences(preferences)) return '';
+
+  const bits: string[] = [];
+  if (preferences.likedColors.length > 0) {
+    bits.push(`喜歡${preferences.likedColors.map(colorLabel).join('、')}`);
+  }
+  const avoided = Array.from(
+    new Set([...preferences.strongDislikedColors, ...preferences.dislikedColors]),
+  );
+  if (avoided.length > 0) {
+    bits.push(`不太想要${avoided.map(colorLabel).join('、')}`);
+  }
+  if (preferences.prefersPants) bits.push('偏好褲裝');
+  if (preferences.prefersSkirt) bits.push('偏好裙裝');
+  if (preferences.matchedStyleKeywords.length > 0) {
+    bits.push(`提到${preferences.matchedStyleKeywords.slice(0, 2).join('、')}風格`);
+  }
+
+  if (bits.length === 0) return '';
+
+  const outfitColors = finalOutfitId ? getOutfitColorKeys(finalOutfitId) : [];
+  const avoidedHere = avoided.filter((color) => outfitColors.includes(color));
+  if (avoidedHere.length > 0) {
+    return `因為您先前提到${bits.join('、')}，我仍依面試需求說明以下搭配，並坦白這套仍含${avoidedHere.map(colorLabel).join('、')}元素。`;
+  }
+
+  return `因為您先前提到${bits.join('、')}，所以這次的推薦有把這些偏好一併納入考量。`;
 }
