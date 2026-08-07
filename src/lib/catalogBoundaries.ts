@@ -49,7 +49,7 @@ const SKIRT_LIKE_MARKERS = ['裙', '及膝裙', '半身裙'];
 
 /** 專指某一褲型（含庫存有／無），不應當成「泛指不喜歡褲子→改推裙」 */
 const SPECIFIC_PANTS_PATTERN =
-  /牛仔褲|牛仔|西褲|寬褲|工裝褲|工裝|運動褲|衛褲|皮褲|短褲|卡其褲|卡其|喇叭褲|緊身褲|內搭褲|legging|leggings|直筒褲|抽繩褲/i;
+  /牛仔褲|牛仔|西裝褲|西褲|寬褲|工裝褲|工裝|運動褲|衛褲|皮褲|短褲|卡其褲|卡其|喇叭褲|緊身褲|內搭褲|legging|leggings|直筒褲|抽繩褲/i;
 
 const PREFERS_PANTS_MARKERS = [
   '喜歡褲',
@@ -125,7 +125,7 @@ export function hasAcceptancePolarity(text: string): boolean {
 function mentionsSpecificPantsOnly(message: string): boolean {
   if (!SPECIFIC_PANTS_PATTERN.test(message)) return false;
   const withoutSpecific = message.replace(
-    /牛仔褲|牛仔|西褲|寬褲|工裝褲|工裝|運動褲|衛褲|皮褲|短褲|卡其褲|卡其|喇叭褲|緊身褲|內搭褲|legging|leggings|直筒褲|抽繩褲/gi,
+    /牛仔褲|牛仔|西裝褲|西褲|寬褲|工裝褲|工裝|運動褲|衛褲|皮褲|短褲|卡其褲|卡其|喇叭褲|緊身褲|內搭褲|legging|leggings|直筒褲|抽繩褲/gi,
     '',
   );
   return !DISLIKES_PANTS_MARKERS.some((m) => withoutSpecific.includes(m));
@@ -211,52 +211,67 @@ export function messageMentionsUnavailableBottom(message: string): string | null
 }
 
 /**
- * 褲／裙大方向：
+ * 褲／裙大方向（依子句判斷，避免「不喜歡花俏，褲子都可以」整句被當成厭惡褲）
  * - 不喜歡裙 → 褲；不喜歡（泛指）褲 → 裙
  * - 「不要牛仔褲／西褲／工裝褲…」不算泛指不喜歡褲，不因此改推裙
  * - 「褲子都可以／不要緊／不排斥」是可接受，不改推裙
  */
+function splitPreferenceClauses(message: string): string[] {
+  return message
+    .split(/[，,。！？?!；;、]|但是|不過|可是|而且|然後|接著|另外/)
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0);
+}
+
 export function detectBottomPreference(userMessages: string[]): 'pants' | 'skirt' | null {
   let pantsScore = 0;
   let skirtScore = 0;
 
   for (const message of userMessages) {
-    const hasDislike = hasDislikePolarity(message);
+    const clauses = splitPreferenceClauses(message);
+    const units = clauses.length > 0 ? clauses : [message];
 
-    if (hasDislike && /裙/.test(message) && !mentionsGeneralPantsDislike(message)) {
-      pantsScore += 3;
-    }
-    if (mentionsGeneralPantsDislike(message)) {
-      skirtScore += 3;
-    }
+    for (const unit of units) {
+      const hasDislike = hasDislikePolarity(unit);
 
-    if (PREFERS_PANTS_MARKERS.some((m) => message.includes(m))) {
-      if (hasDislike && message.includes('裙')) {
+      if (hasDislike && /裙/.test(unit) && !mentionsGeneralPantsDislike(unit)) {
         pantsScore += 3;
-      } else if (!hasDislike) {
+      }
+      if (mentionsGeneralPantsDislike(unit)) {
+        skirtScore += 3;
+      }
+
+      if (PREFERS_PANTS_MARKERS.some((m) => unit.includes(m))) {
+        if (hasDislike && unit.includes('裙')) {
+          pantsScore += 3;
+        } else if (!hasDislike) {
+          pantsScore += 2;
+        }
+      }
+
+      if (PREFERS_SKIRT_MARKERS.some((m) => unit.includes(m)) && !hasDislike) {
+        skirtScore += 2;
+      }
+
+      if (!hasDislike && PANTS_LIKE_MARKERS.some((m) => unit.includes(m))) {
+        if (/喜歡|偏好|想要|希望|愛|習慣|偏向|特別/.test(unit)) {
+          pantsScore += 1;
+        }
+      }
+
+      // 西裝褲／西褲明確偏好
+      if (!hasDislike && /西裝褲|西褲/.test(unit) && /喜歡|偏好|想要|想穿|偏向|特別/.test(unit)) {
         pantsScore += 2;
       }
-    }
 
-    if (PREFERS_SKIRT_MARKERS.some((m) => message.includes(m)) && !hasDislike) {
-      skirtScore += 2;
-    }
-
-    // 喜歡／偏好某一褲型
-    if (!hasDislike && PANTS_LIKE_MARKERS.some((m) => message.includes(m))) {
-      if (/喜歡|偏好|想要|希望|愛|習慣|偏向/.test(message)) {
+      if (
+        hasAcceptancePolarity(unit) &&
+        /褲/.test(unit) &&
+        !/裙/.test(unit) &&
+        !hasDislike
+      ) {
         pantsScore += 1;
       }
-    }
-
-    // 「褲子都可以」→ 可接受褲裝，略加分（不是推裙）
-    if (
-      hasAcceptancePolarity(message) &&
-      /褲/.test(message) &&
-      !/裙/.test(message) &&
-      !hasDislike
-    ) {
-      pantsScore += 1;
     }
   }
 

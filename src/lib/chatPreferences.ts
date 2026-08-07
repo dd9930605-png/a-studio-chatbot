@@ -103,20 +103,35 @@ const JEANS_LIKE_MARKERS = [
 ];
 const DRESS_PANTS_DISLIKE_MARKERS = [
   '不要西褲',
+  '不要西裝褲',
   '不喜歡西褲',
+  '不喜歡西裝褲',
   '討厭西褲',
+  '討厭西裝褲',
   '不穿西褲',
+  '不穿西裝褲',
   '別推西褲',
+  '別推西裝褲',
 ];
 const DRESS_PANTS_LIKE_MARKERS = [
   '喜歡西褲',
+  '喜歡西裝褲',
   '想要西褲',
+  '想要西裝褲',
   '偏好西褲',
+  '偏好西裝褲',
   '想穿西褲',
+  '想穿西裝褲',
   '比較喜歡西褲',
+  '比較喜歡西裝褲',
+  '特別喜歡西褲',
+  '特別喜歡西裝褲',
   '偏向西褲',
+  '偏向西裝褲',
   '西褲好了',
+  '西裝褲好了',
   '西褲好',
+  '西裝褲好',
 ];
 const WIDE_PANTS_DISLIKE_MARKERS = [
   '不要寬褲',
@@ -175,7 +190,7 @@ function outfitNameHasCargo(outfitId: string): boolean {
   return Boolean(outfit?.outfitName.includes('工裝'));
 }
 
-const STYLE_KEYWORDS = ['簡約', '乾淨', '俐落', '韓系', '清爽', '時尚', '知性', '親切', '自然'];
+const STYLE_KEYWORDS = ['簡約', '簡單', '乾淨', '俐落', '韓系', '清爽', '時尚', '知性', '親切', '自然'];
 
 const CASUAL_STYLE_TAGS = ['街頭', '休閒', '個性風格'];
 const FORMAL_STYLE_TAGS = ['正式專業', '俐落正式', '正式', '專業', '襯衫領帶'];
@@ -421,7 +436,13 @@ export function extractChatPreferences(userMessages: string[]): ChatPreferences 
     });
     fitPref.softAvoid.forEach((fit) => softAvoidFits.add(fit));
 
-    if (FORMAL_MARKERS.some((marker) => message.includes(marker))) {
+    if (
+      FORMAL_MARKERS.some((marker) => {
+        // 「西裝褲」含「西裝」字樣，不應單獨當成要穿西裝／很正式
+        const scoped = message.replace(/西裝褲/g, '　');
+        return scoped.includes(marker);
+      })
+    ) {
       wantsFormal = true;
     }
     if (SKIRT_DISLIKE_MARKERS.some((marker) => message.includes(marker))) {
@@ -454,7 +475,7 @@ export function extractChatPreferences(userMessages: string[]): ChatPreferences 
       /不喜歡褲|不喜歡穿褲|不要褲|不要穿褲|討厭褲|不穿褲|不想穿褲/.test(
         message.replace(/不要緊(?!身)/g, ''),
       ) &&
-      !/牛仔|西褲|寬褲|工裝|運動褲|衛褲|皮褲|短褲|卡其|喇叭|緊身|內搭/.test(message)
+      !/牛仔|西褲|西裝褲|寬褲|工裝|運動褲|衛褲|皮褲|短褲|卡其|喇叭|緊身|內搭/.test(message)
     ) {
       dislikesPants = true;
     }

@@ -182,21 +182,16 @@ export function buildFinalRecommendationPlainText(params: {
   return built.introPrefix ? `${built.introPrefix}\n\n${body}`.trim() : body;
 }
 
-/** 結果頁顯示用：回扣使用者偏好的短引言（不取代三塊說明） */
+/** 結果頁偏好框：只做簡短紀錄，詳細解釋交給下方三塊說明 */
 export function buildResultPreferenceIntro(
   preferences: ChatPreferences,
-  finalOutfitId: string,
+  _finalOutfitId: string,
   surpriseMode: 'surprise' | 'no_surprise',
 ): string {
-  const memory = buildPreferenceMemoryLine(preferences, finalOutfitId);
-  const conflict = buildSoftConflictNote(finalOutfitId, preferences);
-  const unavailable = buildUnavailableCatalogNote(preferences);
-
-  const parts = [unavailable, memory, conflict].filter(Boolean);
-  if (parts.length > 0) return parts.join(' ');
-
-  if (surpriseMode === 'surprise' && formatPreferencesSummary(preferences) !== '（尚未明確表達偏好）') {
-    return `這次推薦有參考您剛才提到的需求（${formatPreferencesSummary(preferences)}）。`;
+  const summary = formatPreferencesSummary(preferences);
+  if (summary === '（尚未明確表達偏好）') {
+    if (surpriseMode === 'surprise') return '';
+    return '';
   }
-  return '';
+  return `已記錄：${summary}。`;
 }
