@@ -3,6 +3,8 @@ import {
   detectBottomPreference,
   detectUnavailableBottomRequests,
   detectUnavailableColorRequests,
+  hasDislikePolarity,
+  hasStrongDislikePolarity,
   outfitIsSkirt,
 } from '@/lib/catalogBoundaries';
 import { getOutfit } from '@/lib/outfits';
@@ -66,24 +68,9 @@ function colorLabel(color: ColorKey): string {
   return COLOR_TERMS[color][0];
 }
 
-const STRONG_DISLIKE_MARKERS = [
-  '討厭',
-  '不要',
-  '忌諱',
-  '排斥',
-  '不想穿',
-  '不穿',
-  '很不喜',
-  '討厭穿',
-  '絕對不要',
-  '不想要',
-  '別給我',
-  '別推',
-  '拒絕',
-];
 const SOFT_DISLIKE_MARKERS = ['不喜歡', '不太喜歡', '怕穿', '較不喜歡', '沒那麼喜歡', '不太適合我'];
 
-const LIKE_MARKERS = ['喜歡', '偏好', '想要', '希望', '傾向', '比較想', '愛'];
+const LIKE_MARKERS = ['喜歡', '偏好', '想要', '希望', '傾向', '比較想', '愛', '偏向'];
 
 const FORMAL_MARKERS = [
   '正式',
@@ -111,6 +98,8 @@ const JEANS_LIKE_MARKERS = [
   '偏好牛仔',
   '想穿牛仔',
   '比較喜歡牛仔',
+  '偏向牛仔',
+  '牛仔好了',
 ];
 const DRESS_PANTS_DISLIKE_MARKERS = [
   '不要西褲',
@@ -125,6 +114,9 @@ const DRESS_PANTS_LIKE_MARKERS = [
   '偏好西褲',
   '想穿西褲',
   '比較喜歡西褲',
+  '偏向西褲',
+  '西褲好了',
+  '西褲好',
 ];
 const WIDE_PANTS_DISLIKE_MARKERS = [
   '不要寬褲',
@@ -139,6 +131,8 @@ const WIDE_PANTS_LIKE_MARKERS = [
   '偏好寬褲',
   '想穿寬褲',
   '比較喜歡寬褲',
+  '偏向寬褲',
+  '寬褲好了',
 ];
 /** 不喜歡商品名稱含「工裝」的搭配（不把工裝當加分偏好） */
 const CARGO_DISLIKE_MARKERS = [
@@ -316,13 +310,12 @@ function detectColorsInText(text: string): ColorKey[] {
 }
 
 function isStrongDislikeMessage(text: string): boolean {
-  return STRONG_DISLIKE_MARKERS.some((marker) => text.includes(marker));
+  return hasStrongDislikePolarity(text);
 }
 
 function isAnyDislikeMessage(text: string): boolean {
-  return (
-    isStrongDislikeMessage(text) || SOFT_DISLIKE_MARKERS.some((marker) => text.includes(marker))
-  );
+  if (hasDislikePolarity(text)) return true;
+  return SOFT_DISLIKE_MARKERS.some((marker) => text.includes(marker));
 }
 
 function hasLikeMarker(text: string): boolean {
@@ -457,7 +450,10 @@ export function extractChatPreferences(userMessages: string[]): ChatPreferences 
     }
     // 泛指不喜歡「褲子」（不是單指牛仔／西褲／寬褲／工裝等）
     if (
-      /不喜歡褲|不喜歡穿褲|不要褲|不要穿褲|討厭褲|不穿褲|不想穿褲/.test(message) &&
+      hasDislikePolarity(message) &&
+      /不喜歡褲|不喜歡穿褲|不要褲|不要穿褲|討厭褲|不穿褲|不想穿褲/.test(
+        message.replace(/不要緊(?!身)/g, ''),
+      ) &&
       !/牛仔|西褲|寬褲|工裝|運動褲|衛褲|皮褲|短褲|卡其|喇叭|緊身|內搭/.test(message)
     ) {
       dislikesPants = true;
@@ -481,14 +477,15 @@ export function extractChatPreferences(userMessages: string[]): ChatPreferences 
   softAvoidFits.forEach((fit) => preferredFits.delete(fit));
 
   const bottomPref = detectBottomPreference(userMessages);
+  const prefersSpecificPants = prefersJeans || prefersDressPants || prefersWidePants;
   const prefersPants =
-    bottomPref === 'pants' ||
-    dislikesSkirt ||
-    prefersJeans ||
-    prefersDressPants ||
-    prefersWidePants;
+    bottomPref === 'pants' || dislikesSkirt || prefersSpecificPants;
+  // 已明確喜歡某褲型／褲裝時，不可再標成偏好裙裝（避免「褲子都可以／不要緊」誤判）
   const prefersSkirt =
-    (bottomPref === 'skirt' || dislikesPants) && !dislikesSkirt;
+    (bottomPref === 'skirt' || dislikesPants) &&
+    !dislikesSkirt &&
+    !prefersSpecificPants &&
+    bottomPref !== 'pants';
 
   return {
     dislikedColors: Array.from(disliked),
@@ -809,7 +806,7 @@ export function formatPreferencesSummary(preferences: ChatPreferences): string {
   if (preferences.prefersPants) {
     parts.push('偏好褲裝');
   }
-  if (preferences.prefersSkirt || preferences.dislikesPants) {
+  if ((preferences.prefersSkirt || preferences.dislikesPants) && !preferences.prefersPants) {
     parts.push('偏好裙裝／不太想穿褲');
   }
   if (preferences.dislikesSkirt) {
@@ -927,7 +924,9 @@ export function buildPreferenceMemoryLine(
     bits.push(`較不想要${preferences.softAvoidFitLevels.map(fitLevelLabel).join('、')}`);
   }
   if (preferences.prefersPants) bits.push('偏好褲裝');
-  if (preferences.prefersSkirt || preferences.dislikesPants) bits.push('偏好裙裝');
+  if ((preferences.prefersSkirt || preferences.dislikesPants) && !preferences.prefersPants) {
+    bits.push('偏好裙裝');
+  }
   if (preferences.prefersJeans) bits.push('喜歡牛仔褲');
   if (preferences.prefersDressPants) bits.push('喜歡西褲');
   if (preferences.prefersWidePants) bits.push('喜歡寬褲');
