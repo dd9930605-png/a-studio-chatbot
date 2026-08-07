@@ -282,15 +282,17 @@ export function detectBottomPreference(userMessages: string[]): 'pants' | 'skirt
 
 export function buildCatalogBoundaryPromptBlock(): string {
   return `### 網站庫存色系與下裝邊界（必須遵守）
-- **網站現有 12 套面試穿搭的色系僅包含**：${CATALOG_COLOR_SUMMARY}。
-- **網站沒有**：綠色、紅色、粉色、紫色、黃色、橘色等單品；**禁止**假裝有這些顏色的衣服，也**禁止**與使用者長聊「綠色/紅色…該怎麼搭」彷彿庫存中有售。
+- **網站現有色系（有賣，不可說沒有）**：${CATALOG_COLOR_SUMMARY}。
+  - 特別注意：**咖啡色、深棕、棕色都有**（例如咖啡外搭、深棕西褲）；使用者說「棕色／咖啡色／深棕」時，**禁止**回覆「沒有棕色／沒有咖啡色」。
+- **網站沒有的色系**：綠色、紅色、粉色、紫色、黃色、橘色等；**禁止**假裝有這些顏色的衣服，也**禁止**與使用者長聊「綠色/紅色…該怎麼搭」彷彿庫存中有售。
 - 若使用者想要庫存沒有的顏色（例如綠色、紫色）或風格（例如賽車風、街頭龐克）：
   1. **第一句就要說明**本網站目前沒有該色單品；
-  2. 邀請使用者改從**現有色系**（白、黑、藍、灰、咖啡、條紋）中討論面試需求；
+  2. 邀請使用者改從**現有色系**（白、黑、藍、灰、咖啡／棕、條紋）中討論面試需求；
   3. 可建議「若重視 X 印象，現有庫存中可考慮藍/灰/白等方向」，**不要**繼續描述不存在的綠色穿搭。
-- **網站現有下裝類型僅包含**：${CATALOG_BOTTOM_SUMMARY}（評分與最終推薦只從此池挑選）。
-- **網站沒有、不可假裝有、也不可當推薦主軸的下裝**：工裝褲、運動褲、皮褲、短褲、卡其褲、喇叭褲、緊身／內搭、迷你裙、長裙、百褶裙等。
-- 若使用者喜歡或詢問上述沒有的下裝（例如工裝褲）：
+- **網站現有下裝（有賣，不可說沒有）**：${CATALOG_BOTTOM_SUMMARY}。
+  - 特別注意：**有裙子**，即女款**及膝裙**兩套（F5、F6）。使用者說「裙子／裙裝／及膝裙」時，**禁止**回覆「沒有裙子」；應直接以及膝裙方案討論。
+- **網站沒有的下裝**：工裝褲、運動褲、皮褲、短褲、卡其褲、喇叭褲、緊身／內搭、迷你裙、長裙、百褶裙等。
+- 若使用者喜歡或詢問上述沒有的下裝（例如工裝褲、迷你裙）：
   1. **第一句就要說明**本網站目前沒有該類型單品；
   2. 引導改從現有下裝（牛仔褲、西褲、寬褲、及膝裙）討論面試需求；
   3. **禁止**繼續描述不存在的工裝褲怎麼搭，也**禁止**把現有商品硬說成工裝褲來滿足對方。
@@ -298,12 +300,46 @@ export function buildCatalogBoundaryPromptBlock(): string {
 - 若使用者明確偏好**褲裝**或**不要裙裝**，聊天與最終推薦都**不可**以裙裝為主軸；須在現有褲裝搭配中討論。
 - 若使用者明確**不喜歡褲子／想穿裙子**，女款應優先討論及膝裙方案（F5、F6）。
 - 若使用者明確**不喜歡裙子**，應改推褲裝，不要再推裙。
-- 若對方說喜歡**牛仔褲／西褲／寬褲／及膝裙**其中一種，回覆與推薦應回扣該類型。
+- 若對方說喜歡**牛仔褲／西褲／寬褲／及膝裙（裙子）**其中一種，回覆與推薦應回扣該類型。
 - 「不喜歡牛仔褲／西褲／寬褲」只避開該類型，**不要**因此改推裙子。`;
 }
 
 export function messageMentionsUnavailableStyle(message: string): boolean {
   return UNAVAILABLE_STYLE_TERMS.some((term) => message.includes(term));
+}
+
+/**
+ * 修正模型誤說「沒有棕色／沒有裙子」等庫存其實有的項目。
+ * 若回覆含此類錯誤，改為簡短正確回應。
+ */
+export function correctFalseUnavailableCatalogClaims(
+  reply: string,
+  userInput: string,
+): string {
+  const input = userInput.trim();
+  const text = reply.trim();
+  if (!text) return reply;
+
+  const userMentionsBrown = /棕色|咖啡色|深棕|咖啡/.test(input);
+  const userMentionsSkirt =
+    /裙/.test(input) && !/迷你裙|長裙|拖地裙|百褶裙|短裙/.test(input);
+
+  const replyDeniesBrown =
+    /沒有[^。！？\n]{0,16}(棕色|咖啡色|深棕)/.test(text) ||
+    /(棕色|咖啡色|深棕)[^。！？\n]{0,12}沒有/.test(text);
+  const replyDeniesSkirt =
+    /沒有[^。！？\n]{0,16}裙子/.test(text) ||
+    /裙子[^。！？\n]{0,12}沒有/.test(text);
+
+  if (userMentionsBrown && replyDeniesBrown) {
+    return `本網站有咖啡色、深棕、棕色等單品，可以往這個色系討論面試穿搭。我會把您對棕色／咖啡色的偏好記下來；您比較希望整體偏穩重，還是再柔和一點呢？`;
+  }
+
+  if (userMentionsSkirt && replyDeniesSkirt) {
+    return `本網站有及膝裙的面試搭配（可作裙裝方案）。我會把您想穿裙子的偏好記下來；您比較希望給人專業俐落，還是柔和親和的印象呢？`;
+  }
+
+  return reply;
 }
 
 export function buildConversationRhythmBlock(): string {
