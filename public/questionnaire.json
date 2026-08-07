@@ -74,20 +74,20 @@
         {
           "itemId": "background_education",
           "questionType": "single_choice",
-          "questionText": "請問您目前就讀階段為？",
+          "questionText": "請問您的學歷為？",
           "required": true,
           "options": [
             {
               "value": 1,
-              "label": "大學部"
+              "label": "高中"
             },
             {
               "value": 2,
-              "label": "碩士班"
+              "label": "大學及大專"
             },
             {
               "value": 3,
-              "label": "博士班"
+              "label": "研究所"
             },
             {
               "value": 4,

@@ -33,11 +33,34 @@ interface RecommendationCardProps {
   onViewChatLog?: () => void;
 }
 
-/** 各實驗組共用的中性說明卡片（版型一致，不因條件變色） */
-function ExplanationBlock({ title, content }: { title: string; content: string }) {
+/** 各實驗組共用說明卡片：低彩度語意色，強化層級但不做強烈操弄 */
+function ExplanationBlock({
+  title,
+  content,
+  tone,
+}: {
+  title: string;
+  content: string;
+  tone: 'reason' | 'benefit' | 'caution';
+}) {
+  const toneClass = {
+    // 藍系：信任／說明（常見於專業服務與電商信任研究）
+    reason: 'border-sky-200 bg-sky-50',
+    // 青綠：正向但不採交通號誌綠
+    benefit: 'border-teal-200 bg-teal-50',
+    // 暖石色：提醒注意力，避免警示黃／橘造成威脅感
+    caution: 'border-stone-300 bg-stone-50',
+  }[tone];
+
+  const titleClass = {
+    reason: 'text-sky-950',
+    benefit: 'text-teal-950',
+    caution: 'text-stone-900',
+  }[tone];
+
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-5 sm:p-6">
-      <h4 className="text-base font-bold text-slate-900 sm:text-lg">{title}</h4>
+    <div className={`rounded-xl border p-5 sm:p-6 ${toneClass}`}>
+      <h4 className={`text-base font-bold sm:text-lg ${titleClass}`}>{title}</h4>
       <p
         className={`${recommendationSerif.className} mt-3 text-base leading-[1.85] text-slate-800 sm:text-lg sm:leading-[1.9]`}
       >
@@ -102,10 +125,14 @@ export function RecommendationCard({
   const visibleChatCount = chatLog.filter((m) => !isProactiveNoteMessage(m.message)).length;
 
   // 三塊固定說明：使用穿搭資料既有文案，版型各組相同（不改文字產生邏輯）
-  const explanationBlocks = [
-    { title: '推薦原因', content: outfit.reason },
-    { title: '這套搭配的優點', content: outfit.benefit },
-    { title: '需要注意的地方', content: outfit.limitation },
+  const explanationBlocks: {
+    title: string;
+    content: string;
+    tone: 'reason' | 'benefit' | 'caution';
+  }[] = [
+    { title: '推薦原因', content: outfit.reason, tone: 'reason' },
+    { title: '這套搭配的優點', content: outfit.benefit, tone: 'benefit' },
+    { title: '需要注意的地方', content: outfit.limitation, tone: 'caution' },
   ];
 
   // 推薦重點：短句，不取代下方三塊完整說明
@@ -168,8 +195,8 @@ export function RecommendationCard({
       )}
 
       {/* 2. 推薦重點（短，不取代完整說明） */}
-      <div className="mb-6 rounded-xl border border-slate-200 bg-slate-50 px-5 py-4 sm:mb-8">
-        <p className="text-sm font-semibold text-slate-700">推薦重點</p>
+      <div className="mb-6 rounded-xl border border-indigo-200 bg-indigo-50 px-5 py-4 sm:mb-8">
+        <p className="text-sm font-semibold text-indigo-900">推薦重點</p>
         <p className={`${recommendationSerif.className} mt-2 text-base leading-relaxed text-slate-900 sm:text-lg`}>
           {highlightText}
         </p>
@@ -185,7 +212,12 @@ export function RecommendationCard({
 
       <div className="space-y-4">
         {explanationBlocks.map((block) => (
-          <ExplanationBlock key={block.title} title={block.title} content={block.content} />
+          <ExplanationBlock
+            key={block.title}
+            title={block.title}
+            content={block.content}
+            tone={block.tone}
+          />
         ))}
       </div>
 
@@ -215,24 +247,24 @@ export function RecommendationCard({
           <button
             type="button"
             onClick={() => setHasReadExplanation(true)}
-            className="w-full rounded-xl bg-slate-900 px-6 py-4 text-lg font-bold text-white transition hover:bg-slate-800 sm:py-5 sm:text-xl"
+            className="w-full rounded-xl bg-blue-700 px-6 py-4 text-lg font-bold text-white transition hover:bg-blue-800 sm:py-5 sm:text-xl"
           >
             我已閱讀完整推薦說明
           </button>
         ) : (
           <div className="space-y-5">
-            <div className="rounded-xl border border-slate-300 bg-slate-50 px-5 py-6 text-center sm:px-6">
+            <div className="rounded-xl border border-blue-200 bg-blue-50 px-5 py-6 text-center sm:px-6">
               <p className="text-lg font-bold text-slate-950 sm:text-xl">請記下您的實驗完成編號</p>
               <p className="mt-2 text-sm leading-relaxed text-slate-700 sm:text-base">
                 體驗後問卷的第一題將要求您輸入此編號，請記下或截圖保存。
               </p>
-              <p className="mt-5 font-mono text-5xl font-black tracking-[0.2em] text-slate-950 sm:text-6xl">
+              <p className="mt-5 font-mono text-5xl font-black tracking-[0.2em] text-blue-950 sm:text-6xl">
                 {completionCode}
               </p>
               <button
                 type="button"
                 onClick={() => void handleCopyCode()}
-                className="mt-4 inline-flex items-center justify-center rounded-lg border border-slate-400 bg-white px-4 py-2 text-sm font-semibold text-slate-800 transition hover:bg-white"
+                className="mt-4 inline-flex items-center justify-center rounded-lg border border-blue-300 bg-white px-4 py-2 text-sm font-semibold text-blue-900 transition hover:bg-blue-50"
               >
                 {copyState === 'copied' ? '已複製' : copyState === 'failed' ? '複製失敗，請手動記下' : '複製編號'}
               </button>
@@ -241,7 +273,7 @@ export function RecommendationCard({
             <button
               type="button"
               onClick={onSurveyClick}
-              className="w-full rounded-xl bg-slate-900 px-6 py-4 text-lg font-bold text-white transition hover:bg-slate-800 sm:py-5 sm:text-xl"
+              className="w-full rounded-xl bg-blue-700 px-6 py-4 text-lg font-bold text-white transition hover:bg-blue-800 sm:py-5 sm:text-xl"
             >
               {externalSurvey
                 ? `我已記下編號 ${completionCode}，前往體驗後問卷 →`
