@@ -42,7 +42,48 @@ const PREFERS_PANTS_MARKERS = [
   '不穿裙',
 ];
 
-const PREFERS_SKIRT_MARKERS = ['喜歡裙', '偏好裙', '想要裙', '習慣裙', '愛穿裙', '想穿裙'];
+const PREFERS_SKIRT_MARKERS = [
+  '喜歡裙',
+  '偏好裙',
+  '想要裙',
+  '習慣裙',
+  '愛穿裙',
+  '想穿裙',
+];
+
+/** 泛指不喜歡「褲子」；不含專指牛仔褲／西褲 */
+const DISLIKES_PANTS_MARKERS = [
+  '不喜歡褲',
+  '不喜歡穿褲',
+  '不要褲',
+  '不要穿褲',
+  '討厭褲',
+  '不穿褲',
+  '不想穿褲',
+  '別推褲',
+];
+
+/** 訊息是否專指牛仔／西褲（而非泛指褲子） */
+function mentionsSpecificPantsOnly(message: string): boolean {
+  if (!/牛仔|西褲/.test(message)) return false;
+  // 去掉牛仔／西褲後，若仍有泛指「褲」厭惡語，則不算專指
+  const withoutSpecific = message.replace(/牛仔褲|牛仔|西褲/g, '');
+  return !DISLIKES_PANTS_MARKERS.some((m) => withoutSpecific.includes(m));
+}
+
+function mentionsGeneralPantsDislike(message: string): boolean {
+  if (!/不喜歡|討厭|不要|不穿|排斥|不想穿/.test(message)) return false;
+  if (!/褲/.test(message)) return false;
+  if (/裙/.test(message) && !DISLIKES_PANTS_MARKERS.some((m) => message.includes(m))) {
+    return false;
+  }
+  // 「不要牛仔褲／西褲」不算泛指不喜歡褲子
+  if (mentionsSpecificPantsOnly(message)) return false;
+  return (
+    DISLIKES_PANTS_MARKERS.some((m) => message.includes(m)) ||
+    (/褲/.test(message) && !/牛仔|西褲/.test(message))
+  );
+}
 
 export function outfitIsSkirt(outfitId: string): boolean {
   const outfit = getOutfit(outfitId);
@@ -75,12 +116,26 @@ export function messageMentionsUnavailableColor(message: string): string | null 
   return null;
 }
 
+/**
+ * 褲／裙大方向：
+ * - 不喜歡裙 → 褲；不喜歡（泛指）褲 → 裙
+ * - 「不要牛仔褲／西褲」不算泛指不喜歡褲，不因此改推裙
+ */
 export function detectBottomPreference(userMessages: string[]): 'pants' | 'skirt' | null {
   let pantsScore = 0;
   let skirtScore = 0;
 
   for (const message of userMessages) {
-    const hasDislike = /不喜歡|討厭|不要|不穿|排斥/.test(message);
+    const hasDislike = /不喜歡|討厭|不要|不穿|排斥|不想穿/.test(message);
+
+    // 不喜歡裙 → 偏向褲
+    if (hasDislike && /裙/.test(message) && !mentionsGeneralPantsDislike(message)) {
+      pantsScore += 3;
+    }
+    // 泛指不喜歡褲 → 偏向裙（排除專指牛仔／西褲）
+    if (mentionsGeneralPantsDislike(message)) {
+      skirtScore += 3;
+    }
 
     if (PREFERS_PANTS_MARKERS.some((m) => message.includes(m))) {
       if (hasDislike && message.includes('裙')) {
@@ -115,7 +170,11 @@ export function buildCatalogBoundaryPromptBlock(): string {
   2. 邀請使用者改從**現有色系**（白、黑、藍、灰、咖啡、條紋）中討論面試需求；
   3. 可建議「若重視 X 印象，現有庫存中可考慮藍/灰/白等方向」，**不要**繼續描述不存在的綠色穿搭。
 - 女款下裝包含**褲裝**與**及膝裙**（F5、F6）；男款與中性款以**褲裝**為主。
-- 若使用者明確偏好**褲裝**或**不要裙裝**，聊天與最終推薦都**不可**以裙裝為主軸；須在現有褲裝搭配中討論。`;
+- 若使用者明確偏好**褲裝**或**不要裙裝**，聊天與最終推薦都**不可**以裙裝為主軸；須在現有褲裝搭配中討論。
+- 若使用者明確**不喜歡褲子／想穿裙子**，女款應優先討論及膝裙方案（F5、F6）。
+- 若使用者明確**不喜歡裙子**，應改推褲裝，不要再推裙。
+- 面試情境下褲型以**牛仔褲、西褲**為主討論；若對方說喜歡其中一種，回覆與推薦應回扣該褲型。
+- 「不喜歡牛仔褲」或「不喜歡西褲」只避開該褲型，**不要**因此改推裙子。`;
 }
 
 export function messageMentionsUnavailableStyle(message: string): boolean {

@@ -26,6 +26,14 @@ export interface ChatPreferences {
   wantsFormal: boolean;
   dislikesSkirt: boolean;
   dislikesJeans: boolean;
+  /** 不喜歡西褲 */
+  dislikesDressPants: boolean;
+  /** 不喜歡穿褲（女裝可改推裙） */
+  dislikesPants: boolean;
+  /** 偏好牛仔褲 */
+  prefersJeans: boolean;
+  /** 偏好西褲 */
+  prefersDressPants: boolean;
   prefersPants: boolean;
   prefersSkirt: boolean;
   matchedStyleKeywords: string[];
@@ -77,7 +85,57 @@ const FORMAL_MARKERS = [
 ];
 
 const SKIRT_DISLIKE_MARKERS = ['不要裙', '不喜歡裙', '討厭裙', '不穿裙', '別推裙'];
-const JEANS_DISLIKE_MARKERS = ['不要牛仔', '不喜歡牛仔', '討厭牛仔', '不穿牛仔'];
+const JEANS_DISLIKE_MARKERS = [
+  '不要牛仔',
+  '不喜歡牛仔',
+  '討厭牛仔',
+  '不穿牛仔',
+  '別推牛仔',
+];
+const JEANS_LIKE_MARKERS = [
+  '喜歡牛仔',
+  '想要牛仔',
+  '偏好牛仔',
+  '想穿牛仔',
+  '比較喜歡牛仔',
+];
+const DRESS_PANTS_DISLIKE_MARKERS = [
+  '不要西褲',
+  '不喜歡西褲',
+  '討厭西褲',
+  '不穿西褲',
+  '別推西褲',
+];
+const DRESS_PANTS_LIKE_MARKERS = [
+  '喜歡西褲',
+  '想要西褲',
+  '偏好西褲',
+  '想穿西褲',
+  '比較喜歡西褲',
+];
+
+/** 下裝種類：依商品名稱人工標註 */
+export type BottomKind = 'jeans' | 'dress_pants' | 'pants_other' | 'skirt';
+
+const OUTFIT_BOTTOM_KIND: Record<string, BottomKind> = {
+  M1: 'jeans',
+  M2: 'pants_other',
+  M3: 'jeans',
+  M4: 'dress_pants',
+  M5: 'pants_other',
+  M6: 'pants_other',
+  F1: 'jeans',
+  F2: 'dress_pants',
+  F3: 'pants_other',
+  F4: 'pants_other',
+  F5: 'skirt',
+  F6: 'skirt',
+};
+
+export function getOutfitBottomKind(outfitId: string): BottomKind {
+  if (OUTFIT_BOTTOM_KIND[outfitId]) return OUTFIT_BOTTOM_KIND[outfitId];
+  return outfitIsSkirt(outfitId) ? 'skirt' : 'pants_other';
+}
 
 const STYLE_KEYWORDS = ['簡約', '乾淨', '俐落', '韓系', '清爽', '時尚', '知性', '親切', '自然'];
 
@@ -250,6 +308,10 @@ export function emptyChatPreferences(): ChatPreferences {
     wantsFormal: false,
     dislikesSkirt: false,
     dislikesJeans: false,
+    dislikesDressPants: false,
+    dislikesPants: false,
+    prefersJeans: false,
+    prefersDressPants: false,
     prefersPants: false,
     prefersSkirt: false,
     matchedStyleKeywords: [],
@@ -267,6 +329,10 @@ export function extractChatPreferences(userMessages: string[]): ChatPreferences 
   let wantsFormal = false;
   let dislikesSkirt = false;
   let dislikesJeans = false;
+  let dislikesDressPants = false;
+  let dislikesPants = false;
+  let prefersJeans = false;
+  let prefersDressPants = false;
   const matchedStyleKeywords = new Set<string>();
 
   for (const message of userMessages) {
@@ -319,6 +385,22 @@ export function extractChatPreferences(userMessages: string[]): ChatPreferences 
     }
     if (JEANS_DISLIKE_MARKERS.some((marker) => message.includes(marker))) {
       dislikesJeans = true;
+      prefersJeans = false;
+    } else if (JEANS_LIKE_MARKERS.some((marker) => message.includes(marker))) {
+      prefersJeans = true;
+    }
+    if (DRESS_PANTS_DISLIKE_MARKERS.some((marker) => message.includes(marker))) {
+      dislikesDressPants = true;
+      prefersDressPants = false;
+    } else if (DRESS_PANTS_LIKE_MARKERS.some((marker) => message.includes(marker))) {
+      prefersDressPants = true;
+    }
+    // 泛指不喜歡「褲子」（不是單指牛仔／西褲）
+    if (
+      /不喜歡褲|不喜歡穿褲|不要褲|不要穿褲|討厭褲|不穿褲|不想穿褲/.test(message) &&
+      !/牛仔|西褲/.test(message)
+    ) {
+      dislikesPants = true;
     }
     for (const keyword of STYLE_KEYWORDS) {
       if (message.includes(keyword)) {
@@ -339,8 +421,10 @@ export function extractChatPreferences(userMessages: string[]): ChatPreferences 
   softAvoidFits.forEach((fit) => preferredFits.delete(fit));
 
   const bottomPref = detectBottomPreference(userMessages);
-  const prefersPants = bottomPref === 'pants' || dislikesSkirt;
-  const prefersSkirt = bottomPref === 'skirt' && !dislikesSkirt;
+  const prefersPants =
+    bottomPref === 'pants' || dislikesSkirt || prefersJeans || prefersDressPants;
+  const prefersSkirt =
+    (bottomPref === 'skirt' || dislikesPants) && !dislikesSkirt;
 
   return {
     dislikedColors: Array.from(disliked),
@@ -352,6 +436,10 @@ export function extractChatPreferences(userMessages: string[]): ChatPreferences 
     wantsFormal,
     dislikesSkirt,
     dislikesJeans,
+    dislikesDressPants,
+    dislikesPants,
+    prefersJeans,
+    prefersDressPants,
     prefersPants,
     prefersSkirt,
     matchedStyleKeywords: Array.from(matchedStyleKeywords),
@@ -370,6 +458,10 @@ export function hasExplicitPreferences(preferences: ChatPreferences): boolean {
     preferences.wantsFormal ||
     preferences.dislikesSkirt ||
     preferences.dislikesJeans ||
+    preferences.dislikesDressPants ||
+    preferences.dislikesPants ||
+    preferences.prefersJeans ||
+    preferences.prefersDressPants ||
     preferences.prefersPants ||
     preferences.prefersSkirt ||
     preferences.matchedStyleKeywords.length > 0 ||
@@ -419,11 +511,16 @@ export function outfitConflictsWithPreferences(
     return true;
   }
 
-  if (preferences.prefersSkirt && !outfitIsSkirt(outfitId) && outfit.displayCategory === 'female') {
+  // 不喜歡褲子／想穿裙：有裙可選時排除褲裝
+  if ((preferences.prefersSkirt || preferences.dislikesPants) && !outfitIsSkirt(outfitId)) {
     return true;
   }
 
-  if (preferences.dislikesJeans && text.includes('牛仔')) {
+  const bottomKind = getOutfitBottomKind(outfitId);
+  if (preferences.dislikesJeans && bottomKind === 'jeans') {
+    return true;
+  }
+  if (preferences.dislikesDressPants && bottomKind === 'dress_pants') {
     return true;
   }
 
@@ -494,7 +591,25 @@ function scoreOutfitForPreferences(outfitId: string, preferences: ChatPreference
   }
 
   if (preferences.prefersSkirt && outfitIsSkirt(outfitId)) {
-    score += 4;
+    score += 5;
+  }
+
+  if (preferences.dislikesPants && outfitIsSkirt(outfitId)) {
+    score += 5;
+  }
+
+  const bottomKind = getOutfitBottomKind(outfitId);
+  if (preferences.prefersJeans && bottomKind === 'jeans') {
+    score += 5;
+  }
+  if (preferences.prefersDressPants && bottomKind === 'dress_pants') {
+    score += 5;
+  }
+  if (preferences.dislikesJeans && bottomKind === 'jeans') {
+    score -= 8;
+  }
+  if (preferences.dislikesDressPants && bottomKind === 'dress_pants') {
+    score -= 8;
   }
 
   if (preferences.wantsFormal) {
@@ -601,14 +716,23 @@ export function formatPreferencesSummary(preferences: ChatPreferences): string {
   if (preferences.prefersPants) {
     parts.push('偏好褲裝');
   }
-  if (preferences.prefersSkirt) {
-    parts.push('偏好裙裝');
+  if (preferences.prefersSkirt || preferences.dislikesPants) {
+    parts.push('偏好裙裝／不太想穿褲');
   }
   if (preferences.dislikesSkirt) {
     parts.push('不要裙裝');
   }
+  if (preferences.prefersJeans) {
+    parts.push('偏好牛仔褲');
+  }
+  if (preferences.prefersDressPants) {
+    parts.push('偏好西褲');
+  }
   if (preferences.dislikesJeans) {
     parts.push('不要牛仔褲');
+  }
+  if (preferences.dislikesDressPants) {
+    parts.push('不要西褲');
   }
   if (preferences.matchedStyleKeywords.length > 0) {
     parts.push(`風格關鍵字：${preferences.matchedStyleKeywords.join('、')}`);
@@ -639,6 +763,18 @@ export function finalOutfitConflictsWithSoftPreferences(
 
   if (preferences.prefersPants && outfitIsSkirt(outfitId)) {
     reasons.push('您偏好褲裝，而本套為裙裝');
+  }
+
+  if ((preferences.prefersSkirt || preferences.dislikesPants) && !outfitIsSkirt(outfitId)) {
+    reasons.push('您較想穿裙裝，而本套為褲裝');
+  }
+
+  const bottomKind = getOutfitBottomKind(outfitId);
+  if (preferences.dislikesJeans && bottomKind === 'jeans') {
+    reasons.push('本套含牛仔褲，與您提到的偏好不同');
+  }
+  if (preferences.dislikesDressPants && bottomKind === 'dress_pants') {
+    reasons.push('本套為西褲，與您提到的偏好不同');
   }
 
   if (preferences.avoidedFitLevels.includes(fitLevel)) {
@@ -683,7 +819,11 @@ export function buildPreferenceMemoryLine(
     bits.push(`較不想要${preferences.softAvoidFitLevels.map(fitLevelLabel).join('、')}`);
   }
   if (preferences.prefersPants) bits.push('偏好褲裝');
-  if (preferences.prefersSkirt) bits.push('偏好裙裝');
+  if (preferences.prefersSkirt || preferences.dislikesPants) bits.push('偏好裙裝');
+  if (preferences.prefersJeans) bits.push('喜歡牛仔褲');
+  if (preferences.prefersDressPants) bits.push('喜歡西褲');
+  if (preferences.dislikesJeans) bits.push('不太想要牛仔褲');
+  if (preferences.dislikesDressPants) bits.push('不太想要西褲');
   if (preferences.matchedStyleKeywords.length > 0) {
     bits.push(`提到${preferences.matchedStyleKeywords.slice(0, 2).join('、')}風格`);
   }
