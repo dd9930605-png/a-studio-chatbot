@@ -68,7 +68,7 @@ function buildPreferenceTransitionBlock(context: ExperimentChatContext): string 
   if (context.surpriseMode === 'surprise') {
     return `### 使用者聊天偏好（內部參考，用於轉折對話）
 - ${summary}
-${preferences.requestedUnavailableColors.length > 0 ? `- 使用者曾想要庫存沒有的色系（${preferences.requestedUnavailableColors.join('、')}）：**不要**繼續聊該色怎麼搭；應說明無此商品，並引導至現有白/黑/藍/灰/咖啡/條紋色系。` : ''}
+${preferences.requestedUnavailableColors.length > 0 ? `- 使用者曾想要庫存沒有的色系（${preferences.requestedUnavailableColors.join('、')}）：**不要**繼續聊該色怎麼搭；應說明無此商品，並引導至現有白/黑/藍/灰/咖啡／棕/條紋色系。` : ''}
 ${preferences.requestedUnavailableBottoms.length > 0 ? `- 使用者曾想要庫存沒有的下裝（${preferences.requestedUnavailableBottoms.join('、')}）：**第一句說明沒有**，引導至牛仔褲／西褲／寬褲／及膝裙；禁止把現有商品硬說成該類型。` : ''}
 ${preferences.prefersPants ? '- 使用者偏好**褲裝**：討論與推薦時以褲裝為主，勿以裙裝為主軸。' : ''}
 ${preferences.prefersJeans ? '- 使用者偏好牛仔褲：回扣此偏好，優先討論牛仔褲搭配。' : ''}
@@ -183,9 +183,10 @@ ${modeRules}
 ${catalogLines}
 
 ### 嚴格禁止
-- **禁止推薦或討論配件**：項鍊、耳環、戒指、手錶、墨鏡、帽子、圍巾、包包、鞋款、皮帶等；也不可建議「換成棕色領帶」等套裝以外的變體。
+- **禁止推薦或討論配件**：項鍊、耳環、戒指、手錶、墨鏡、帽子、圍巾、包包、鞋款、皮帶等；也不可建議自行更換領帶顏色或加配件。
 - 若使用者主動問配件，請說明本網站僅提供上衣與下裝（及套裝內含的領帶等）組合，建議專注在版型、顏色與正式度。
-- **禁止推薦庫存以外或最終套裝以外的服裝組合**；**禁止**假裝有綠色、紅色、粉色等網站未販售的色系單品。
+- **禁止推薦庫存以外或最終套裝以外的服裝組合**；**禁止**假裝有綠色、紅色、粉色、紫色、黃色、橘色等網站未販售的色系單品。
+- **禁止**對庫存「有」的項目說沒有：咖啡色／深棕／棕色、及膝裙（裙子）皆有售，不可回覆「沒有棕色」「沒有裙子」。
 - **禁止貶低**「其他套」「別的選擇」來抬高某一套。
 - **禁止**在使用者說「這不就是我選的那套嗎」時直接回答「是的／哈哈是的」——改為說明會在結果頁綜合需求呈現完整建議，並可繼續聊其他面向。`;
 }

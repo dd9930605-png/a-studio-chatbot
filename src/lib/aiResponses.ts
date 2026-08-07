@@ -405,6 +405,38 @@ export function generateFreeChatFallbackReply(
     );
   }
 
+  // 庫存「有」的項目：避免 fallback 也誤說沒有
+  if (
+    /喜歡|想要|偏好|想穿|有沒有/.test(trimmed) &&
+    /棕色|咖啡色|深棕/.test(trimmed) &&
+    !messageMentionsUnavailableColor(trimmed)
+  ) {
+    return applyTone(
+      `了解，您提到棕色／咖啡色系。本網站有咖啡色、深棕等單品，面試場合也很常見；我會把這個色系偏好記下來。您比較希望整體偏穩重，還是再柔和一點呢？`,
+      condition,
+    );
+  }
+
+  if (
+    /喜歡|想要|偏好|想穿|有沒有/.test(trimmed) &&
+    /裙/.test(trimmed) &&
+    !/迷你裙|長裙|拖地裙|百褶裙|短裙/.test(trimmed) &&
+    !messageMentionsUnavailableBottom(trimmed)
+  ) {
+    return applyTone(
+      `了解，您想走裙裝方向。本網站有及膝裙的面試搭配，正式又俐落；我會以此作為偏好參考。您比較希望給人專業俐落，還是柔和親和的印象呢？`,
+      condition,
+    );
+  }
+
+  // 詢問有哪些顏色：固定回完整清單，避免模型漏列深棕／棕色
+  if (/還有什麼.*色|有哪些.*色|什麼.*顏色|商品顏色|現有.*色系|顏色有哪些/.test(trimmed)) {
+    return applyTone(
+      `目前網站這 12 套面試穿搭的色系包含：${CATALOG_COLOR_SUMMARY}。您對其中哪一個色系特別有興趣呢？`,
+      condition,
+    );
+  }
+
   if (messageMentionsUnavailableStyle(trimmed)) {
     return applyTone(
       `我理解您喜歡這類風格，但本網站 12 套面試穿搭以韓系、半正式與俐落正式為主，沒有賽車風或街頭龐克等單品。我們可以從現有色系與版型中，找適合面試、又能表現您個人用心的搭配方向。`,
