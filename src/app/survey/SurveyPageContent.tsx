@@ -75,7 +75,7 @@ export default function SurveyPageContent() {
     if (!participantData || submitting) return;
 
     setSubmitting(true);
-    const code = generateCompletionCode(participantData.participantId);
+    const code = participantData.completionCode || generateCompletionCode(participantData.participantId);
     const completedData: ParticipantData = {
       ...participantData,
       questionnaireResponses: responses,

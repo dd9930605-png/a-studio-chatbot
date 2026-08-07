@@ -10,6 +10,10 @@ import { isExternalSurveyMode } from '@/lib/surveyMode';
 import { OverlayModal } from '@/components/OverlayModal';
 import { OutfitGrid } from '@/components/OutfitGrid';
 import { isProactiveNoteMessage } from '@/lib/proactiveNotes';
+import {
+  extractPreferencesFromParticipant,
+} from '@/lib/chatPreferences';
+import { buildResultPreferenceIntro } from '@/lib/surpriseRecommendation';
 
 const recommendationSans = Noto_Sans_TC({
   subsets: ['latin'],
@@ -123,6 +127,12 @@ export function RecommendationCard({
     participantData.completionCode || generateCompletionCode(participantData.participantId);
 
   const visibleChatCount = chatLog.filter((m) => !isProactiveNoteMessage(m.message)).length;
+  const preferences = extractPreferencesFromParticipant(participantData);
+  const preferenceIntro = buildResultPreferenceIntro(
+    preferences,
+    outfit.outfitId,
+    (participantData.surpriseMode as 'surprise' | 'no_surprise') || 'no_surprise',
+  );
 
   // 三塊固定說明：使用穿搭資料既有文案，版型各組相同（不改文字產生邏輯）
   const explanationBlocks: {
@@ -135,9 +145,10 @@ export function RecommendationCard({
     { title: '需要注意的地方', content: outfit.limitation, tone: 'caution' },
   ];
 
-  // 推薦重點：短句，不取代下方三塊完整說明
-  const highlightText =
-    displayTags.includes('韓系') && displayTags.includes('層次穿搭')
+  // 推薦重點：短句，不取代下方三塊完整說明；有對話偏好時優先回扣
+  const highlightText = preferenceIntro
+    ? preferenceIntro
+    : displayTags.includes('韓系') && displayTags.includes('層次穿搭')
       ? '這套穿搭兼顧韓系風格、層次感與面試場合需求。'
       : displayTags.length >= 2
         ? `這套穿搭兼顧${displayTags[0]}、${displayTags[1]}與面試場合需求。`
@@ -194,9 +205,11 @@ export function RecommendationCard({
         </div>
       )}
 
-      {/* 2. 推薦重點（短，不取代完整說明） */}
+      {/* 2. 推薦重點（短，優先回扣對話偏好） */}
       <div className="mb-6 rounded-xl border border-indigo-200 bg-indigo-50 px-5 py-4 sm:mb-8">
-        <p className="text-sm font-semibold text-indigo-900">推薦重點</p>
+        <p className="text-sm font-semibold text-indigo-900">
+          {preferenceIntro ? '依您剛才提到的偏好' : '推薦重點'}
+        </p>
         <p className={`${recommendationSerif.className} mt-2 text-base leading-relaxed text-slate-900 sm:text-lg`}>
           {highlightText}
         </p>

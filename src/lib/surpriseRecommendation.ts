@@ -1,6 +1,7 @@
 import { Condition } from '@/lib/conditions';
 import {
   ChatPreferences,
+  buildPreferenceMemoryLine,
   finalOutfitConflictsWithSoftPreferences,
   formatPreferencesSummary,
 } from '@/lib/chatPreferences';
@@ -29,6 +30,17 @@ function buildSoftConflictNote(
   return `關於您的偏好（${reasons.join('；')}），以面試顧問的角度，我仍建議以下搭配，原因是它在正式度與整體印象上較符合面試情境，且仍在網站現有商品範圍內。`;
 }
 
+function buildNamedPreferenceClause(preferences: ChatPreferences): string {
+  const memory = buildPreferenceMemoryLine(preferences);
+  if (memory) return `${memory}`;
+
+  const preferenceSummary = formatPreferencesSummary(preferences);
+  if (preferenceSummary !== '（尚未明確表達偏好）') {
+    return `綜合您剛才提到的需求（${preferenceSummary}），`;
+  }
+  return '綜合您剛才在對話中分享的面試需求，';
+}
+
 function buildBridgeIntro(
   condition: Condition,
   preferences: ChatPreferences,
@@ -45,13 +57,7 @@ function buildBridgeIntro(
   const softConflictNote = buildSoftConflictNote(finalOutfitId, preferences);
   if (softConflictNote) parts.push(softConflictNote);
 
-  const preferenceSummary = formatPreferencesSummary(preferences);
-  const preferenceClause =
-    preferences.likedColors.length > 0 || preferences.matchedStyleKeywords.length > 0
-      ? `您提到偏好${preferences.likedColors.length > 0 ? '特定色系' : ''}${preferences.matchedStyleKeywords.length > 0 ? '、' + preferences.matchedStyleKeywords.slice(0, 2).join('、') + '風格' : ''}，`
-      : preferenceSummary !== '（尚未明確表達偏好）'
-        ? `綜合您剛才提到的需求（${preferenceSummary}），`
-        : '綜合您剛才在對話中分享的面試需求，';
+  const preferenceClause = buildNamedPreferenceClause(preferences);
 
   if (isPersona) {
     parts.push(
@@ -78,6 +84,9 @@ function buildNoSurpriseBridge(
   const softConflictNote = buildSoftConflictNote(finalOutfitId, preferences);
   if (softConflictNote) parts.push(softConflictNote);
 
+  const memory = buildPreferenceMemoryLine(preferences, finalOutfitId);
+  if (memory) parts.push(memory);
+
   if (parts.length === 0) return '';
 
   const isPersona = condition.anthropomorphism === 'high';
@@ -100,29 +109,24 @@ export function buildFinalRecommendationText(params: {
   const outfit = getOutfit(params.finalOutfitId);
   if (!outfit) return '';
 
-  const baseText = buildRecommendationText(params.condition, outfit);
-  const isMismatch = params.expectedOutfitBeforeAI !== params.finalOutfitId;
-
-  if (params.surpriseMode === 'surprise' && isMismatch) {
+  if (params.surpriseMode === 'surprise') {
     const bridge = buildBridgeIntro(
       params.condition,
       params.preferences,
       params.expectedOutfitBeforeAI,
       params.finalOutfitId,
     );
-    return `${bridge}\n\n${baseText}`;
+    const body = buildRecommendationText(params.condition, outfit);
+    return `${bridge}\n\n${body}`.trim();
   }
 
-  const noSurpriseBridge = buildNoSurpriseBridge(
+  const bridge = buildNoSurpriseBridge(
     params.condition,
     params.preferences,
     params.finalOutfitId,
   );
-  if (noSurpriseBridge) {
-    return `${noSurpriseBridge}\n\n${baseText}`;
-  }
-
-  return baseText;
+  const body = buildRecommendationText(params.condition, outfit);
+  return bridge ? `${bridge}\n\n${body}`.trim() : body;
 }
 
 export function buildFinalRecommendationSections(params: {
@@ -133,13 +137,14 @@ export function buildFinalRecommendationSections(params: {
   preferences: ChatPreferences;
 }) {
   const outfit = getOutfit(params.finalOutfitId);
-  if (!outfit) return null;
+  if (!outfit) {
+    return null;
+  }
 
   const sections = buildRecommendationSections(params.condition, outfit);
-  const isMismatch = params.expectedOutfitBeforeAI !== params.finalOutfitId;
-
   let introPrefix = '';
-  if (params.surpriseMode === 'surprise' && isMismatch) {
+
+  if (params.surpriseMode === 'surprise') {
     introPrefix = buildBridgeIntro(
       params.condition,
       params.preferences,
@@ -150,14 +155,7 @@ export function buildFinalRecommendationSections(params: {
     introPrefix = buildNoSurpriseBridge(params.condition, params.preferences, params.finalOutfitId);
   }
 
-  if (introPrefix) {
-    return {
-      ...sections,
-      intro: `${introPrefix} ${sections.intro}`,
-    };
-  }
-
-  return sections;
+  return { sections, introPrefix, outfit };
 }
 
 export function buildFinalRecommendationPlainText(params: {
@@ -167,7 +165,27 @@ export function buildFinalRecommendationPlainText(params: {
   surpriseMode: 'surprise' | 'no_surprise';
   preferences: ChatPreferences;
 }): string {
-  const sections = buildFinalRecommendationSections(params);
-  if (!sections) return '';
-  return sectionsToPlainText(sections);
+  const built = buildFinalRecommendationSections(params);
+  if (!built) return '';
+  const body = sectionsToPlainText(built.sections);
+  return built.introPrefix ? `${built.introPrefix}\n\n${body}`.trim() : body;
+}
+
+/** 結果頁顯示用：回扣使用者偏好的短引言（不取代三塊說明） */
+export function buildResultPreferenceIntro(
+  preferences: ChatPreferences,
+  finalOutfitId: string,
+  surpriseMode: 'surprise' | 'no_surprise',
+): string {
+  const memory = buildPreferenceMemoryLine(preferences, finalOutfitId);
+  const conflict = buildSoftConflictNote(finalOutfitId, preferences);
+  const unavailable = buildUnavailableColorNote(preferences);
+
+  const parts = [unavailable, memory, conflict].filter(Boolean);
+  if (parts.length > 0) return parts.join(' ');
+
+  if (surpriseMode === 'surprise' && formatPreferencesSummary(preferences) !== '（尚未明確表達偏好）') {
+    return `這次推薦有參考您剛才提到的需求（${formatPreferencesSummary(preferences)}）。`;
+  }
+  return '';
 }
