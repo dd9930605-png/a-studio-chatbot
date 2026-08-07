@@ -861,6 +861,163 @@ export function formatPreferencesSummary(preferences: ChatPreferences): string {
   return parts.join('；') || '（尚未明確表達偏好）';
 }
 
+export interface PreferenceSummaryBlock {
+  title: string;
+  body: string;
+}
+
+/**
+ * 結果頁「使用者偏好摘要」：高／低擬人化語氣不同，資訊內容一致。
+ */
+export function buildAnthropomorphicPreferenceSummary(
+  preferences: ChatPreferences,
+  anthropomorphism: 'high' | 'low',
+): PreferenceSummaryBlock | null {
+  const items = buildPreferenceContentItems(preferences);
+  if (items.length === 0) return null;
+
+  if (anthropomorphism === 'high') {
+    const joined = joinPreferencePhrases(
+      items.map((item) => item.high),
+      'high',
+    );
+    return {
+      title: '依您剛才提到的偏好',
+      body: `根據您剛才提到的偏好，我有記下您${joined}；接下來的推薦會以這些偏好作為參考。`,
+    };
+  }
+
+  const joined = joinPreferencePhrases(
+    items.map((item) => item.low),
+    'low',
+  );
+  return {
+    title: '使用者偏好摘要',
+    body: `偏好整理結果：系統已辨識您的穿搭偏好為${joined}。後續推薦將依此作為參考。`,
+  };
+}
+
+/** 同一組偏好事實；高／低組僅語氣不同、資訊對齊 */
+function buildPreferenceContentItems(
+  preferences: ChatPreferences,
+): { high: string; low: string }[] {
+  const items: { high: string; low: string }[] = [];
+
+  if (preferences.likedColors.length > 0) {
+    const colors = preferences.likedColors.map(colorLabel).join('、');
+    items.push({ high: `偏好${colors}`, low: `偏好${colors}` });
+  }
+
+  const avoidedColors = Array.from(
+    new Set([...preferences.strongDislikedColors, ...preferences.dislikedColors]),
+  );
+  if (avoidedColors.length > 0) {
+    const colors = avoidedColors.map(colorLabel).join('、');
+    items.push({ high: `不太想要${colors}`, low: `較不偏好${colors}` });
+  }
+
+  if (preferences.requestedUnavailableColors.length > 0) {
+    const colors = preferences.requestedUnavailableColors.join('、');
+    items.push({
+      high: `提到過目前沒有的${colors}`,
+      low: `提及庫存無${colors}`,
+    });
+  }
+
+  if (preferences.requestedUnavailableBottoms.length > 0) {
+    const bottoms = preferences.requestedUnavailableBottoms.join('、');
+    items.push({
+      high: `提到過目前沒有的${bottoms}`,
+      low: `提及庫存無${bottoms}`,
+    });
+  }
+
+  if (preferences.preferredFitLevels.length > 0) {
+    const fits = preferences.preferredFitLevels.map(fitLevelLabel).join('、');
+    items.push({ high: `偏好${fits}`, low: `偏好${fits}` });
+  }
+
+  if (preferences.avoidedFitLevels.length > 0) {
+    const fits = preferences.avoidedFitLevels.map(fitLevelLabel).join('、');
+    items.push({ high: `想避開${fits}`, low: `較不偏好${fits}` });
+  }
+
+  if (preferences.softAvoidFitLevels.length > 0) {
+    const fits = preferences.softAvoidFitLevels.map(fitLevelLabel).join('、');
+    items.push({ high: `較不想要${fits}`, low: `次要避開${fits}` });
+  }
+
+  if (preferences.wantsFormal) {
+    items.push({ high: '希望偏正式專業', low: '偏好正式專業感' });
+  }
+
+  if (preferences.prefersJeans) {
+    items.push({ high: '比較喜歡牛仔褲', low: '偏好牛仔褲' });
+  }
+  if (preferences.prefersDressPants) {
+    items.push({ high: '比較喜歡西褲', low: '偏好西褲' });
+  }
+  if (preferences.prefersWidePants) {
+    items.push({ high: '比較喜歡寬褲', low: '偏好寬褲' });
+  }
+
+  if (preferences.dislikesJeans) {
+    items.push({ high: '不太想要牛仔褲', low: '較不偏好牛仔褲' });
+  }
+  if (preferences.dislikesDressPants) {
+    items.push({ high: '不太想要西褲', low: '較不偏好西褲' });
+  }
+  if (preferences.dislikesWidePants) {
+    items.push({ high: '不太想要寬褲', low: '較不偏好寬褲' });
+  }
+  if (preferences.dislikesCargo) {
+    items.push({ high: '不太想要工裝風格', low: '較不偏好工裝風格' });
+  }
+
+  if (preferences.dislikesSkirt) {
+    items.push({ high: '不太想穿裙裝', low: '較不偏好裙裝' });
+  }
+
+  if ((preferences.prefersSkirt || preferences.dislikesPants) && !preferences.prefersPants) {
+    items.push({
+      high: '比較喜歡裙裝、不太想穿褲子',
+      low: '偏好裙裝、較不偏好褲裝',
+    });
+  } else if (
+    preferences.prefersPants &&
+    !preferences.prefersJeans &&
+    !preferences.prefersDressPants &&
+    !preferences.prefersWidePants
+  ) {
+    items.push({ high: '比較喜歡褲裝', low: '偏好褲裝' });
+  }
+
+  if (preferences.matchedStyleKeywords.length > 0) {
+    const styles = preferences.matchedStyleKeywords.slice(0, 3).join('、');
+    items.push({ high: `風格偏向${styles}`, low: `風格偏好${styles}` });
+  }
+
+  return items;
+}
+
+function joinPreferencePhrases(phrases: string[], tone: 'high' | 'low'): string {
+  if (phrases.length === 0) return '';
+  if (phrases.length === 1) return phrases[0];
+  if (tone === 'high') {
+    const rest = phrases.slice(1).map(stripLeadingConnector);
+    // 兩項且第二項偏「比較／偏好／不太」時用「也」銜接，其餘用頓號維持簡潔
+    if (rest.length === 1 && /^(比較|偏好|不太|希望)/.test(rest[0])) {
+      return `${phrases[0]}，也${rest[0]}`;
+    }
+    return [phrases[0], ...rest].join('、');
+  }
+  return phrases.join('、');
+}
+
+function stripLeadingConnector(phrase: string): string {
+  return phrase.replace(/^(也|並|且)/, '');
+}
+
 export function finalOutfitConflictsWithSoftPreferences(
   outfitId: string,
   preferences: ChatPreferences,

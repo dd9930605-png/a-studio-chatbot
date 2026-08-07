@@ -1,9 +1,11 @@
 import { Condition } from '@/lib/conditions';
 import {
   ChatPreferences,
+  buildAnthropomorphicPreferenceSummary,
   buildPreferenceMemoryLine,
   finalOutfitConflictsWithSoftPreferences,
   formatPreferencesSummary,
+  PreferenceSummaryBlock,
 } from '@/lib/chatPreferences';
 import { CATALOG_BOTTOM_SUMMARY, CATALOG_COLOR_SUMMARY } from '@/lib/catalogBoundaries';
 import { getOutfit } from '@/lib/outfits';
@@ -182,16 +184,12 @@ export function buildFinalRecommendationPlainText(params: {
   return built.introPrefix ? `${built.introPrefix}\n\n${body}`.trim() : body;
 }
 
-/** 結果頁偏好框：只做簡短紀錄，詳細解釋交給下方三塊說明 */
+/** 結果頁偏好摘要：依擬人化操弄切換語氣，資訊內容一致 */
 export function buildResultPreferenceIntro(
   preferences: ChatPreferences,
   _finalOutfitId: string,
-  surpriseMode: 'surprise' | 'no_surprise',
-): string {
-  const summary = formatPreferencesSummary(preferences);
-  if (summary === '（尚未明確表達偏好）') {
-    if (surpriseMode === 'surprise') return '';
-    return '';
-  }
-  return `已記錄：${summary}。`;
+  _surpriseMode: 'surprise' | 'no_surprise',
+  anthropomorphism: 'high' | 'low' = 'low',
+): PreferenceSummaryBlock | null {
+  return buildAnthropomorphicPreferenceSummary(preferences, anthropomorphism);
 }
