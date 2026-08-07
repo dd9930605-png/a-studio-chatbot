@@ -27,8 +27,22 @@ const COLOR_TERMS: Record<ColorKey, string[]> = {
   stripe: ['條紋'],
 };
 
-const STRONG_DISLIKE_MARKERS = ['討厭', '不要', '忌諱', '排斥', '不想穿', '不穿', '很不喜', '討厭穿', '絕對不要'];
-const SOFT_DISLIKE_MARKERS = ['不喜歡', '不太喜歡', '怕穿'];
+const STRONG_DISLIKE_MARKERS = [
+  '討厭',
+  '不要',
+  '忌諱',
+  '排斥',
+  '不想穿',
+  '不穿',
+  '很不喜',
+  '討厭穿',
+  '絕對不要',
+  '不想要',
+  '別給我',
+  '別推',
+  '拒絕',
+];
+const SOFT_DISLIKE_MARKERS = ['不喜歡', '不太喜歡', '怕穿', '較不喜歡', '沒那麼喜歡', '不太適合我'];
 
 const LIKE_MARKERS = ['喜歡', '偏好', '想要', '希望', '傾向', '比較想', '愛'];
 
@@ -198,9 +212,13 @@ export function outfitConflictsWithPreferences(
 
   const text = `${outfit.outfitName} ${outfit.styleTags.join(' ')}`;
 
-  if (preferences.strongDislikedColors.length > 0) {
+  // 明確不喜歡／強烈排斥的色系：最終選款一律硬排除（避免只扣分仍被選中）
+  const excludedColors = Array.from(
+    new Set([...preferences.strongDislikedColors, ...preferences.dislikedColors]),
+  );
+  if (excludedColors.length > 0) {
     const outfitColors = getOutfitColorKeys(outfitId);
-    if (preferences.strongDislikedColors.some((color) => outfitColors.includes(color))) {
+    if (excludedColors.some((color) => outfitColors.includes(color))) {
       return true;
     }
   }
