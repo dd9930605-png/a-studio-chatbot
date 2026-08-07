@@ -429,6 +429,14 @@ export function generateFreeChatFallbackReply(
     );
   }
 
+  // 詢問有哪些顏色：固定回完整清單，避免模型漏列深棕／棕色
+  if (/還有什麼.*色|有哪些.*色|什麼.*顏色|商品顏色|現有.*色系|顏色有哪些/.test(trimmed)) {
+    return applyTone(
+      `目前網站這 12 套面試穿搭的色系包含：${CATALOG_COLOR_SUMMARY}。您對其中哪一個色系特別有興趣呢？`,
+      condition,
+    );
+  }
+
   if (messageMentionsUnavailableStyle(trimmed)) {
     return applyTone(
       `我理解您喜歡這類風格，但本網站 12 套面試穿搭以韓系、半正式與俐落正式為主，沒有賽車風或街頭龐克等單品。我們可以從現有色系與版型中，找適合面試、又能表現您個人用心的搭配方向。`,

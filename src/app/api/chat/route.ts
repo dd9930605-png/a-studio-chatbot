@@ -4,7 +4,7 @@ import { buildChatSystemPrompt, buildFreeChatSystemPrompt } from '@/lib/botPromp
 import { ResponseStep, generateFreeChatFallbackReply } from '@/lib/aiResponses';
 import { Condition } from '@/lib/conditions';
 import { ExperimentChatContext, buildExperimentKnowledgeBlock } from '@/lib/experimentKnowledge';
-import { correctFalseUnavailableCatalogClaims } from '@/lib/catalogBoundaries';
+import { correctFalseUnavailableCatalogClaims, CATALOG_COLOR_SUMMARY } from '@/lib/catalogBoundaries';
 import {
   generateAcknowledgment,
   getDeterministicAcknowledgment,
@@ -95,6 +95,14 @@ async function handleFreeChat(
     reply: correctFalseUnavailableCatalogClaims(reply, trimmedInput),
     source,
   });
+
+  // 詢問現有色系：直接回完整清單，避免模型漏列深棕／棕色
+  if (/還有什麼.*色|有哪些.*色|什麼.*顏色|商品顏色|現有.*色系|顏色有哪些/.test(trimmedInput)) {
+    return withCatalogGuard(
+      `目前網站這 12 套面試穿搭的色系包含：${CATALOG_COLOR_SUMMARY}。您對其中哪一個色系特別有興趣呢？`,
+      'fallback',
+    );
+  }
 
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
