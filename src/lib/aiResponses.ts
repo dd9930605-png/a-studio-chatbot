@@ -1,6 +1,6 @@
 import { Condition } from '@/lib/conditions';
 import { ExperimentChatContext } from '@/lib/experimentKnowledge';
-import { messageMentionsUnavailableColor, messageMentionsUnavailableStyle, CATALOG_COLOR_SUMMARY } from '@/lib/catalogBoundaries';
+import { messageMentionsUnavailableBottom, messageMentionsUnavailableColor, messageMentionsUnavailableStyle, CATALOG_BOTTOM_SUMMARY, CATALOG_COLOR_SUMMARY } from '@/lib/catalogBoundaries';
 import { getOutfit } from '@/lib/outfits';
 
 export type ResponseStep =
@@ -393,6 +393,14 @@ export function generateFreeChatFallbackReply(
   if (unavailableColor) {
     return applyTone(
       `本網站目前的 12 套面試穿搭沒有${unavailableColor}單品；現有色系以${CATALOG_COLOR_SUMMARY}為主。若以面試顧問角度，我們可以從這些現有搭配中找符合您需求的方向——您想優先給人乾淨俐落，還是穩重專業的印象呢？`,
+      condition,
+    );
+  }
+
+  const unavailableBottom = messageMentionsUnavailableBottom(trimmed);
+  if (unavailableBottom) {
+    return applyTone(
+      `本網站目前沒有${unavailableBottom}這類單品；現有下裝以${CATALOG_BOTTOM_SUMMARY}為主。以面試情境來說，我們可以改從這些現有褲型／裙裝來找適合您的方向——您比較想走牛仔褲、西褲、寬褲，還是及膝裙呢？`,
       condition,
     );
   }

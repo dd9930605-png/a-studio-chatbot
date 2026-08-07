@@ -13,6 +13,9 @@ const UNAVAILABLE_COLOR_GROUPS: { label: string; terms: string[] }[] = [
   { label: '橘色', terms: ['橘色', '橘', '橙色'] },
 ];
 
+/** 網站現有下裝類型（評分池僅這幾類） */
+export const CATALOG_BOTTOM_SUMMARY = '牛仔褲、西褲、寬褲、及膝裙';
+
 /** 庫存沒有、不應假裝存在的風格關鍵字 */
 const UNAVAILABLE_STYLE_TERMS = [
   '賽車風',
@@ -24,8 +27,29 @@ const UNAVAILABLE_STYLE_TERMS = [
   '龐克',
 ];
 
-const PANTS_LIKE_MARKERS = ['褲', '西褲', '牛仔褲', '寬褲', '長褲', '直筒褲', '工裝褲'];
+/**
+ * 庫存沒有、或實驗不納入評分池的下裝類型。
+ * 注意：M2 名稱雖含「工裝寬褲」，但不把「工裝褲」當可加分偏好；喜歡工裝應說明無此商品並改推現有褲型。
+ */
+const UNAVAILABLE_BOTTOM_GROUPS: { label: string; terms: string[] }[] = [
+  { label: '工裝褲', terms: ['工裝褲', '工裝'] },
+  { label: '運動褲', terms: ['運動褲', '衛褲', 'jogger', 'Jogger'] },
+  { label: '皮褲', terms: ['皮褲'] },
+  { label: '短褲', terms: ['短褲'] },
+  { label: '卡其褲', terms: ['卡其褲', '卡其'] },
+  { label: '喇叭褲', terms: ['喇叭褲'] },
+  { label: '緊身褲／內搭', terms: ['緊身褲', '內搭褲', 'legging', 'Legging', 'leggings'] },
+  { label: '迷你裙', terms: ['迷你裙', '短裙'] },
+  { label: '長裙', terms: ['長裙', '拖地裙'] },
+  { label: '百褶裙', terms: ['百褶裙'] },
+];
+
+const PANTS_LIKE_MARKERS = ['褲', '西褲', '牛仔褲', '寬褲', '長褲', '直筒褲'];
 const SKIRT_LIKE_MARKERS = ['裙', '及膝裙', '半身裙'];
+
+/** 專指某一褲型（含庫存有／無），不應當成「泛指不喜歡褲子→改推裙」 */
+const SPECIFIC_PANTS_PATTERN =
+  /牛仔褲|牛仔|西褲|寬褲|工裝褲|工裝|運動褲|衛褲|皮褲|短褲|卡其褲|卡其|喇叭褲|緊身褲|內搭褲|legging|leggings|直筒褲|抽繩褲/i;
 
 const PREFERS_PANTS_MARKERS = [
   '喜歡褲',
@@ -42,7 +66,53 @@ const PREFERS_PANTS_MARKERS = [
   '不穿裙',
 ];
 
-const PREFERS_SKIRT_MARKERS = ['喜歡裙', '偏好裙', '想要裙', '習慣裙', '愛穿裙', '想穿裙'];
+const PREFERS_SKIRT_MARKERS = [
+  '喜歡裙',
+  '偏好裙',
+  '想要裙',
+  '習慣裙',
+  '愛穿裙',
+  '想穿裙',
+];
+
+/** 泛指不喜歡「褲子」；不含專指某一褲型 */
+const DISLIKES_PANTS_MARKERS = [
+  '不喜歡褲',
+  '不喜歡穿褲',
+  '不要褲',
+  '不要穿褲',
+  '討厭褲',
+  '不穿褲',
+  '不想穿褲',
+  '別推褲',
+];
+
+const WANT_MARKERS = /喜歡|想要|偏好|想穿|希望|有沒有|想找|給我|推薦/;
+const DISLIKE_MARKERS = /不喜歡|討厭|不要|不穿|排斥|不想穿|別推/;
+
+/** 訊息是否專指某褲型（而非泛指褲子） */
+function mentionsSpecificPantsOnly(message: string): boolean {
+  if (!SPECIFIC_PANTS_PATTERN.test(message)) return false;
+  const withoutSpecific = message.replace(
+    /牛仔褲|牛仔|西褲|寬褲|工裝褲|工裝|運動褲|衛褲|皮褲|短褲|卡其褲|卡其|喇叭褲|緊身褲|內搭褲|legging|leggings|直筒褲|抽繩褲/gi,
+    '',
+  );
+  return !DISLIKES_PANTS_MARKERS.some((m) => withoutSpecific.includes(m));
+}
+
+function mentionsGeneralPantsDislike(message: string): boolean {
+  if (!DISLIKE_MARKERS.test(message)) return false;
+  if (!/褲/.test(message)) return false;
+  if (/裙/.test(message) && !DISLIKES_PANTS_MARKERS.some((m) => message.includes(m))) {
+    return false;
+  }
+  // 「不要牛仔褲／西褲／工裝褲…」不算泛指不喜歡褲子
+  if (mentionsSpecificPantsOnly(message)) return false;
+  return (
+    DISLIKES_PANTS_MARKERS.some((m) => message.includes(m)) ||
+    (/褲/.test(message) && !SPECIFIC_PANTS_PATTERN.test(message))
+  );
+}
 
 export function outfitIsSkirt(outfitId: string): boolean {
   const outfit = getOutfit(outfitId);
@@ -75,12 +145,54 @@ export function messageMentionsUnavailableColor(message: string): string | null 
   return null;
 }
 
+function messageWantsUnavailableBottom(message: string, terms: string[]): boolean {
+  const hit = terms.some((term) => message.toLowerCase().includes(term.toLowerCase()));
+  if (!hit) return false;
+  // 純厭惡（不要工裝）不算「想要沒有的商品」
+  if (DISLIKE_MARKERS.test(message) && !WANT_MARKERS.test(message)) return false;
+  return WANT_MARKERS.test(message) || /有沒有/.test(message);
+}
+
+/** 使用者想要／詢問庫存沒有的下裝類型 */
+export function detectUnavailableBottomRequests(userMessages: string[]): string[] {
+  const found = new Set<string>();
+  for (const message of userMessages) {
+    for (const group of UNAVAILABLE_BOTTOM_GROUPS) {
+      if (messageWantsUnavailableBottom(message, group.terms)) {
+        found.add(group.label);
+      }
+    }
+  }
+  return Array.from(found);
+}
+
+export function messageMentionsUnavailableBottom(message: string): string | null {
+  for (const group of UNAVAILABLE_BOTTOM_GROUPS) {
+    if (messageWantsUnavailableBottom(message, group.terms)) {
+      return group.label;
+    }
+  }
+  return null;
+}
+
+/**
+ * 褲／裙大方向：
+ * - 不喜歡裙 → 褲；不喜歡（泛指）褲 → 裙
+ * - 「不要牛仔褲／西褲／工裝褲…」不算泛指不喜歡褲，不因此改推裙
+ */
 export function detectBottomPreference(userMessages: string[]): 'pants' | 'skirt' | null {
   let pantsScore = 0;
   let skirtScore = 0;
 
   for (const message of userMessages) {
-    const hasDislike = /不喜歡|討厭|不要|不穿|排斥/.test(message);
+    const hasDislike = DISLIKE_MARKERS.test(message);
+
+    if (hasDislike && /裙/.test(message) && !mentionsGeneralPantsDislike(message)) {
+      pantsScore += 3;
+    }
+    if (mentionsGeneralPantsDislike(message)) {
+      skirtScore += 3;
+    }
 
     if (PREFERS_PANTS_MARKERS.some((m) => message.includes(m))) {
       if (hasDislike && message.includes('裙')) {
@@ -114,8 +226,18 @@ export function buildCatalogBoundaryPromptBlock(): string {
   1. **第一句就要說明**本網站目前沒有該色單品；
   2. 邀請使用者改從**現有色系**（白、黑、藍、灰、咖啡、條紋）中討論面試需求；
   3. 可建議「若重視 X 印象，現有庫存中可考慮藍/灰/白等方向」，**不要**繼續描述不存在的綠色穿搭。
+- **網站現有下裝類型僅包含**：${CATALOG_BOTTOM_SUMMARY}（評分與最終推薦只從此池挑選）。
+- **網站沒有、不可假裝有、也不可當推薦主軸的下裝**：工裝褲、運動褲、皮褲、短褲、卡其褲、喇叭褲、緊身／內搭、迷你裙、長裙、百褶裙等。
+- 若使用者喜歡或詢問上述沒有的下裝（例如工裝褲）：
+  1. **第一句就要說明**本網站目前沒有該類型單品；
+  2. 引導改從現有下裝（牛仔褲、西褲、寬褲、及膝裙）討論面試需求；
+  3. **禁止**繼續描述不存在的工裝褲怎麼搭，也**禁止**把現有商品硬說成工裝褲來滿足對方。
 - 女款下裝包含**褲裝**與**及膝裙**（F5、F6）；男款與中性款以**褲裝**為主。
-- 若使用者明確偏好**褲裝**或**不要裙裝**，聊天與最終推薦都**不可**以裙裝為主軸；須在現有褲裝搭配中討論。`;
+- 若使用者明確偏好**褲裝**或**不要裙裝**，聊天與最終推薦都**不可**以裙裝為主軸；須在現有褲裝搭配中討論。
+- 若使用者明確**不喜歡褲子／想穿裙子**，女款應優先討論及膝裙方案（F5、F6）。
+- 若使用者明確**不喜歡裙子**，應改推褲裝，不要再推裙。
+- 若對方說喜歡**牛仔褲／西褲／寬褲／及膝裙**其中一種，回覆與推薦應回扣該類型。
+- 「不喜歡牛仔褲／西褲／寬褲」只避開該類型，**不要**因此改推裙子。`;
 }
 
 export function messageMentionsUnavailableStyle(message: string): boolean {
