@@ -207,7 +207,7 @@ export function RecommendationCard({
 
       {/* 2. 推薦重點（短，優先回扣對話偏好） */}
       <div className="mb-6 rounded-xl border border-indigo-200 bg-indigo-50 px-5 py-4 sm:mb-8">
-        <p className="text-sm font-semibold text-indigo-900">
+        <p className={`text-base font-bold sm:text-lg ${preferenceIntro ? 'text-indigo-950' : 'text-indigo-900'}`}>
           {preferenceIntro ? '依您剛才提到的偏好' : '推薦重點'}
         </p>
         <p className={`${recommendationSerif.className} mt-2 text-base leading-relaxed text-slate-900 sm:text-lg`}>
