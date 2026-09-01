@@ -178,3 +178,31 @@ export async function clearAllParticipantsFromCloud(): Promise<void> {
     // counter reset best-effort
   }
 }
+
+export function isValidParticipantId(participantId: string): boolean {
+  return /^P-[A-Za-z0-9-]+$/.test(participantId) && participantId.length <= 64;
+}
+
+export async function deleteParticipantFromCloud(participantId: string): Promise<boolean> {
+  if (!isCloudStorageConfigured()) {
+    throw new Error('雲端儲存尚未設定');
+  }
+
+  if (!isValidParticipantId(participantId)) {
+    throw new Error('無效的 participantId');
+  }
+
+  const targetPath = blobPath(participantId);
+  const { blobs } = await list({
+    prefix: targetPath,
+    ...getBlobCommandOptions(),
+  });
+
+  const match = blobs.find((blob) => blob.pathname === targetPath);
+  if (!match) {
+    return false;
+  }
+
+  await del(match.url, getBlobCommandOptions());
+  return true;
+}

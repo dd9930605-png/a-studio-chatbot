@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import {
+  deleteFromLocalStorage,
   fetchAllParticipants,
   downloadJSON,
   ParticipantData,
@@ -29,6 +30,43 @@ export default function AdminPage() {
   useEffect(() => {
     void loadData();
   }, [loadData]);
+
+  const handleDeleteParticipant = async (participantId: string) => {
+    if (
+      !window.confirm(
+        `確定要刪除受試者 ${participantId} 嗎？\n此操作無法復原，雲端與本機瀏覽器中的該筆資料都會移除。`,
+      )
+    ) {
+      return;
+    }
+
+    if (cloudConfigured) {
+      const secret = window.prompt('請輸入管理者密碼：') ?? '';
+      if (!secret) {
+        alert('已取消刪除。');
+        return;
+      }
+
+      const headers: HeadersInit = { 'x-admin-secret': secret };
+      const response = await fetch(
+        `/api/participants?participantId=${encodeURIComponent(participantId)}`,
+        { method: 'DELETE', headers },
+      );
+      if (!response.ok) {
+        const result = (await response.json().catch(() => null)) as { error?: string } | null;
+        alert(result?.error ?? '刪除雲端資料失敗，請確認管理者密碼是否正確。');
+        return;
+      }
+    }
+
+    deleteFromLocalStorage(participantId);
+    setAllData((prev) => prev.filter((item) => item.participantId !== participantId));
+    setSelectedParticipant((prev) =>
+      prev?.participantId === participantId ? null : prev,
+    );
+    alert(`已刪除 ${participantId}`);
+    void loadData();
+  };
 
   const handleClearData = async () => {
     if (!window.confirm('確定要清除所有資料嗎？此操作無法復原。')) return;
@@ -168,7 +206,15 @@ export default function AdminPage() {
           <div className="col-span-2 rounded-lg bg-white p-6 shadow-lg">
             {selectedParticipant ? (
               <div className="space-y-6">
-                <h2 className="text-2xl font-bold">{selectedParticipant.participantId}</h2>
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <h2 className="text-2xl font-bold">{selectedParticipant.participantId}</h2>
+                  <button
+                    onClick={() => void handleDeleteParticipant(selectedParticipant.participantId)}
+                    className="rounded-lg bg-red-500 px-4 py-2 text-sm font-bold text-white hover:bg-red-600"
+                  >
+                    刪除此筆資料
+                  </button>
+                </div>
 
                 <Section title="實驗分派">
                   <Grid>

@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ParticipantData } from '@/lib/dataRecorder';
 import {
   clearAllParticipantsFromCloud,
+  deleteParticipantFromCloud,
   getAllParticipantsFromCloud,
   isCloudStorageConfigured,
+  isValidParticipantId,
   saveParticipantToCloud,
 } from '@/lib/participantStore';
 
@@ -67,6 +69,24 @@ export async function POST(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   if (!verifyAdminSecret(request)) {
     return NextResponse.json({ error: '未授權' }, { status: 401 });
+  }
+
+  const participantId = request.nextUrl.searchParams.get('participantId')?.trim();
+  if (participantId) {
+    if (!isCloudStorageConfigured()) {
+      return NextResponse.json({ error: '雲端儲存尚未設定' }, { status: 503 });
+    }
+
+    if (!isValidParticipantId(participantId)) {
+      return NextResponse.json({ error: '無效的 participantId' }, { status: 400 });
+    }
+
+    const deleted = await deleteParticipantFromCloud(participantId);
+    if (!deleted) {
+      return NextResponse.json({ error: '找不到該受試者資料' }, { status: 404 });
+    }
+
+    return NextResponse.json({ ok: true, participantId });
   }
 
   if (isCloudStorageConfigured()) {

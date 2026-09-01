@@ -385,6 +385,18 @@ export function getFromLocalStorage(): ParticipantData[] {
   }
 }
 
+export function deleteFromLocalStorage(participantId: string): void {
+  if (typeof window === 'undefined') return;
+
+  const nextData = getFromLocalStorage().filter((item) => item.participantId !== participantId);
+  if (nextData.length === 0) {
+    localStorage.removeItem(STORAGE_KEY);
+    return;
+  }
+
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(nextData));
+}
+
 export function downloadJSON(): void {
   void downloadAllParticipantsJSON();
 }
