@@ -1,0 +1,100 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="1580" viewBox="0 0 1100 1580" role="img" aria-labelledby="title desc">
+  <title id="title">&#22294; 3-3 &#25512;&#34214;&#32080;&#26524;&#29986;&#29983;&#27231;&#21046;</title>
+  <desc id="desc">&#27492;&#27969;&#31243;&#22294;&#35498;&#26126;&#23526;&#39511;&#31995;&#32113;&#22914;&#20309;&#26681;&#25818;&#21463;&#35430;&#32773;&#36984;&#25799;&#30340;&#31359;&#25645;&#39006;&#21029;&#12289;&#38928;&#26399;&#19968;&#33268;&#24615;&#26781;&#20214;&#33287;&#23565;&#35441;&#20559;&#22909;&#65292;&#29986;&#29983;&#26368;&#32066; AI &#25512;&#34214;&#32080;&#26524;&#12290;</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#475569" />
+    </marker>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#0f172a" flood-opacity="0.14" />
+    </filter>
+    <style>
+      .page { fill: #f8fafc; }
+      .title { font: 700 34px "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", sans-serif; fill: #0f172a; }
+      .subtitle { font: 400 18px "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", sans-serif; fill: #475569; }
+      .box { fill: #ffffff; stroke: #cbd5e1; stroke-width: 2; rx: 18; filter: url(#shadow); }
+      .decision { fill: #eff6ff; stroke: #3b82f6; stroke-width: 2; filter: url(#shadow); }
+      .branch-label { fill: #e0f2fe; stroke: #0284c7; stroke-width: 2; rx: 16; }
+      .branch-label-right { fill: #fef3c7; stroke: #d97706; stroke-width: 2; rx: 16; }
+      .result { fill: #ecfdf5; stroke: #10b981; stroke-width: 2.5; rx: 22; filter: url(#shadow); }
+      .note { fill: #fff7ed; stroke: #fb923c; stroke-width: 2; rx: 16; }
+      .text { font: 500 24px "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", sans-serif; fill: #0f172a; }
+      .small { font: 400 18px "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", sans-serif; fill: #334155; }
+      .label { font: 700 22px "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", sans-serif; fill: #0f172a; }
+      .arrow { stroke: #475569; stroke-width: 3; fill: none; marker-end: url(#arrow); }
+      .arrow-soft { stroke: #64748b; stroke-width: 2.5; fill: none; marker-end: url(#arrow); }
+    </style>
+  </defs>
+
+  <rect class="page" width="1100" height="1580" />
+
+  <text class="title" x="550" y="70" text-anchor="middle">&#22294; 3-3 &#25512;&#34214;&#32080;&#26524;&#29986;&#29983;&#27231;&#21046;</text>
+  <text class="subtitle" x="550" y="108" text-anchor="middle">&#31995;&#32113;&#24460;&#21488;&#22914;&#20309;&#20381;&#25818;&#31359;&#25645;&#39006;&#21029;&#12289;&#38928;&#26399;&#19968;&#33268;&#24615;&#33287;&#23565;&#35441;&#20559;&#22909;&#27770;&#23450;&#26368;&#24460;&#25512;&#34214;</text>
+
+  <rect class="box" x="300" y="155" width="500" height="86" />
+  <text class="text" x="550" y="190" text-anchor="middle">&#21463;&#35430;&#32773;&#36984;&#25799;</text>
+  <text class="text" x="550" y="222" text-anchor="middle">&#30007;&#24615;&#65295;&#22899;&#24615;&#31359;&#25645;&#39006;&#21029;</text>
+
+  <path class="arrow" d="M 550 241 L 550 293" />
+
+  <rect class="box" x="300" y="293" width="500" height="82" />
+  <text class="text" x="550" y="342" text-anchor="middle">&#24314;&#31435;&#21487;&#25512;&#34214;&#20505;&#36984;&#31684;&#22285;</text>
+
+  <path class="arrow" d="M 550 375 L 550 430" />
+
+  <path class="decision" d="M 550 430 L 815 535 L 550 640 L 285 535 Z" />
+  <text class="text" x="550" y="516" text-anchor="middle">&#21028;&#26039; AI &#25512;&#34214;&#32080;&#26524;</text>
+  <text class="text" x="550" y="552" text-anchor="middle">&#38928;&#26399;&#19968;&#33268;&#24615;&#26781;&#20214;</text>
+
+  <path class="arrow-soft" d="M 378 603 C 260 660, 245 705, 245 765" />
+  <path class="arrow-soft" d="M 722 603 C 840 660, 855 705, 855 765" />
+
+  <rect class="branch-label" x="120" y="758" width="250" height="68" />
+  <text class="label" x="245" y="801" text-anchor="middle">&#38928;&#26399;&#19968;&#33268;</text>
+
+  <rect class="branch-label-right" x="730" y="758" width="250" height="68" />
+  <text class="label" x="855" y="801" text-anchor="middle">&#38928;&#26399;&#19981;&#19968;&#33268;</text>
+
+  <path class="arrow" d="M 245 826 L 245 884" />
+  <path class="arrow" d="M 855 826 L 855 884" />
+
+  <rect class="box" x="70" y="884" width="350" height="92" />
+  <text class="text" x="245" y="922" text-anchor="middle">&#25512;&#34214;&#21463;&#35430;&#32773;</text>
+  <text class="text" x="245" y="955" text-anchor="middle">&#20107;&#21069;&#38928;&#28204;&#27454;</text>
+
+  <rect class="box" x="680" y="884" width="350" height="92" />
+  <text class="text" x="855" y="922" text-anchor="middle">&#25490;&#38500;&#21463;&#35430;&#32773;</text>
+  <text class="text" x="855" y="955" text-anchor="middle">&#20107;&#21069;&#38928;&#28204;&#27454;</text>
+
+  <path class="arrow" d="M 855 976 L 855 1032" />
+
+  <rect class="box" x="680" y="1032" width="350" height="92" />
+  <text class="text" x="855" y="1070" text-anchor="middle">&#25847;&#21462;&#23565;&#35441;&#20013;&#30340;</text>
+  <text class="text" x="855" y="1103" text-anchor="middle">&#31359;&#25645;&#20559;&#22909;</text>
+
+  <path class="arrow" d="M 855 1124 L 855 1180" />
+
+  <rect class="box" x="680" y="1180" width="350" height="92" />
+  <text class="text" x="855" y="1218" text-anchor="middle">&#20505;&#36984;&#31359;&#25645;</text>
+  <text class="text" x="855" y="1251" text-anchor="middle">&#29305;&#24501;&#35413;&#20998;</text>
+
+  <path class="arrow-soft" d="M 680 1216 C 590 1192, 513 1192, 440 1216" />
+
+  <rect class="note" x="90" y="1140" width="395" height="154" />
+  <text class="label" x="288" y="1176" text-anchor="middle">&#35036;&#20805;&#35215;&#21063;</text>
+  <text class="small" x="288" y="1210" text-anchor="middle">&#21516;&#20998;&#26178;&#65306;&#22312;&#26368;&#39640;&#20998;&#20505;&#36984;&#20013;&#38568;&#27231;</text>
+  <text class="small" x="288" y="1242" text-anchor="middle">&#28961;&#26126;&#30906;&#20559;&#22909;&#26178;&#65306;</text>
+  <text class="small" x="288" y="1272" text-anchor="middle">&#22312;&#21097;&#39192;&#20505;&#36984;&#20013;&#38568;&#27231;</text>
+
+  <path class="arrow" d="M 855 1272 L 855 1328" />
+
+  <rect class="box" x="680" y="1328" width="350" height="86" />
+  <text class="text" x="855" y="1364" text-anchor="middle">&#36984;&#25799;&#26368;&#39640;&#20998;&#31359;&#25645;</text>
+  <text class="small" x="855" y="1393" text-anchor="middle">&#24517;&#35201;&#26178;&#22871;&#29992;&#35036;&#20805;&#35215;&#21063;</text>
+
+  <path class="arrow-soft" d="M 245 976 C 245 1496, 430 1504, 520 1504" />
+  <path class="arrow-soft" d="M 855 1414 C 855 1504, 760 1504, 580 1504" />
+
+  <rect class="result" x="335" y="1460" width="430" height="82" />
+  <text class="text" x="550" y="1510" text-anchor="middle">&#29986;&#29983;&#26368;&#32066; AI &#25512;&#34214;&#32080;&#26524;</text>
+</svg>
