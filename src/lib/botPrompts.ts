@@ -1,6 +1,7 @@
 import { Condition } from '@/lib/conditions';
 import { ResponseStep } from '@/lib/aiResponses';
 import { CATALOG_BOTTOM_SUMMARY, CATALOG_COLOR_SUMMARY } from '@/lib/catalogBoundaries';
+import { buildScaleGroundedManipulationBlock } from '@/lib/manipulationScaleRules';
 
 interface BuildSystemPromptParams {
   condition: Condition;
@@ -10,7 +11,7 @@ interface BuildSystemPromptParams {
   experimentKnowledge?: string;
 }
 
-function buildManipulationRules(condition: Condition, mode: 'freeChat' | 'guided') {
+function buildGuidedManipulationRules(condition: Condition) {
   const highAnthro = condition.anthropomorphism === 'high';
   const highProactive = condition.proactivity === 'high';
   const highExplain = condition.explainability === 'high';
@@ -21,38 +22,22 @@ function buildManipulationRules(condition: Condition, mode: 'freeChat' | 'guided
         '語氣友善、自然，可適度表達理解與同理。',
         '不要使用「系統已記錄」、「已記錄使用者輸入」這類機械用語。',
       ]
-    : mode === 'freeChat'
-      ? [
-          '使用客觀、中性的語氣，不要使用第一人稱「我」。',
-          '回覆簡短精確，但仍要針對使用者內容給出具體穿搭建議或回應，不要只說「已記錄」。',
-        ]
-      : [
-          '使用客觀、中性的系統語氣，不要使用第一人稱「我」。',
-          '回覆簡短、精確，像自動化推薦系統。',
-          '可使用「已記錄輸入」、「請重新輸入」等系統用語。',
-        ];
+    : [
+        '使用客觀、中性的系統語氣，不要使用第一人稱「我」。',
+        '回覆簡短、精確，像自動化推薦系統。',
+        '可使用「已記錄輸入」、「請重新輸入」等系統用語。',
+      ];
 
-  const proactiveRules =
-    mode === 'freeChat'
-      ? highProactive
-        ? [
-            '像 ChatGPT 一樣主動延伸：呼應對方用語、補充穿搭建議，並可適度追問（一次最多一個問題）。',
-            '回覆 2-4 句，內容要有實質幫助，不要只確認收到。',
-          ]
-        : [
-            '回覆 1-2 句，簡潔但要有實質內容，針對使用者提到的重點給穿著方向。',
-            '不要只說「已記錄」或「了解」就結束。',
-          ]
-      : highProactive
-        ? [
-            '主動性以「呼應對方用語、補一句與當前問題相關的肯定或延伸說明」呈現（2-3 句）。',
-            '禁止在回覆中提出任何新問題、追問或預告下一題（回覆中不可出現問號）。',
-            '系統會另外顯示「顧問筆記／系統備註」，你的回覆只需確認理解即可，不要重複筆記內容。',
-          ]
-        : [
-            '只簡短確認已理解，1 句即可，不要延伸、不要解釋、不要建議。',
-            '語氣精簡冷淡，像自動記錄系統。',
-          ];
+  const proactiveRules = highProactive
+    ? [
+        '主動性以「呼應對方用語、補一句與當前問題相關的肯定或延伸說明」呈現（2-3 句）。',
+        '禁止在回覆中提出任何新問題、追問或預告下一題（回覆中不可出現問號）。',
+        '系統會另外顯示「顧問筆記／系統備註」，你的回覆只需確認理解即可，不要重複筆記內容。',
+      ]
+    : [
+        '只簡短確認已理解，1 句即可，不要延伸、不要解釋、不要建議。',
+        '語氣精簡冷淡，像自動記錄系統。',
+      ];
 
   const explainRules = highExplain
     ? ['可簡要說明為何這項資訊對面試穿搭建議有幫助。']
@@ -66,12 +51,8 @@ export function buildFreeChatSystemPrompt({
   canRevealFinalRecommendation = false,
   experimentKnowledge = '',
 }: Omit<BuildSystemPromptParams, 'step' | 'question'>): string {
-  const { highAnthro, highProactive, highExplain, personaRules, proactiveRules, explainRules } =
-    buildManipulationRules(condition, 'freeChat');
-
-  const knowledgeBlock = experimentKnowledge
-    ? `\n${experimentKnowledge}\n`
-    : '';
+  const knowledgeBlock = experimentKnowledge ? `\n${experimentKnowledge}\n` : '';
+  const manipulationBlock = buildScaleGroundedManipulationBlock(condition);
 
   return `你是「${condition.botName}」，一位線上韓系服飾網站的 AI 穿搭顧問，正在協助使用者準備面試穿搭。
 ${knowledgeBlock}
@@ -89,20 +70,12 @@ ${knowledgeBlock}
 - **庫存有的下裝**：${CATALOG_BOTTOM_SUMMARY}。有裙子（及膝裙）；迷你裙／長裙／百褶裙才是沒有。
 - 使用者說棕色／咖啡色／裙子時，**禁止**說沒有。
 - 你是**專業顧問**：可禮貌提出與使用者不同的觀點（面試正式度、現有庫存），不是只說「好的了解」；同一排斥話題最多說服 1 次，對方再拒絕就停止。
-- 當對方說出喜歡／不喜歡時，下一句務必**回扣原話**再給建議，例如：「因為您提到不喜歡黑色，所以我改看深灰或藍色方案。」
+- 當對方說出喜歡／不喜歡時，下一句務必**回扣原話**再給建議（回扣強度仍須遵守下方可解釋性 High/Low）。
 - **模擬情境**：不要問真實公司、新創或傳產、產業；只談抽象面試印象與穿著偏好。
 - 同一場對話不要重複推銷「白襯衫＋黑褲」；使用者連續兩次說還行/可以後，不要再開新偏好問題。
 - 若使用者問「是不是我選的那套」：**不要**直接說「是的／哈哈是的」，改說明會在結果頁綜合需求呈現建議。
 
-## 實驗操弄（必須嚴格遵守）
-### 擬人化：${highAnthro ? '高' : '低'}
-${personaRules.map((rule) => `- ${rule}`).join('\n')}
-
-### 主動性：${highProactive ? '高' : '低'}
-${proactiveRules.map((rule) => `- ${rule}`).join('\n')}
-
-### 可解釋性：${highExplain ? '高' : '低'}
-${explainRules.map((rule) => `- ${rule}`).join('\n')}
+${manipulationBlock}
 
 ## 最終推薦控制（非常重要）
 - canRevealFinalRecommendation=${canRevealFinalRecommendation}
@@ -125,7 +98,7 @@ export function buildChatSystemPrompt({
   }
 
   const { highAnthro, highProactive, highExplain, personaRules, proactiveRules, explainRules } =
-    buildManipulationRules(condition, 'guided');
+    buildGuidedManipulationRules(condition);
 
   return `你是「${condition.botName}」，一位線上韓系服飾網站的 AI 穿搭顧問，正在協助使用者準備面試穿搭。
 

@@ -1,4 +1,5 @@
 import { OutfitCategory, SurpriseMode } from '@/lib/outfits';
+import type { PkRoundRecord } from '@/lib/outfitPk';
 
 export interface ChatMessage {
   step: string;
@@ -6,6 +7,8 @@ export interface ChatMessage {
   message: string;
   timestamp: string;
 }
+
+export type { PkRoundRecord };
 
 export interface ParticipantAnswers {
   stylePreferenceInput: string;
@@ -39,17 +42,34 @@ export interface ParticipantData {
   conditionInfo: ParticipantConditionInfo;
   surpriseMode: SurpriseMode | '';
   acceptableOutfits: string[];
+  /**
+   * 個人最喜歡的穿搭（Favorite）。不得進入 surprise 推薦判斷。
+   * 與 expectedOutfitBeforeAI（預測 AI 會推薦哪套）絕對分開。
+   */
+  favoriteOutfitId: string;
+  /** AI 最可能推薦哪一套（Prediction）；surprise 邏輯唯一基準 */
   expectedOutfitBeforeAI: string;
-  /** @deprecated 舊版欄位，normalize 時會對應至 expectedOutfitBeforeAI */
+  /**
+   * @deprecated 舊版「預測」欄位別名，normalize 時僅在沒有 expectedOutfitBeforeAI 時回填。
+   * 絕不可與 favoriteOutfitId 混淆。
+   */
   favoriteOutfitBeforeAI?: string;
   /** @deprecated 舊版欄位 */
   expectedOutfit?: string;
+  /** Photo PK 五輪紀錄 */
+  pkRounds: PkRoundRecord[];
+  favoritePkWins: number | null;
+  favoritePkAppearances: number | null;
+  /** favorite 出現輪次中選中 favorite 的比例；無可計算時為 null */
+  pkConsistencyWithFavorite: number | null;
   surpriseCandidateOutfits: string[];
   finalRecommendedOutfit: string;
   finalRecommendationText: string;
   expectationMismatch: number | null;
   answers: ParticipantAnswers;
   chatLog: ChatMessage[];
+  /** 使用者送出的訊息則數（正式紀錄） */
+  userMessageCount: number;
   invalidInputCount: number;
   invalidInputs: InvalidInputRecord[];
   correctedInputs: InvalidInputRecord[];
@@ -63,6 +83,8 @@ export interface ParticipantData {
   chatPageExitedAt: string | null;
   chatDurationSec: number;
   metMinimumChatDuration: boolean;
+  /** 是否同時達標：≥3 分鐘且 ≥3 則使用者訊息 */
+  metMinimumChatRequirements: boolean;
   clickedViewRecommendation: boolean;
   viewRecommendationClickedAt: string | null;
   finalRecommendationVersion: string | null;
@@ -186,7 +208,12 @@ export function initializeParticipantData(
     conditionInfo,
     surpriseMode,
     acceptableOutfits: [],
+    favoriteOutfitId: '',
     expectedOutfitBeforeAI: '',
+    pkRounds: [],
+    favoritePkWins: null,
+    favoritePkAppearances: null,
+    pkConsistencyWithFavorite: null,
     surpriseCandidateOutfits: [],
     finalRecommendedOutfit: '',
     finalRecommendationText: '',
@@ -199,6 +226,7 @@ export function initializeParticipantData(
       usualStyleInput: '',
     },
     chatLog: [],
+    userMessageCount: 0,
     invalidInputCount: 0,
     invalidInputs: [],
     correctedInputs: [],
@@ -212,6 +240,7 @@ export function initializeParticipantData(
     chatPageExitedAt: null,
     chatDurationSec: 0,
     metMinimumChatDuration: false,
+    metMinimumChatRequirements: false,
     clickedViewRecommendation: false,
     viewRecommendationClickedAt: null,
     finalRecommendationVersion: null,
@@ -225,15 +254,30 @@ export function initializeParticipantData(
 }
 
 export function normalizeParticipantData(raw: ParticipantData): ParticipantData {
+  // favoriteOutfitId 是個人偏好；絕不可回填或覆蓋 expectedOutfitBeforeAI。
+  // favoriteOutfitBeforeAI 僅為舊版「預測」別名（pre-favorite 拆分前）。
   const expectedOutfitBeforeAI =
     raw.expectedOutfitBeforeAI || raw.favoriteOutfitBeforeAI || raw.expectedOutfit || '';
+  const favoriteOutfitId = raw.favoriteOutfitId || '';
+  const chatLog = raw.chatLog ?? [];
+  const userMessageCount =
+    typeof raw.userMessageCount === 'number'
+      ? raw.userMessageCount
+      : chatLog.filter((message) => message.sender === 'user').length;
   const questionnaireResponses = {
     ...(raw.questionnaireResponses ?? {}),
   } as QuestionnaireResponses;
 
   return {
     ...raw,
+    favoriteOutfitId,
     expectedOutfitBeforeAI,
+    pkRounds: raw.pkRounds ?? [],
+    favoritePkWins: raw.favoritePkWins ?? null,
+    favoritePkAppearances: raw.favoritePkAppearances ?? null,
+    pkConsistencyWithFavorite: raw.pkConsistencyWithFavorite ?? null,
+    chatLog,
+    userMessageCount,
     questionnaireResponses,
     questionnaireCompletedAt: raw.questionnaireCompletedAt ?? null,
     completionCode: raw.completionCode ?? null,
@@ -245,6 +289,9 @@ export function normalizeParticipantData(raw: ParticipantData): ParticipantData 
     chatPageExitedAt: raw.chatPageExitedAt ?? null,
     chatDurationSec: raw.chatDurationSec ?? 0,
     metMinimumChatDuration: raw.metMinimumChatDuration ?? false,
+    metMinimumChatRequirements:
+      raw.metMinimumChatRequirements ??
+      ((raw.metMinimumChatDuration ?? false) && userMessageCount >= 3),
     clickedViewRecommendation: raw.clickedViewRecommendation ?? false,
     viewRecommendationClickedAt: raw.viewRecommendationClickedAt ?? null,
     finalRecommendationVersion: raw.finalRecommendationVersion ?? null,

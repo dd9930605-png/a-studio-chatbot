@@ -235,8 +235,41 @@ export default function AdminPage() {
                   <Field label="allowedOutfits" value={selectedParticipant.allowedOutfits.join(', ')} />
                   <Field label="blockedOutfits" value={selectedParticipant.blockedOutfits.join(', ')} />
                   <Field
+                    label="favoriteOutfitId"
+                    value={selectedParticipant.favoriteOutfitId || '—'}
+                  />
+                  <Field
                     label="expectedOutfitBeforeAI"
                     value={selectedParticipant.expectedOutfitBeforeAI}
+                  />
+                  <Field
+                    label="favoritePkWins"
+                    value={String(selectedParticipant.favoritePkWins ?? '—')}
+                  />
+                  <Field
+                    label="favoritePkAppearances"
+                    value={String(selectedParticipant.favoritePkAppearances ?? '—')}
+                  />
+                  <Field
+                    label="pkConsistencyWithFavorite"
+                    value={
+                      selectedParticipant.pkConsistencyWithFavorite == null
+                        ? '—'
+                        : String(selectedParticipant.pkConsistencyWithFavorite)
+                    }
+                  />
+                  <Field
+                    label="pkRounds"
+                    value={
+                      selectedParticipant.pkRounds?.length
+                        ? selectedParticipant.pkRounds
+                            .map(
+                              (round) =>
+                                `R${round.round}:${round.leftOutfitId}vs${round.rightOutfitId}->${round.chosenOutfitId}`,
+                            )
+                            .join(' | ')
+                        : '—'
+                    }
                   />
                   <Field
                     label="surpriseCandidateOutfits"
@@ -333,8 +366,16 @@ export default function AdminPage() {
                       value={String(selectedParticipant.chatDurationSec)}
                     />
                     <Field
+                      label="userMessageCount"
+                      value={String(selectedParticipant.userMessageCount ?? 0)}
+                    />
+                    <Field
                       label="metMinimumChatDuration"
                       value={selectedParticipant.metMinimumChatDuration ? '是' : '否'}
+                    />
+                    <Field
+                      label="metMinimumChatRequirements"
+                      value={selectedParticipant.metMinimumChatRequirements ? '是' : '否'}
                     />
                   </Grid>
                 </Section>
