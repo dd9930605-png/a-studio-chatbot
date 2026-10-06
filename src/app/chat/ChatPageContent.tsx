@@ -8,6 +8,7 @@ import { RecommendationCard } from '@/components/RecommendationCard';
 import {
   ParticipantData,
   clearParticipantDraft,
+  extractUserMessages,
   generateCompletionCode,
   getParticipantDraft,
   saveParticipantData,
@@ -28,6 +29,7 @@ type Step = 'greeting' | 'chat' | 'recommendation';
 const GREETING_DISPLAY_MS = 3200;
 const MIN_CHAT_MS = 3 * 60 * 1000;
 const MAX_CHAT_MS = 5 * 60 * 1000;
+const MIN_USER_MESSAGES = 3;
 
 export default function ChatPageContent() {
   const router = useRouter();
@@ -82,13 +84,21 @@ export default function ChatPageContent() {
     return () => window.clearInterval(timer);
   }, [currentStep, chatStartedAt]);
 
+  const userMessageCount =
+    participantData?.userMessageCount ??
+    (participantData ? extractUserMessages(participantData).length : 0);
+  const metMinDuration = elapsedMs >= MIN_CHAT_MS;
+  const metMinMessages = userMessageCount >= MIN_USER_MESSAGES;
+  const canViewRecommendation = metMinDuration && metMinMessages;
+
   useEffect(() => {
     if (currentStep !== 'chat') return;
-    if (elapsedMs >= MAX_CHAT_MS && !showMaxTimeDialog) {
+    // 僅在時間達上限且訊息數也達標時，強制引導查看推薦
+    if (elapsedMs >= MAX_CHAT_MS && canViewRecommendation && !showMaxTimeDialog) {
       setShowMaxTimeDialog(true);
       setTimingNotice('已達互動上限（5 分鐘），請查看推薦結果。');
     }
-  }, [currentStep, elapsedMs, showMaxTimeDialog]);
+  }, [currentStep, elapsedMs, canViewRecommendation, showMaxTimeDialog]);
 
   if (!participantData || !condition) {
     return (
@@ -102,19 +112,31 @@ export default function ChatPageContent() {
   }
 
   const handleViewRecommendation = () => {
-    if (elapsedMs < MIN_CHAT_MS) {
-      setTimingNotice('您尚未完成本階段互動，請繼續與 AI 穿搭顧問聊天。');
+    if (!metMinDuration || !metMinMessages) {
+      const missing: string[] = [];
+      if (!metMinMessages) missing.push(`至少再送出 ${MIN_USER_MESSAGES - userMessageCount} 則訊息`);
+      if (!metMinDuration) {
+        const remainSec = Math.ceil((MIN_CHAT_MS - elapsedMs) / 1000);
+        missing.push(`再互動約 ${remainSec} 秒`);
+      }
+      setTimingNotice(
+        `請至少與 AI 顧問完成 3 次互動，並體驗滿 3 分鐘後查看推薦。（尚缺：${missing.join('；')}）`,
+      );
       return;
     }
 
     const exitedAt = new Date().toISOString();
     const durationSec = Math.min(Math.floor(elapsedMs / 1000), Math.floor(MAX_CHAT_MS / 1000));
+    const messageCount =
+      participantData.userMessageCount || extractUserMessages(participantData).length;
 
     let nextData: ParticipantData = {
       ...participantData,
       chatPageExitedAt: exitedAt,
       chatDurationSec: durationSec,
+      userMessageCount: messageCount,
       metMinimumChatDuration: durationSec >= Math.floor(MIN_CHAT_MS / 1000),
+      metMinimumChatRequirements: true,
       clickedViewRecommendation: true,
       viewRecommendationClickedAt: exitedAt,
       sessionEndTime: exitedAt,
@@ -255,8 +277,16 @@ export default function ChatPageContent() {
   };
 
   const displayOutfit = getOutfit(participantData.finalRecommendedOutfit);
-  const chatLocked = elapsedMs >= MAX_CHAT_MS;
-  const canViewRecommendation = elapsedMs >= MIN_CHAT_MS;
+  // 訊息數未達標時即使超過 5 分鐘仍可繼續輸入，避免卡死
+  const chatLocked = elapsedMs >= MAX_CHAT_MS && metMinMessages;
+
+  const missingHints: string[] = [];
+  if (!metMinMessages) {
+    missingHints.push(`尚需 ${MIN_USER_MESSAGES - userMessageCount} 則互動訊息`);
+  }
+  if (!metMinDuration) {
+    missingHints.push(`尚需約 ${Math.ceil((MIN_CHAT_MS - elapsedMs) / 1000)} 秒`);
+  }
 
   return (
     <div className="min-h-screen px-4 py-8">
@@ -289,14 +319,30 @@ export default function ChatPageContent() {
               minChatMs={MIN_CHAT_MS}
               maxChatMs={MAX_CHAT_MS}
               elapsedMs={elapsedMs}
+              minUserMessages={MIN_USER_MESSAGES}
             />
             <div className="rounded-lg border border-gray-200 bg-white p-4">
               <p className="text-sm text-gray-600">
-                請至少互動 3 分鐘，最多互動 5 分鐘。達到 3 分鐘後即可查看推薦結果。
+                請至少與 AI 顧問完成 3 次互動，並體驗滿 3 分鐘後查看推薦。最多互動 5 分鐘。
               </p>
+              <p className="mt-2 text-sm text-gray-700">
+                目前進度：訊息 {userMessageCount}/{MIN_USER_MESSAGES}；
+                時間 {Math.floor(elapsedMs / 1000)}/{Math.floor(MIN_CHAT_MS / 1000)} 秒
+              </p>
+              {!canViewRecommendation && missingHints.length > 0 && (
+                <p className="mt-2 text-sm font-medium text-amber-800">
+                  {missingHints.join('；')}。
+                </p>
+              )}
               {chatLocked && (
                 <p className="mt-2 text-sm font-semibold text-rose-700">
                   已達互動上限（5 分鐘），請查看推薦結果。
+                </p>
+              )}
+              {elapsedMs >= MAX_CHAT_MS && !metMinMessages && (
+                <p className="mt-2 text-sm font-semibold text-amber-800">
+                  已達 5 分鐘，但仍需至少再送出 {MIN_USER_MESSAGES - userMessageCount}{' '}
+                  則訊息才能查看推薦。
                 </p>
               )}
               <button
@@ -309,7 +355,7 @@ export default function ChatPageContent() {
               </button>
             </div>
 
-            {showMaxTimeDialog && (
+            {showMaxTimeDialog && canViewRecommendation && (
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
                 <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl">
                   <h3 className="text-lg font-bold text-gray-900">已達互動上限</h3>

@@ -15,6 +15,7 @@ interface ChatInterfaceProps {
   minChatMs: number;
   maxChatMs: number;
   elapsedMs: number;
+  minUserMessages?: number;
 }
 
 interface ChatApiResponse {
@@ -61,22 +62,34 @@ export function ChatInterface({
   minChatMs,
   maxChatMs,
   elapsedMs,
+  minUserMessages = 3,
 }: ChatInterfaceProps) {
   const [inputValue, setInputValue] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const theme = getConditionTheme(condition);
 
+  const userMessageCount =
+    participantData.userMessageCount ||
+    extractUserMessages(participantData).length;
   const remainingMinMs = Math.max(0, minChatMs - elapsedMs);
+  const remainingMessages = Math.max(0, minUserMessages - userMessageCount);
   const elapsedSec = Math.floor(elapsedMs / 1000);
   const elapsedPercent = Math.min(100, (elapsedMs / maxChatMs) * 100);
   const minThresholdPercent = (minChatMs / maxChatMs) * 100;
+  const metTime = elapsedMs >= minChatMs;
+  const metMessages = userMessageCount >= minUserMessages;
   const timeStatus =
-    elapsedMs >= maxChatMs
+    elapsedMs >= maxChatMs && metMessages
       ? '已達 5 分鐘上限，請查看推薦結果。'
-      : elapsedMs >= minChatMs
-        ? '已達基本互動時間，現在可查看推薦結果。'
-        : `請至少再互動 ${Math.ceil(remainingMinMs / 1000)} 秒。`;
+      : metTime && metMessages
+        ? '已達基本互動時間與訊息數，現在可查看推薦結果。'
+        : [
+            !metMessages ? `尚需 ${remainingMessages} 則互動訊息` : null,
+            !metTime ? `請至少再互動 ${Math.ceil(remainingMinMs / 1000)} 秒` : null,
+          ]
+            .filter(Boolean)
+            .join('；') + '。';
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -133,6 +146,8 @@ export function ChatInterface({
       const result = (await response.json()) as ChatApiResponse;
 
       const botMessage = createMessage('freeChat', 'bot', result.reply);
+      const nextChatLog = [...participantData.chatLog, userMessage, botMessage];
+      const nextUserMessageCount = nextChatLog.filter((message) => message.sender === 'user').length;
 
       const updatedData: ParticipantData = {
         ...participantData,
@@ -142,7 +157,8 @@ export function ChatInterface({
             ? `${participantData.answers.usualStyleInput}\n${answer}`
             : answer,
         },
-        chatLog: [...participantData.chatLog, userMessage, botMessage],
+        chatLog: nextChatLog,
+        userMessageCount: nextUserMessageCount,
       };
 
       onUpdateData(updatedData);
@@ -162,7 +178,7 @@ export function ChatInterface({
     <div className={`flex flex-col ${theme.chatContainerClass}`}>
       <div
         className={`mx-4 mt-4 rounded-lg border px-3 py-2 text-sm ${
-          elapsedMs >= minChatMs
+          metTime && metMessages
             ? 'border-green-200 bg-green-50 text-green-800'
             : 'border-amber-200 bg-amber-50 text-amber-900'
         }`}
@@ -171,10 +187,13 @@ export function ChatInterface({
           互動時間：{Math.floor(elapsedSec / 60).toString().padStart(2, '0')}:
           {(elapsedSec % 60).toString().padStart(2, '0')} / 05:00
         </p>
+        <p className="mt-1 font-semibold">
+          互動訊息：{userMessageCount}/{minUserMessages}
+        </p>
         <div className="mt-2 h-2 w-full rounded-full bg-white/70">
           <div
             className={`h-2 rounded-full transition-all ${
-              elapsedMs >= minChatMs ? 'bg-green-500' : 'bg-amber-500'
+              metTime ? 'bg-green-500' : 'bg-amber-500'
             }`}
             style={{ width: `${elapsedPercent}%` }}
           />

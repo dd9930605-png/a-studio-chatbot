@@ -17,29 +17,36 @@ export interface RecommendationSections {
   isMinimal: boolean;
 }
 
+/**
+ * 結果頁「精簡」判定：僅看 Explainability × Two-sided。
+ * Proactivity 不影響結果頁內容。
+ */
 export function isMinimalRecommendation(condition: Condition): boolean {
-  return (
-    condition.explainability === 'low' &&
-    condition.twoSidedMessage === 'low' &&
-    condition.proactivity === 'low'
-  );
+  return condition.explainability === 'low' && condition.twoSidedMessage === 'low';
 }
 
 export function isUltraMinimalRecommendation(condition: Condition): boolean {
   return isMinimalRecommendation(condition) && condition.anthropomorphism === 'low';
 }
 
+/**
+ * 結果頁區塊正交規則：
+ * - Explainability → 是否呈現完整 why / recommendation logic（reason）
+ * - Two-sided Message → 是否在正面資訊之外再呈現 limitation
+ * - 正面資訊（benefit）兩組都顯示，以保持 Two-sided 只操弄「是否加反面」
+ * - Proactivity → 不影響結果頁（showSuggestion 固定 false）
+ */
 export function buildRecommendationSections(
   condition: Condition,
   outfit: Outfit,
 ): RecommendationSections {
-  const { outfitName, styleTags, reason, benefit, limitation, suggestion } = outfit;
+  const { outfitName, styleTags, reason, benefit, limitation } = outfit;
   const tags = styleTags.filter((tag) => !['男裝', '女裝', '待補'].includes(tag)).join('、');
   const isPersona = condition.anthropomorphism === 'high';
   const showReason = condition.explainability === 'high';
-  const showBenefit = condition.twoSidedMessage === 'high';
+  const showBenefit = true;
   const showLimitation = condition.twoSidedMessage === 'high';
-  const showSuggestion = condition.proactivity === 'high';
+  const showSuggestion = false;
   const isMinimal = isMinimalRecommendation(condition);
   const isUltraMinimal = isUltraMinimalRecommendation(condition);
 
@@ -60,7 +67,7 @@ export function buildRecommendationSections(
     reason: showReason ? reason : null,
     benefit: showBenefit ? benefit : null,
     limitation: showLimitation ? limitation : null,
-    suggestion: showSuggestion ? suggestion : null,
+    suggestion: null,
     isPersona,
     showReason,
     showBenefit,

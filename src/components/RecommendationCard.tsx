@@ -14,6 +14,7 @@ import {
   extractPreferencesFromParticipant,
 } from '@/lib/chatPreferences';
 import { buildResultPreferenceIntro } from '@/lib/surpriseRecommendation';
+import { buildRecommendationSections } from '@/lib/recommendationText';
 
 const recommendationSans = Noto_Sans_TC({
   subsets: ['latin'],
@@ -48,11 +49,8 @@ function ExplanationBlock({
   tone: 'reason' | 'benefit' | 'caution';
 }) {
   const toneClass = {
-    // 藍系：信任／說明（常見於專業服務與電商信任研究）
     reason: 'border-sky-200 bg-sky-50',
-    // 青綠：正向但不採交通號誌綠
     benefit: 'border-teal-200 bg-teal-50',
-    // 暖石色：提醒注意力，避免警示黃／橘造成威脅感
     caution: 'border-stone-300 bg-stone-50',
   }[tone];
 
@@ -134,22 +132,38 @@ export function RecommendationCard({
     (participantData.surpriseMode as 'surprise' | 'no_surprise') || 'no_surprise',
     condition.anthropomorphism,
   );
+  const sections = buildRecommendationSections(condition, outfit);
 
-  // 三塊固定說明：使用穿搭資料既有文案，版型各組相同（不改文字產生邏輯）
+  // Explainability × Two-sided 正交區塊；Proactivity 不影響結果頁
   const explanationBlocks: {
     title: string;
     content: string;
     tone: 'reason' | 'benefit' | 'caution';
-  }[] = [
-    { title: '推薦原因', content: outfit.reason, tone: 'reason' },
-    { title: '這套搭配的優點', content: outfit.benefit, tone: 'benefit' },
-    { title: '需要注意的地方', content: outfit.limitation, tone: 'caution' },
-  ];
+  }[] = [];
 
-  // 推薦重點：短句，不取代下方三塊完整說明；有對話偏好時優先回扣
-  const highlightTitle = preferenceIntro
-    ? preferenceIntro.title
-    : '推薦重點';
+  if (sections.showReason && sections.reason) {
+    explanationBlocks.push({
+      title: '為什麼推薦這套',
+      content: sections.reason,
+      tone: 'reason',
+    });
+  }
+  if (sections.showBenefit && sections.benefit) {
+    explanationBlocks.push({
+      title: '這套搭配的優點',
+      content: sections.benefit,
+      tone: 'benefit',
+    });
+  }
+  if (sections.showLimitation && sections.limitation) {
+    explanationBlocks.push({
+      title: '需要注意的地方',
+      content: sections.limitation,
+      tone: 'caution',
+    });
+  }
+
+  const highlightTitle = preferenceIntro ? preferenceIntro.title : '推薦重點';
   const highlightText = preferenceIntro
     ? preferenceIntro.body
     : displayTags.includes('韓系') && displayTags.includes('層次穿搭')
@@ -176,7 +190,6 @@ export function RecommendationCard({
 
   return (
     <div className={`${recommendationSans.className} rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8`}>
-      {/* 1. 頂部：標題、Look、名稱、標籤、圖片 */}
       <div className="mb-5 text-center sm:mb-6">
         <p className="text-sm font-semibold tracking-wide text-slate-600 sm:text-base">
           AI 穿搭顧問推薦結果
@@ -209,7 +222,6 @@ export function RecommendationCard({
         </div>
       )}
 
-      {/* 2. 偏好摘要／推薦重點（短，不取代下方三塊完整說明） */}
       <div className="mb-6 rounded-xl border border-indigo-200 bg-indigo-50 px-5 py-4 sm:mb-8">
         <p className={`text-base font-bold sm:text-lg ${preferenceIntro ? 'text-indigo-950' : 'text-indigo-900'}`}>
           {highlightTitle}
@@ -219,26 +231,28 @@ export function RecommendationCard({
         </p>
       </div>
 
-      {/* 3. 完整推薦說明（直接展開，三塊固定版型） */}
-      <div className="mb-4">
-        <h3 className="text-xl font-bold text-slate-950 sm:text-2xl">完整推薦說明</h3>
-        <p className="mt-2 text-sm leading-relaxed text-slate-600 sm:text-base">
-          請完整閱讀以下內容，後續問卷將根據本頁體驗作答。
-        </p>
-      </div>
+      {explanationBlocks.length > 0 && (
+        <>
+          <div className="mb-4">
+            <h3 className="text-xl font-bold text-slate-950 sm:text-2xl">推薦說明</h3>
+            <p className="mt-2 text-sm leading-relaxed text-slate-600 sm:text-base">
+              請完整閱讀以下內容，後續問卷將根據本頁體驗作答。
+            </p>
+          </div>
 
-      <div className="space-y-4">
-        {explanationBlocks.map((block) => (
-          <ExplanationBlock
-            key={block.title}
-            title={block.title}
-            content={block.content}
-            tone={block.tone}
-          />
-        ))}
-      </div>
+          <div className="space-y-4">
+            {explanationBlocks.map((block) => (
+              <ExplanationBlock
+                key={block.title}
+                title={block.title}
+                content={block.content}
+                tone={block.tone}
+              />
+            ))}
+          </div>
+        </>
+      )}
 
-      {/* 4. 次要功能：弱化 */}
       <div className="mt-6 flex flex-col items-stretch gap-2 sm:flex-row sm:justify-center sm:gap-4">
         {visibleChatCount > 0 && (
           <button
@@ -258,7 +272,6 @@ export function RecommendationCard({
         </button>
       </div>
 
-      {/* 5. 單一主要按鈕動線 */}
       <div className="mt-8 border-t border-slate-200 pt-8">
         {!hasReadExplanation ? (
           <button
@@ -266,7 +279,7 @@ export function RecommendationCard({
             onClick={() => setHasReadExplanation(true)}
             className="w-full rounded-xl bg-blue-700 px-6 py-4 text-lg font-bold text-white transition hover:bg-blue-800 sm:py-5 sm:text-xl"
           >
-            我已閱讀完整推薦說明
+            我已閱讀推薦說明
           </button>
         ) : (
           <div className="space-y-5">

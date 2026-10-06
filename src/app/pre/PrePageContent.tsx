@@ -3,6 +3,8 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { OutfitCategoryForm } from '@/components/OutfitCategoryForm';
+import { FavoriteOutfitForm } from '@/components/FavoriteOutfitForm';
+import { OutfitPkForm } from '@/components/OutfitPkForm';
 import { ExpectedOutfitForm } from '@/components/ExpectedOutfitForm';
 import {
   ParticipantData,
@@ -25,8 +27,9 @@ import {
 import { emptyChatPreferences } from '@/lib/chatPreferences';
 import { buildFinalRecommendationText } from '@/lib/surpriseRecommendation';
 import { captureSurveyEntry } from '@/lib/surveyReturn';
+import { PkRoundRecord, summarizePkAgainstFavorite } from '@/lib/outfitPk';
 
-type PreStep = 'category' | 'expected';
+type PreStep = 'category' | 'favorite' | 'pk' | 'expected';
 
 export default function PrePageContent() {
   const router = useRouter();
@@ -116,6 +119,26 @@ export default function PrePageContent() {
       allowedOutfits: pools.allowedOutfits,
       blockedOutfits: pools.blockedOutfits,
     });
+    setCurrentStep('favorite');
+  };
+
+  const handleFavoriteSubmit = (favoriteOutfitId: string) => {
+    setParticipantData({
+      ...participantData,
+      favoriteOutfitId,
+    });
+    setCurrentStep('pk');
+  };
+
+  const handlePkComplete = (pkRounds: PkRoundRecord[]) => {
+    const summary = summarizePkAgainstFavorite(participantData.favoriteOutfitId, pkRounds);
+    setParticipantData({
+      ...participantData,
+      pkRounds,
+      favoritePkWins: summary.favoritePkWins,
+      favoritePkAppearances: summary.favoritePkAppearances,
+      pkConsistencyWithFavorite: summary.pkConsistencyWithFavorite,
+    });
     setCurrentStep('expected');
   };
 
@@ -124,6 +147,7 @@ export default function PrePageContent() {
     if (!condition) return;
 
     try {
+      // surprise 推薦只依 expectedOutfitBeforeAI；favoriteOutfitId / PK 不進入此邏輯
       const { finalRecommendedOutfit, surpriseCandidateOutfits } = resolveFinalOutfit({
         surpriseMode: participantData.surpriseMode as 'surprise' | 'no_surprise',
         expectedOutfitBeforeAI,
@@ -176,6 +200,17 @@ export default function PrePageContent() {
 
         {currentStep === 'category' && (
           <OutfitCategoryForm onSubmit={handleCategorySubmit} />
+        )}
+
+        {currentStep === 'favorite' && (
+          <FavoriteOutfitForm onSubmit={handleFavoriteSubmit} />
+        )}
+
+        {currentStep === 'pk' && participantData.favoriteOutfitId && (
+          <OutfitPkForm
+            favoriteOutfitId={participantData.favoriteOutfitId}
+            onComplete={handlePkComplete}
+          />
         )}
 
         {currentStep === 'expected' && (
