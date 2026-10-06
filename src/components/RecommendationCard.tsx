@@ -10,10 +10,7 @@ import { isExternalSurveyMode } from '@/lib/surveyMode';
 import { OverlayModal } from '@/components/OverlayModal';
 import { OutfitGrid } from '@/components/OutfitGrid';
 import { isProactiveNoteMessage } from '@/lib/proactiveNotes';
-import {
-  extractPreferencesFromParticipant,
-} from '@/lib/chatPreferences';
-import { buildResultPreferenceIntro } from '@/lib/surpriseRecommendation';
+import { extractPreferencesFromParticipant } from '@/lib/chatPreferences';
 import { buildRecommendationSections } from '@/lib/recommendationText';
 
 const recommendationSans = Noto_Sans_TC({
@@ -38,7 +35,6 @@ interface RecommendationCardProps {
   onViewChatLog?: () => void;
 }
 
-/** 各實驗組共用說明卡片：低彩度語意色，強化層級但不做強烈操弄 */
 function ExplanationBlock({
   title,
   content,
@@ -46,15 +42,17 @@ function ExplanationBlock({
 }: {
   title: string;
   content: string;
-  tone: 'reason' | 'benefit' | 'caution';
+  tone: 'neutral' | 'reason' | 'benefit' | 'caution';
 }) {
   const toneClass = {
+    neutral: 'border-slate-200 bg-slate-50',
     reason: 'border-sky-200 bg-sky-50',
     benefit: 'border-teal-200 bg-teal-50',
     caution: 'border-stone-300 bg-stone-50',
   }[tone];
 
   const titleClass = {
+    neutral: 'text-slate-900',
     reason: 'text-sky-950',
     benefit: 'text-teal-950',
     caution: 'text-stone-900',
@@ -126,51 +124,54 @@ export function RecommendationCard({
 
   const visibleChatCount = chatLog.filter((m) => !isProactiveNoteMessage(m.message)).length;
   const preferences = extractPreferencesFromParticipant(participantData);
-  const preferenceIntro = buildResultPreferenceIntro(
-    preferences,
-    outfit.outfitId,
-    (participantData.surpriseMode as 'surprise' | 'no_surprise') || 'no_surprise',
-    condition.anthropomorphism,
-  );
-  const sections = buildRecommendationSections(condition, outfit);
+  const sections = buildRecommendationSections(condition, outfit, preferences);
 
-  // Explainability × Two-sided 正交區塊；Proactivity 不影響結果頁
+  // EX × TS only；Proactivity / Anthropomorphism 不改變區塊結構
   const explanationBlocks: {
     title: string;
     content: string;
-    tone: 'reason' | 'benefit' | 'caution';
+    tone: 'neutral' | 'reason' | 'benefit' | 'caution';
   }[] = [];
 
-  if (sections.showReason && sections.reason) {
+  if (sections.showExplainability) {
+    if (sections.userNeed) {
+      explanationBlocks.push({ title: '你的需求', content: sections.userNeed, tone: 'reason' });
+    }
+    if (sections.criterion) {
+      explanationBlocks.push({
+        title: 'AI 判斷依據',
+        content: sections.criterion,
+        tone: 'reason',
+      });
+    }
+    if (sections.thereforeRecommend) {
+      explanationBlocks.push({
+        title: '因此推薦',
+        content: sections.thereforeRecommend,
+        tone: 'reason',
+      });
+    }
+  } else if (sections.conclusion) {
     explanationBlocks.push({
-      title: '為什麼推薦這套',
-      content: sections.reason,
-      tone: 'reason',
+      title: '推薦說明',
+      content: sections.conclusion,
+      tone: 'neutral',
     });
   }
-  if (sections.showBenefit && sections.benefit) {
-    explanationBlocks.push({
-      title: '這套搭配的優點',
-      content: sections.benefit,
-      tone: 'benefit',
-    });
-  }
+
+  explanationBlocks.push({
+    title: '搭配優點',
+    content: sections.benefit,
+    tone: 'benefit',
+  });
+
   if (sections.showLimitation && sections.limitation) {
     explanationBlocks.push({
-      title: '需要注意的地方',
+      title: '需要注意',
       content: sections.limitation,
       tone: 'caution',
     });
   }
-
-  const highlightTitle = preferenceIntro ? preferenceIntro.title : '推薦重點';
-  const highlightText = preferenceIntro
-    ? preferenceIntro.body
-    : displayTags.includes('韓系') && displayTags.includes('層次穿搭')
-      ? '這套穿搭兼顧韓系風格、層次感與面試場合需求。'
-      : displayTags.length >= 2
-        ? `這套穿搭兼顧${displayTags[0]}、${displayTags[1]}與面試場合需求。`
-        : '這套穿搭兼顧風格特色與面試場合需求。';
 
   const handleCopyCode = async () => {
     try {
@@ -222,36 +223,23 @@ export function RecommendationCard({
         </div>
       )}
 
-      <div className="mb-6 rounded-xl border border-indigo-200 bg-indigo-50 px-5 py-4 sm:mb-8">
-        <p className={`text-base font-bold sm:text-lg ${preferenceIntro ? 'text-indigo-950' : 'text-indigo-900'}`}>
-          {highlightTitle}
-        </p>
-        <p className={`${recommendationSerif.className} mt-2 text-base leading-relaxed text-slate-900 sm:text-lg`}>
-          {highlightText}
+      <div className="mb-4">
+        <h3 className="text-xl font-bold text-slate-950 sm:text-2xl">推薦說明</h3>
+        <p className="mt-2 text-sm leading-relaxed text-slate-600 sm:text-base">
+          請完整閱讀以下內容，後續問卷將根據本頁體驗作答。
         </p>
       </div>
 
-      {explanationBlocks.length > 0 && (
-        <>
-          <div className="mb-4">
-            <h3 className="text-xl font-bold text-slate-950 sm:text-2xl">推薦說明</h3>
-            <p className="mt-2 text-sm leading-relaxed text-slate-600 sm:text-base">
-              請完整閱讀以下內容，後續問卷將根據本頁體驗作答。
-            </p>
-          </div>
-
-          <div className="space-y-4">
-            {explanationBlocks.map((block) => (
-              <ExplanationBlock
-                key={block.title}
-                title={block.title}
-                content={block.content}
-                tone={block.tone}
-              />
-            ))}
-          </div>
-        </>
-      )}
+      <div className="space-y-4">
+        {explanationBlocks.map((block) => (
+          <ExplanationBlock
+            key={block.title}
+            title={block.title}
+            content={block.content}
+            tone={block.tone}
+          />
+        ))}
+      </div>
 
       <div className="mt-6 flex flex-col items-stretch gap-2 sm:flex-row sm:justify-center sm:gap-4">
         {visibleChatCount > 0 && (
@@ -268,7 +256,7 @@ export function RecommendationCard({
           onClick={() => setCatalogOpen(true)}
           className="rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
         >
-          回顧剛才的 12 套穿搭
+          回顧可選穿搭
         </button>
       </div>
 
@@ -319,17 +307,21 @@ export function RecommendationCard({
 
       <OverlayModal
         open={catalogOpen}
-        title="回顧剛才的 12 套穿搭"
+        title="回顧可選穿搭"
         onClose={() => setCatalogOpen(false)}
       >
         <div className="space-y-4">
           <p className="text-sm leading-relaxed text-slate-700 sm:text-base">
-            以下是剛才網站中的面試穿搭。本次推薦為
+            本次推薦為
             <strong className="mx-1">{lookLabel || outfit.outfitName}</strong>
-            ，可再對照看一次後關閉此視窗。
+            。以下為本類別可選穿搭。
           </p>
           <OutfitGrid
-            outfitIds={getAllOutfitIds()}
+            outfitIds={
+              participantData.allowedOutfits?.length
+                ? participantData.allowedOutfits
+                : getAllOutfitIds()
+            }
             selectedIds={[outfit.outfitId]}
             onChange={() => undefined}
             mode="single"

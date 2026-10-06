@@ -34,28 +34,26 @@ function RecommendationFullContent({
   const lookLabel = lookNumber ? getLookLabel(lookNumber) : '';
   const sections = buildRecommendationSections(condition, outfit);
 
-  const blocks: { title: string; content: string }[] = [
-    {
-      title: sections.isPersona ? '推薦說明' : '系統推薦摘要',
-      content: `${sections.intro}${sections.styleSummary ? ` ${sections.styleSummary}` : ''}`.trim(),
-    },
-  ];
+  const blocks: { title: string; content: string }[] = [];
 
-  if (sections.showReason && sections.reason) {
-    blocks.push({ title: sections.isPersona ? '為什麼推薦這套？' : '推薦理由', content: sections.reason });
+  if (sections.showExplainability) {
+    if (sections.userNeed) blocks.push({ title: '你的需求', content: sections.userNeed });
+    if (sections.criterion) blocks.push({ title: 'AI 判斷依據', content: sections.criterion });
+    if (sections.thereforeRecommend) {
+      blocks.push({ title: '因此推薦', content: sections.thereforeRecommend });
+    }
+  } else if (sections.conclusion) {
+    blocks.push({ title: '推薦說明', content: sections.conclusion });
   }
-  if (sections.showBenefit && sections.benefit) {
-    blocks.push({ title: '這套搭配的優點', content: sections.benefit });
-  }
+
+  blocks.push({ title: '搭配優點', content: sections.benefit });
+
   if (sections.showLimitation && sections.limitation) {
-    blocks.push({ title: '需要注意的地方', content: sections.limitation });
-  }
-  if (sections.showSuggestion && sections.suggestion) {
-    blocks.push({ title: sections.isPersona ? '穿搭建議' : '系統穿搭建議', content: sections.suggestion });
+    blocks.push({ title: '需要注意', content: sections.limitation });
   }
 
-  if (blocks.length === 1 && recommendationText) {
-    blocks[0].content = recommendationText;
+  if (blocks.length === 0 && recommendationText) {
+    blocks.push({ title: '推薦說明', content: recommendationText });
   }
 
   return (

@@ -259,13 +259,31 @@ export default function AdminPage() {
                     }
                   />
                   <Field
+                    label="pkFinalChallengerId"
+                    value={selectedParticipant.pkFinalChallengerId || '—'}
+                  />
+                  <Field
+                    label="pkFinalWinnerId"
+                    value={selectedParticipant.pkFinalWinnerId || '—'}
+                  />
+                  <Field
+                    label="favoriteRetainedInFinalPK"
+                    value={
+                      selectedParticipant.favoriteRetainedInFinalPK == null
+                        ? '—'
+                        : selectedParticipant.favoriteRetainedInFinalPK
+                          ? '是'
+                          : '否'
+                    }
+                  />
+                  <Field
                     label="pkRounds"
                     value={
                       selectedParticipant.pkRounds?.length
                         ? selectedParticipant.pkRounds
                             .map(
                               (round) =>
-                                `R${round.round}:${round.leftOutfitId}vs${round.rightOutfitId}->${round.chosenOutfitId}`,
+                                `R${round.roundNumber ?? round.round}:${round.leftOutfitId}vs${round.rightOutfitId}->${round.winnerOutfitId || round.selectedOutfitId || round.chosenOutfitId}`,
                             )
                             .join(' | ')
                         : '—'

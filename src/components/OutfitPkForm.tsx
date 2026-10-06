@@ -3,10 +3,16 @@
 import React, { useMemo, useState } from 'react';
 import { getOutfit } from '@/lib/outfits';
 import { getLookLabel, getLookNumberFromOutfitId } from '@/lib/looks';
-import { buildPhotoPkRounds, PkRoundPlan, PkRoundRecord } from '@/lib/outfitPk';
+import {
+  drawTournamentSeeds,
+  getTournamentRoundPair,
+  PkRoundPlan,
+  PkRoundRecord,
+} from '@/lib/outfitPk';
 
 interface OutfitPkFormProps {
   favoriteOutfitId: string;
+  eligibleOutfitIds: string[];
   onComplete: (pkRounds: PkRoundRecord[]) => void;
 }
 
@@ -56,70 +62,91 @@ function PkOutfitCard({
   );
 }
 
-export function OutfitPkForm({ favoriteOutfitId, onComplete }: OutfitPkFormProps) {
-  const plans = useMemo<PkRoundPlan[]>(
-    () => buildPhotoPkRounds(favoriteOutfitId),
-    [favoriteOutfitId],
-  );
-  const [roundIndex, setRoundIndex] = useState(0);
-  const [records, setRecords] = useState<PkRoundRecord[]>([]);
-  const [selected, setSelected] = useState<string>('');
-  const [error, setError] = useState('');
+const TOTAL_ROUNDS = 5;
 
-  const current = plans[roundIndex];
-  const totalRounds = plans.length;
+export function OutfitPkForm({
+  favoriteOutfitId,
+  eligibleOutfitIds,
+  onComplete,
+}: OutfitPkFormProps) {
+  const seeds = useMemo(
+    () => drawTournamentSeeds(favoriteOutfitId, eligibleOutfitIds),
+    [favoriteOutfitId, eligibleOutfitIds],
+  );
+
+  const [roundNumber, setRoundNumber] = useState(1);
+  const [winnersByRound, setWinnersByRound] = useState<Record<number, string>>({});
+  const [records, setRecords] = useState<PkRoundRecord[]>([]);
+  const [selected, setSelected] = useState('');
+  const [error, setError] = useState('');
+  const [currentPair, setCurrentPair] = useState<PkRoundPlan>(() =>
+    getTournamentRoundPair({
+      roundNumber: 1,
+      seeds,
+      favoriteOutfitId,
+      winnersByRound: {},
+    }),
+  );
 
   const handleNext = () => {
-    if (!current) return;
-    if (!selected || (selected !== current.leftOutfitId && selected !== current.rightOutfitId)) {
+    if (
+      !selected ||
+      (selected !== currentPair.leftOutfitId && selected !== currentPair.rightOutfitId)
+    ) {
       setError('請選擇左邊或右邊其中一套。');
       return;
     }
 
     const nextRecord: PkRoundRecord = {
-      ...current,
+      ...currentPair,
+      selectedOutfitId: selected,
+      winnerOutfitId: selected,
       chosenOutfitId: selected,
       timestamp: new Date().toISOString(),
     };
     const nextRecords = [...records, nextRecord];
+    const nextWinners = { ...winnersByRound, [roundNumber]: selected };
     setError('');
 
-    if (roundIndex + 1 >= totalRounds) {
+    if (roundNumber >= TOTAL_ROUNDS) {
       onComplete(nextRecords);
       return;
     }
 
+    const nextRound = roundNumber + 1;
+    const nextPair = getTournamentRoundPair({
+      roundNumber: nextRound,
+      seeds,
+      favoriteOutfitId,
+      winnersByRound: nextWinners,
+    });
+
     setRecords(nextRecords);
-    setRoundIndex(roundIndex + 1);
+    setWinnersByRound(nextWinners);
+    setRoundNumber(nextRound);
+    setCurrentPair(nextPair);
     setSelected('');
   };
-
-  if (!current) {
-    return (
-      <div className="rounded-xl border bg-white p-6 text-center text-gray-600">
-        PK 配對載入失敗，請重新整理頁面。
-      </div>
-    );
-  }
 
   return (
     <div className="mx-auto max-w-5xl rounded-xl border-2 border-slate-200 bg-white p-6 shadow-lg sm:p-8">
       <p className="text-sm font-semibold uppercase tracking-wide text-slate-600">前置問題 3</p>
       <h2 className="mt-3 text-2xl font-bold text-gray-900 sm:text-3xl">穿搭照片 PK</h2>
       <p className="mt-2 text-base text-gray-600 sm:text-lg">
-        請直覺選擇你比較喜歡的一套。共 {totalRounds} 輪，目前第 {roundIndex + 1} 輪。
+        請直覺選擇你比較喜歡的一套。共 {TOTAL_ROUNDS} 輪，目前第 {roundNumber} 輪。
+        {roundNumber === 5 ? '（最終輪：你的最愛 vs 晉級挑戰者）' : ''}
       </p>
 
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6">
         <PkOutfitCard
-          outfitId={current.leftOutfitId}
-          selected={selected === current.leftOutfitId}
-          onSelect={() => setSelected(current.leftOutfitId)}
+          outfitId={currentPair.leftOutfitId}
+          selected={selected === currentPair.leftOutfitId}
+          onSelect={() => setSelected(currentPair.leftOutfitId)}
         />
         <PkOutfitCard
-          outfitId={current.rightOutfitId}
-          selected={selected === current.rightOutfitId}
-          onSelect={() => setSelected(current.rightOutfitId)}
+          outfitId={currentPair.rightOutfitId}
+          selected={selected === currentPair.rightOutfitId}
+          onSelect={() => setSelected(currentPair.rightOutfitId)}
         />
       </div>
 
@@ -131,7 +158,7 @@ export function OutfitPkForm({ favoriteOutfitId, onComplete }: OutfitPkFormProps
         disabled={!selected}
         className="mt-6 w-full rounded-lg bg-slate-800 px-6 py-3 text-lg font-bold text-white transition hover:bg-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {roundIndex + 1 >= totalRounds ? '完成 PK，進入下一題' : '下一輪'}
+        {roundNumber >= TOTAL_ROUNDS ? '完成 PK，進入下一題' : '下一輪'}
       </button>
     </div>
   );

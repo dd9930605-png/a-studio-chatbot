@@ -62,6 +62,12 @@ export interface ParticipantData {
   favoritePkAppearances: number | null;
   /** favorite 出現輪次中選中 favorite 的比例；無可計算時為 null */
   pkConsistencyWithFavorite: number | null;
+  /** 晉級制最終挑戰者（Round 4 winner） */
+  pkFinalChallengerId: string;
+  /** 晉級制最終勝者（Round 5 winner） */
+  pkFinalWinnerId: string;
+  /** Favorite 是否在最終輪勝出 */
+  favoriteRetainedInFinalPK: boolean | null;
   surpriseCandidateOutfits: string[];
   finalRecommendedOutfit: string;
   finalRecommendationText: string;
@@ -214,6 +220,9 @@ export function initializeParticipantData(
     favoritePkWins: null,
     favoritePkAppearances: null,
     pkConsistencyWithFavorite: null,
+    pkFinalChallengerId: '',
+    pkFinalWinnerId: '',
+    favoriteRetainedInFinalPK: null,
     surpriseCandidateOutfits: [],
     finalRecommendedOutfit: '',
     finalRecommendationText: '',
@@ -276,6 +285,9 @@ export function normalizeParticipantData(raw: ParticipantData): ParticipantData 
     favoritePkWins: raw.favoritePkWins ?? null,
     favoritePkAppearances: raw.favoritePkAppearances ?? null,
     pkConsistencyWithFavorite: raw.pkConsistencyWithFavorite ?? null,
+    pkFinalChallengerId: raw.pkFinalChallengerId ?? '',
+    pkFinalWinnerId: raw.pkFinalWinnerId ?? '',
+    favoriteRetainedInFinalPK: raw.favoriteRetainedInFinalPK ?? null,
     chatLog,
     userMessageCount,
     questionnaireResponses,

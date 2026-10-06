@@ -1,14 +1,30 @@
-import { getAllOutfitIds } from '@/lib/looks';
+import { getLookLabel, getLookNumberFromOutfitId } from '@/lib/looks';
 
 export interface PkRoundPlan {
   round: number;
+  roundNumber: number;
   leftOutfitId: string;
   rightOutfitId: string;
 }
 
 export interface PkRoundRecord extends PkRoundPlan {
+  /** 受試者點選 */
+  selectedOutfitId: string;
+  /** 與 selectedOutfitId 相同（二選一勝出） */
+  winnerOutfitId: string;
+  /** @deprecated 相容欄位，等同 selectedOutfitId */
   chosenOutfitId: string;
   timestamp: string;
+}
+
+export interface PkTournamentSummary {
+  favoriteOutfitId: string;
+  pkFinalChallengerId: string;
+  pkFinalWinnerId: string;
+  favoriteRetainedInFinalPK: boolean;
+  favoritePkWins: number;
+  favoritePkAppearances: number;
+  pkConsistencyWithFavorite: number | null;
 }
 
 function shuffleInPlace<T>(items: T[]): T[] {
@@ -19,73 +35,152 @@ function shuffleInPlace<T>(items: T[]): T[] {
   return items;
 }
 
-function pairKey(a: string, b: string): string {
-  return [a, b].sort().join('|');
-}
-
-function randomOther(all: string[], exclude: string, alsoAvoid?: string): string {
-  const pool = all.filter((id) => id !== exclude && id !== alsoAvoid);
-  return pool[Math.floor(Math.random() * pool.length)];
+function randomizeSides(a: string, b: string): { leftOutfitId: string; rightOutfitId: string } {
+  if (Math.random() < 0.5) {
+    return { leftOutfitId: a, rightOutfitId: b };
+  }
+  return { leftOutfitId: b, rightOutfitId: a };
 }
 
 /**
- * 建立 5 輪 PK：
- * - 3 輪：favorite vs 隨機其他
- * - 2 輪：隨機 vs 隨機
- * - favorite 左右位置隨機
- * - 避免完全相同 pair 重複
+ * 從 eligible pool 排除 Favorite 後，隨機抽 5 個不重複 Challenger seeds：A–E。
  */
-export function buildPhotoPkRounds(favoriteOutfitId: string): PkRoundPlan[] {
-  const all = getAllOutfitIds();
-  if (!all.includes(favoriteOutfitId)) {
-    throw new Error('favoriteOutfitId 不在 12 套穿搭中');
+export function drawTournamentSeeds(
+  favoriteOutfitId: string,
+  eligiblePool: string[],
+): [string, string, string, string, string] {
+  if (!eligiblePool.includes(favoriteOutfitId)) {
+    throw new Error('favoriteOutfitId 不在 eligible outfit pool 中');
   }
 
-  const usedPairs = new Set<string>();
-  const rounds: PkRoundPlan[] = [];
+  const others = eligiblePool.filter((id) => id !== favoriteOutfitId);
+  if (others.length < 5) {
+    throw new Error('eligible pool 不足以抽出 5 個 PK challenger');
+  }
 
-  const favoriteRoundSlots = shuffleInPlace([0, 1, 2, 3, 4]).slice(0, 3);
+  const picked = shuffleInPlace([...others]).slice(0, 5);
+  return [picked[0], picked[1], picked[2], picked[3], picked[4]];
+}
 
-  for (let round = 1; round <= 5; round += 1) {
-    const isFavoriteRound = favoriteRoundSlots.includes(round - 1);
-    let left = '';
-    let right = '';
-    let attempts = 0;
+/**
+ * 晉級制 5 輪：
+ * R1 A vs B → W1
+ * R2 C vs D → W2
+ * R3 W1 vs W2 → W3
+ * R4 W3 vs E → Challenger
+ * R5 Favorite vs Challenger → Final
+ *
+ * 後輪依前輪 winner 決定；最後一輪不得加入未參賽的新 Look。
+ */
+export function getTournamentRoundPair(params: {
+  roundNumber: number;
+  seeds: [string, string, string, string, string];
+  favoriteOutfitId: string;
+  winnersByRound: Record<number, string>;
+}): PkRoundPlan {
+  const { roundNumber, seeds, favoriteOutfitId, winnersByRound } = params;
+  const [a, b, c, d, e] = seeds;
 
-    while (attempts < 40) {
-      attempts += 1;
-      if (isFavoriteRound) {
-        const other = randomOther(all, favoriteOutfitId);
-        if (Math.random() < 0.5) {
-          left = favoriteOutfitId;
-          right = other;
-        } else {
-          left = other;
-          right = favoriteOutfitId;
-        }
-      } else {
-        const first = all[Math.floor(Math.random() * all.length)];
-        const second = randomOther(all, first);
-        if (Math.random() < 0.5) {
-          left = first;
-          right = second;
-        } else {
-          left = second;
-          right = first;
-        }
-      }
+  let pair: { leftOutfitId: string; rightOutfitId: string };
 
-      const key = pairKey(left, right);
-      if (!usedPairs.has(key) && left !== right) {
-        usedPairs.add(key);
-        break;
-      }
+  switch (roundNumber) {
+    case 1:
+      pair = randomizeSides(a, b);
+      break;
+    case 2:
+      pair = randomizeSides(c, d);
+      break;
+    case 3: {
+      const w1 = winnersByRound[1];
+      const w2 = winnersByRound[2];
+      if (!w1 || !w2) throw new Error('Round 3 需要 Round 1/2 的勝者');
+      pair = randomizeSides(w1, w2);
+      break;
     }
-
-    rounds.push({ round, leftOutfitId: left, rightOutfitId: right });
+    case 4: {
+      const w3 = winnersByRound[3];
+      if (!w3) throw new Error('Round 4 需要 Round 3 的勝者');
+      pair = randomizeSides(w3, e);
+      break;
+    }
+    case 5: {
+      const challenger = winnersByRound[4];
+      if (!challenger) throw new Error('Round 5 需要 Round 4 的 Challenger');
+      pair = randomizeSides(favoriteOutfitId, challenger);
+      break;
+    }
+    default:
+      throw new Error(`不支援的 PK round: ${roundNumber}`);
   }
 
-  return rounds;
+  return {
+    round: roundNumber,
+    roundNumber,
+    leftOutfitId: pair.leftOutfitId,
+    rightOutfitId: pair.rightOutfitId,
+  };
+}
+
+export function summarizeTournamentPk(
+  favoriteOutfitId: string,
+  pkRounds: PkRoundRecord[],
+): PkTournamentSummary {
+  const finalRound = pkRounds.find((round) => round.roundNumber === 5 || round.round === 5);
+  const challengerRound = pkRounds.find((round) => round.roundNumber === 4 || round.round === 4);
+
+  const pkFinalChallengerId =
+    challengerRound?.winnerOutfitId ||
+    challengerRound?.selectedOutfitId ||
+    challengerRound?.chosenOutfitId ||
+    '';
+  const pkFinalWinnerId =
+    finalRound?.winnerOutfitId || finalRound?.selectedOutfitId || finalRound?.chosenOutfitId || '';
+
+  let favoritePkAppearances = 0;
+  let favoritePkWins = 0;
+  for (const round of pkRounds) {
+    const appears =
+      round.leftOutfitId === favoriteOutfitId || round.rightOutfitId === favoriteOutfitId;
+    if (!appears) continue;
+    favoritePkAppearances += 1;
+    const winner = round.winnerOutfitId || round.selectedOutfitId || round.chosenOutfitId;
+    if (winner === favoriteOutfitId) favoritePkWins += 1;
+  }
+
+  return {
+    favoriteOutfitId,
+    pkFinalChallengerId,
+    pkFinalWinnerId,
+    favoriteRetainedInFinalPK: pkFinalWinnerId === favoriteOutfitId,
+    favoritePkAppearances,
+    favoritePkWins,
+    pkConsistencyWithFavorite:
+      favoritePkAppearances > 0 ? favoritePkWins / favoritePkAppearances : null,
+  };
+}
+
+/** @deprecated 保留給舊呼叫；正式流程請用 tournament API */
+export function buildPhotoPkRounds(
+  favoriteOutfitId: string,
+  eligiblePool?: string[],
+): PkRoundPlan[] {
+  const pool = eligiblePool && eligiblePool.length > 0 ? eligiblePool : [favoriteOutfitId];
+  const seeds = drawTournamentSeeds(favoriteOutfitId, pool);
+  // 僅能預建前兩輪；其餘需 winner。此函式僅供相容／測試抽 seeds 用。
+  return [
+    getTournamentRoundPair({
+      roundNumber: 1,
+      seeds,
+      favoriteOutfitId,
+      winnersByRound: {},
+    }),
+    getTournamentRoundPair({
+      roundNumber: 2,
+      seeds,
+      favoriteOutfitId,
+      winnersByRound: {},
+    }),
+  ];
 }
 
 export function summarizePkAgainstFavorite(
@@ -96,23 +191,15 @@ export function summarizePkAgainstFavorite(
   favoritePkWins: number;
   pkConsistencyWithFavorite: number | null;
 } {
-  let favoritePkAppearances = 0;
-  let favoritePkWins = 0;
-
-  for (const round of pkRounds) {
-    const appears =
-      round.leftOutfitId === favoriteOutfitId || round.rightOutfitId === favoriteOutfitId;
-    if (!appears) continue;
-    favoritePkAppearances += 1;
-    if (round.chosenOutfitId === favoriteOutfitId) {
-      favoritePkWins += 1;
-    }
-  }
-
+  const summary = summarizeTournamentPk(favoriteOutfitId, pkRounds);
   return {
-    favoritePkAppearances,
-    favoritePkWins,
-    pkConsistencyWithFavorite:
-      favoritePkAppearances > 0 ? favoritePkWins / favoritePkAppearances : null,
+    favoritePkAppearances: summary.favoritePkAppearances,
+    favoritePkWins: summary.favoritePkWins,
+    pkConsistencyWithFavorite: summary.pkConsistencyWithFavorite,
   };
+}
+
+export function describeLook(outfitId: string): string {
+  const lookNumber = getLookNumberFromOutfitId(outfitId);
+  return lookNumber ? getLookLabel(lookNumber) : outfitId;
 }
