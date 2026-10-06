@@ -29,7 +29,11 @@ export function RecommendationRecap({
   const lookNumber = getLookNumberFromOutfitId(outfit.outfitId);
   const lookLabel = lookNumber ? getLookLabel(lookNumber) : '';
   const sections = buildRecommendationSections(condition, outfit);
-  const summary = `${sections.intro}${sections.styleSummary ? ` ${sections.styleSummary}` : ''}`.trim();
+  const summary =
+    sections.conclusion ||
+    sections.thereforeRecommend ||
+    sections.benefit ||
+    recommendationText;
 
   return (
     <aside className="rounded-xl border-2 border-blue-100 bg-gradient-to-b from-blue-50 to-white p-5 shadow-sm">

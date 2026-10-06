@@ -2,13 +2,13 @@
 
 import React, { useState } from 'react';
 import { OutfitGrid } from '@/components/OutfitGrid';
-import { getAllOutfitIds } from '@/lib/looks';
 
 interface FavoriteOutfitFormProps {
+  outfitIds: string[];
   onSubmit: (favoriteOutfitId: string) => void;
 }
 
-export function FavoriteOutfitForm({ onSubmit }: FavoriteOutfitFormProps) {
+export function FavoriteOutfitForm({ outfitIds, onSubmit }: FavoriteOutfitFormProps) {
   const [selected, setSelected] = useState<string[]>([]);
   const [error, setError] = useState('');
 
@@ -20,25 +20,34 @@ export function FavoriteOutfitForm({ onSubmit }: FavoriteOutfitFormProps) {
       return;
     }
 
+    if (!outfitIds.includes(selected[0])) {
+      setError('請從目前類別可選的穿搭中選擇。');
+      return;
+    }
+
     setError('');
     onSubmit(selected[0]);
   };
 
   return (
-    <div className="mx-auto max-w-6xl rounded-xl border-2 border-emerald-100 bg-white p-6 shadow-lg sm:p-8">
-      <p className="text-sm font-semibold uppercase tracking-wide text-emerald-700">前置問題 2</p>
+    <div className="mx-auto max-w-6xl rounded-xl border-2 border-emerald-200 bg-white p-6 shadow-lg sm:p-8">
+      <p className="text-sm font-semibold uppercase tracking-wide text-emerald-700">前置問題 2｜個人喜好</p>
 
       <h2 className="mt-3 text-2xl font-bold leading-snug text-gray-900 sm:text-3xl">
-        這 12 套穿搭中，你自己最喜歡哪一套？
+        請選出
+        <span className="mx-1 text-emerald-700 underline decoration-emerald-400 decoration-4 underline-offset-4">
+          你自己最喜歡
+        </span>
+        的一套穿搭
       </h2>
 
-      <p className="mt-3 text-base text-gray-600 sm:text-lg">
-        請依您個人喜好選擇，這題與「AI 會推薦哪一套」無關。
+      <p className="mt-3 rounded-lg border border-emerald-100 bg-emerald-50 px-4 py-3 text-base text-emerald-950 sm:text-lg">
+        此題請依照你自己的喜好選擇。
       </p>
 
       <form onSubmit={handleSubmit} className="mt-8 space-y-6">
         <OutfitGrid
-          outfitIds={getAllOutfitIds()}
+          outfitIds={outfitIds}
           selectedIds={selected}
           onChange={setSelected}
           mode="single"

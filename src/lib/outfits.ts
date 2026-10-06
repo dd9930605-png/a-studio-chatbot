@@ -48,9 +48,16 @@ export function getOutfitPools(category: OutfitCategory): {
   };
 }
 
-export function validateExpectedOutfit(expectedOutfit: string): string | null {
+export function validateExpectedOutfit(
+  expectedOutfit: string,
+  allowedOutfits?: string[],
+): string | null {
   if (!getAllOutfitIds().includes(expectedOutfit)) {
     return '請選擇有效的穿搭。';
+  }
+
+  if (allowedOutfits && allowedOutfits.length > 0 && !allowedOutfits.includes(expectedOutfit)) {
+    return '所選穿搭不在目前類別的可選範圍內。';
   }
 
   return null;
@@ -80,7 +87,7 @@ export function resolveFinalOutfit(params: {
     params.expectedOutfitBeforeAI || params.favoriteOutfitBeforeAI || params.expectedOutfit || '';
   const { surpriseMode, allowedOutfits, blockedOutfits } = params;
 
-  const expectedError = validateExpectedOutfit(expectedOutfitBeforeAI);
+  const expectedError = validateExpectedOutfit(expectedOutfitBeforeAI, allowedOutfits);
   if (expectedError) {
     throw new Error(expectedError);
   }

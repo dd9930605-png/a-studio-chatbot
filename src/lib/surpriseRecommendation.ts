@@ -122,24 +122,9 @@ export function buildFinalRecommendationText(params: {
   const outfit = getOutfit(params.finalOutfitId);
   if (!outfit) return '';
 
-  if (params.surpriseMode === 'surprise') {
-    const bridge = buildBridgeIntro(
-      params.condition,
-      params.preferences,
-      params.expectedOutfitBeforeAI,
-      params.finalOutfitId,
-    );
-    const body = buildRecommendationText(params.condition, outfit);
-    return `${bridge}\n\n${body}`.trim();
-  }
-
-  const bridge = buildNoSurpriseBridge(
-    params.condition,
-    params.preferences,
-    params.finalOutfitId,
-  );
-  const body = buildRecommendationText(params.condition, outfit);
-  return bridge ? `${bridge}\n\n${body}`.trim() : body;
+  // 結果頁正文僅依 EX×TS；偏好因果橋接不再附加，避免 Low EX 被污染。
+  // surprise 選款演算法仍只看 expectedOutfitBeforeAI，與此文字無關。
+  return buildRecommendationText(params.condition, outfit, params.preferences);
 }
 
 export function buildFinalRecommendationSections(params: {
@@ -154,21 +139,8 @@ export function buildFinalRecommendationSections(params: {
     return null;
   }
 
-  const sections = buildRecommendationSections(params.condition, outfit);
-  let introPrefix = '';
-
-  if (params.surpriseMode === 'surprise') {
-    introPrefix = buildBridgeIntro(
-      params.condition,
-      params.preferences,
-      params.expectedOutfitBeforeAI,
-      params.finalOutfitId,
-    );
-  } else {
-    introPrefix = buildNoSurpriseBridge(params.condition, params.preferences, params.finalOutfitId);
-  }
-
-  return { sections, introPrefix, outfit };
+  const sections = buildRecommendationSections(params.condition, outfit, params.preferences);
+  return { sections, introPrefix: '', outfit };
 }
 
 export function buildFinalRecommendationPlainText(params: {

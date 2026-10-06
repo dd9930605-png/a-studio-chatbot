@@ -27,7 +27,7 @@ import {
 import { emptyChatPreferences } from '@/lib/chatPreferences';
 import { buildFinalRecommendationText } from '@/lib/surpriseRecommendation';
 import { captureSurveyEntry } from '@/lib/surveyReturn';
-import { PkRoundRecord, summarizePkAgainstFavorite } from '@/lib/outfitPk';
+import { PkRoundRecord, summarizeTournamentPk } from '@/lib/outfitPk';
 
 type PreStep = 'category' | 'favorite' | 'pk' | 'expected';
 
@@ -111,6 +111,8 @@ export default function PrePageContent() {
     );
   }
 
+  const eligibleOutfitIds = participantData.allowedOutfits;
+
   const handleCategorySubmit = (category: OutfitCategory) => {
     const pools = getOutfitPools(category);
     setParticipantData({
@@ -123,6 +125,10 @@ export default function PrePageContent() {
   };
 
   const handleFavoriteSubmit = (favoriteOutfitId: string) => {
+    if (!eligibleOutfitIds.includes(favoriteOutfitId)) {
+      alert('所選穿搭不在目前類別可選範圍內。');
+      return;
+    }
     setParticipantData({
       ...participantData,
       favoriteOutfitId,
@@ -131,13 +137,16 @@ export default function PrePageContent() {
   };
 
   const handlePkComplete = (pkRounds: PkRoundRecord[]) => {
-    const summary = summarizePkAgainstFavorite(participantData.favoriteOutfitId, pkRounds);
+    const summary = summarizeTournamentPk(participantData.favoriteOutfitId, pkRounds);
     setParticipantData({
       ...participantData,
       pkRounds,
       favoritePkWins: summary.favoritePkWins,
       favoritePkAppearances: summary.favoritePkAppearances,
       pkConsistencyWithFavorite: summary.pkConsistencyWithFavorite,
+      pkFinalChallengerId: summary.pkFinalChallengerId,
+      pkFinalWinnerId: summary.pkFinalWinnerId,
+      favoriteRetainedInFinalPK: summary.favoriteRetainedInFinalPK,
     });
     setCurrentStep('expected');
   };
@@ -145,6 +154,11 @@ export default function PrePageContent() {
   const handleExpectedSubmit = (expectedOutfitBeforeAI: string) => {
     const condition = getCondition(participantData.conditionId);
     if (!condition) return;
+
+    if (!eligibleOutfitIds.includes(expectedOutfitBeforeAI)) {
+      alert('所選穿搭不在目前類別可選範圍內。');
+      return;
+    }
 
     try {
       // surprise 推薦只依 expectedOutfitBeforeAI；favoriteOutfitId / PK 不進入此邏輯
@@ -202,19 +216,26 @@ export default function PrePageContent() {
           <OutfitCategoryForm onSubmit={handleCategorySubmit} />
         )}
 
-        {currentStep === 'favorite' && (
-          <FavoriteOutfitForm onSubmit={handleFavoriteSubmit} />
+        {currentStep === 'favorite' && eligibleOutfitIds.length > 0 && (
+          <FavoriteOutfitForm
+            outfitIds={eligibleOutfitIds}
+            onSubmit={handleFavoriteSubmit}
+          />
         )}
 
         {currentStep === 'pk' && participantData.favoriteOutfitId && (
           <OutfitPkForm
             favoriteOutfitId={participantData.favoriteOutfitId}
+            eligibleOutfitIds={eligibleOutfitIds}
             onComplete={handlePkComplete}
           />
         )}
 
-        {currentStep === 'expected' && (
-          <ExpectedOutfitForm onSubmit={handleExpectedSubmit} />
+        {currentStep === 'expected' && eligibleOutfitIds.length > 0 && (
+          <ExpectedOutfitForm
+            outfitIds={eligibleOutfitIds}
+            onSubmit={handleExpectedSubmit}
+          />
         )}
       </div>
     </div>
