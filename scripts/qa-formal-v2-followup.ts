@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import conditionsData from '../public/conditions.json';
-import { getCondition } from '../src/lib/conditions';
+import { buildSurveyUrl, getCondition } from '../src/lib/conditions';
 import {
   getOutfitPools,
   getOutfit,
@@ -119,6 +119,22 @@ const surprise = resolveFinalOutfit({
 assert.ok(surprise.surpriseCandidateOutfits.every((id) => male.allowedOutfits.includes(id)));
 assert.ok(!surprise.surpriseCandidateOutfits.includes(maleOutOfPoolPrediction));
 console.log('PASS no_surprise exact prediction; surprise category-eligible');
+
+const surveyUrl = buildSurveyUrl('https://survey.example.org/form', {
+  participantId: 'QA-001',
+  conditionId: 1,
+  surpriseMode: 'no_surprise',
+  favoriteOutfitId: 'M1',
+  expectedOutfitBeforeAI: 'F6',
+  finalRecommendedOutfit: 'F6',
+  expectationMismatch: 0,
+  selectedOutfitCategory: 'male',
+});
+assert.ok(surveyUrl);
+const surveyParams = new URL(surveyUrl).searchParams;
+assert.equal(surveyParams.get('favorite'), 'M1');
+assert.equal(surveyParams.get('expected'), 'F6');
+console.log('PASS Favorite and Prediction remain distinct in survey handoff');
 
 const noPreferenceCases = ['我穿都可以', '不知道', '算可以吧', '西褲好像還行'];
 for (const input of noPreferenceCases) {
