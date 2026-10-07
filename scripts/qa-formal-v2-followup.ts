@@ -44,7 +44,8 @@ const expectedMapping = [
   ['low', 'low', 'low', 'low'],
 ];
 
-for (const [index, levels] of expectedMapping.entries()) {
+for (let index = 0; index < expectedMapping.length; index += 1) {
+  const levels = expectedMapping[index];
   const condition = conditionsData[index];
   assert.equal(condition.conditionId, index + 1);
   assert.deepEqual(
@@ -167,6 +168,20 @@ for (const [a, b, factor] of pairs) {
   const aReply = generateFreeChatFallbackReply(userInput, getCondition(a)!);
   const bReply = generateFreeChatFallbackReply(userInput, getCondition(b)!);
   assert.notEqual(aReply, bReply, `${factor} fallback output`);
+  if (factor === 'EX') {
+    assert.match(aReply, /你提到.*需要兼顧.*因此先建議/);
+    assert.doesNotMatch(bReply, /你提到.*需要兼顧.*因此先建議/);
+  } else if (factor === 'TS') {
+    assert.match(aReply, /不過.*正式感可能稍弱/);
+    assert.doesNotMatch(bReply, /不過|限制|稍弱/);
+  } else if (factor === 'AN') {
+    assert.match(aReply, /我會/);
+    assert.match(bReply, /^使用者提供/);
+    assert.doesNotMatch(bReply, /系統希望|我會/);
+  } else if (factor === 'PRO') {
+    assert.match(aReply, /？$/);
+    assert.doesNotMatch(bReply, /[？?]/);
+  }
   console.log(`${factor} ${a}/${b}`, { aReply, bReply });
 }
 

@@ -266,12 +266,24 @@ const KEYWORD_RULES: Record<ResponseStep, { keywords: string[]; response: string
 
 function applyTone(response: string, condition: Condition): string {
   if (condition.anthropomorphism === 'low') {
-    return response
+    const quotedSegments: string[] = [];
+    const protectedResponse = response.replace(/「[^」]*」/g, (quoted) => {
+      const placeholder = `__QUOTED_${quotedSegments.length}__`;
+      quotedSegments.push(quoted);
+      return placeholder;
+    });
+
+    const neutralResponse = protectedResponse
       .replace(/^了解，/, '已記錄：')
       .replace(/我會/g, '系統將')
       .replace(/我/g, '系統')
       .replace(/^抱歉，/, '提示：')
       .replace(/請再試一次/g, '請重新輸入');
+
+    return neutralResponse.replace(
+      /__QUOTED_(\d+)__/g,
+      (_, index: string) => quotedSegments[Number(index)] ?? '',
+    );
   }
 
   return response;
