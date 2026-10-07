@@ -235,6 +235,7 @@ export default function ChatPageContent() {
           participantId: participantData.participantId,
           conditionId: participantData.conditionId,
           surpriseMode: participantData.surpriseMode,
+          favoriteOutfitId: participantData.favoriteOutfitId,
           expectedOutfitBeforeAI: participantData.expectedOutfitBeforeAI,
           finalRecommendedOutfit: participantData.finalRecommendedOutfit,
           expectationMismatch: participantData.expectationMismatch,

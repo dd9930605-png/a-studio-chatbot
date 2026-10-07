@@ -87,7 +87,7 @@ async function handleFreeChat(
   experimentContext?: ExperimentChatContext,
 ): Promise<ChatResponseBody> {
   const experimentKnowledge = experimentContext
-    ? buildExperimentKnowledgeBlock(experimentContext)
+    ? buildExperimentKnowledgeBlock(experimentContext, condition)
     : '';
 
   const withCatalogGuard = (reply: string, source: 'openai' | 'fallback'): ChatResponseBody => ({
@@ -98,8 +98,10 @@ async function handleFreeChat(
 
   // 詢問現有色系：直接回完整清單，避免模型漏列深棕／棕色
   if (/還有什麼.*色|有哪些.*色|什麼.*顏色|商品顏色|現有.*色系|顏色有哪些/.test(trimmedInput)) {
+    const followUp =
+      condition.proactivity === 'high' ? '你對其中哪一個色系特別有興趣呢？' : '';
     return withCatalogGuard(
-      `目前網站這 12 套面試穿搭的色系包含：${CATALOG_COLOR_SUMMARY}。您對其中哪一個色系特別有興趣呢？`,
+      `目前網站這 12 套面試穿搭的色系包含：${CATALOG_COLOR_SUMMARY}。${followUp}`,
       'fallback',
     );
   }
@@ -107,7 +109,12 @@ async function handleFreeChat(
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     return withCatalogGuard(
-      generateFreeChatFallbackReply(trimmedInput, condition as Condition, experimentContext),
+      generateFreeChatFallbackReply(
+        trimmedInput,
+        condition as Condition,
+        experimentContext,
+        conversationHistory,
+      ),
       'fallback',
     );
   }
@@ -123,7 +130,8 @@ async function handleFreeChat(
 
     const completion = await client.chat.completions.create({
       model,
-      temperature: 0.7,
+      // 實驗操弄需穩定重現，降低隨機發揮造成的 High/Low bleed。
+      temperature: 0.3,
       response_format: { type: 'json_object' },
       messages: [
         { role: 'system', content: systemPrompt },
@@ -143,7 +151,12 @@ async function handleFreeChat(
 
     if (!parsed) {
       return withCatalogGuard(
-        generateFreeChatFallbackReply(trimmedInput, condition as Condition, experimentContext),
+        generateFreeChatFallbackReply(
+          trimmedInput,
+          condition as Condition,
+          experimentContext,
+          conversationHistory,
+        ),
         'fallback',
       );
     }
@@ -152,7 +165,12 @@ async function handleFreeChat(
   } catch (error) {
     console.error('OpenAI free chat API failed:', error);
     return withCatalogGuard(
-      generateFreeChatFallbackReply(trimmedInput, condition as Condition, experimentContext),
+      generateFreeChatFallbackReply(
+        trimmedInput,
+        condition as Condition,
+        experimentContext,
+        conversationHistory,
+      ),
       'fallback',
     );
   }

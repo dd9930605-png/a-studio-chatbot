@@ -49,10 +49,8 @@ export function drawTournamentSeeds(
   favoriteOutfitId: string,
   eligiblePool: string[],
 ): [string, string, string, string, string] {
-  if (!eligiblePool.includes(favoriteOutfitId)) {
-    throw new Error('favoriteOutfitId 不在 eligible outfit pool 中');
-  }
-
+  // Favorite 題可從完整 12 套選擇；前四輪 seeds 僅來自 category eligible pool。
+  // 若 Favorite 本身不在 eligible pool，仍只在最終輪以 Favorite 身分出現。
   const others = eligiblePool.filter((id) => id !== favoriteOutfitId);
   if (others.length < 5) {
     throw new Error('eligible pool 不足以抽出 5 個 PK challenger');

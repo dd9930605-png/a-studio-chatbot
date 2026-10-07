@@ -87,11 +87,13 @@ export function resolveFinalOutfit(params: {
     params.expectedOutfitBeforeAI || params.favoriteOutfitBeforeAI || params.expectedOutfit || '';
   const { surpriseMode, allowedOutfits, blockedOutfits } = params;
 
-  const expectedError = validateExpectedOutfit(expectedOutfitBeforeAI, allowedOutfits);
+  const expectedError = validateExpectedOutfit(expectedOutfitBeforeAI);
   if (expectedError) {
     throw new Error(expectedError);
   }
 
+  // expectation-consistency 操弄優先：no_surprise 必須精確等於 Prediction，
+  // 即使 Prediction 不在 category-specific recommendation eligible pool。
   if (surpriseMode === 'no_surprise') {
     return {
       finalRecommendedOutfit: expectedOutfitBeforeAI,

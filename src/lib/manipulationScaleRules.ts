@@ -64,6 +64,8 @@ function proactivityRules(level: 'high' | 'low'): string {
 - 主動詢問「尚未知道」、但對面試穿搭推薦重要的資訊（每輪最多 1 個問題）
 - 主動推進下一個有用問題
 - 適時補充與目前任務相關的資訊
+- 不需要每一則回覆都問問題；若上一輪已追問、資訊已足夠或使用者只是簡短回應，應先消化資訊而非再問
+- 追問必須具體點名已知資訊與尚缺資訊，禁止只問「這樣的方向如何？」
 
 嚴格禁止：
 - 重複詢問使用者已經回答過的資訊
@@ -130,6 +132,30 @@ const OFF_TOPIC_RULES = `### 離題對話處理（任務導向顧問，不是一
   例：「可以稍微聊一下，不過這次我是你的面試穿搭顧問，我還是會以幫你完成穿搭選擇為主。」
 - 不要變成一般聊天機器人去開一長串非穿搭主題。`;
 
+function selfCheckRules(condition: Condition): string {
+  return `### 輸出前靜默自檢（不要把檢查過程寫給使用者）
+- EX ${condition.explainability.toUpperCase()}：${
+    condition.explainability === 'high'
+      ? '若提出建議，確認看得到 User information → criterion → advice。'
+      : '確認沒有完整 User → criterion → advice 因果鏈。'
+  }
+- TS ${condition.twoSidedMessage.toUpperCase()}：${
+    condition.twoSidedMessage === 'high'
+      ? '談具體穿搭建議時，確認同時有正面資訊與一個具體、次要的 trade-off。'
+      : '確認沒有主動加入 limitation、缺點、風險或負面 trade-off。'
+  }
+- PRO ${condition.proactivity.toUpperCase()}：${
+    condition.proactivity === 'high'
+      ? '只在需要時問一個尚未回答的具體問題；若上一輪已問或資訊足夠，本輪不要再問。'
+      : '確認沒有問號、追問、下一步或新需求蒐集。'
+  }
+- AN ${condition.anthropomorphism.toUpperCase()}：${
+    condition.anthropomorphism === 'high'
+      ? '維持 Emma 的自然第一人稱語氣。'
+      : '維持客觀中性、無第一人稱「我」的系統語氣。'
+  }`;
+}
+
 /** 依 condition 組出「量表參考 + High/Low 行為規格」區塊，供 system prompt 使用 */
 export function buildScaleGroundedManipulationBlock(condition: Condition): string {
   const parts = [
@@ -153,6 +179,8 @@ export function buildScaleGroundedManipulationBlock(condition: Condition): strin
     '',
     '### 正交約束（Anti-bleed）',
     ...ANTI_BLEED_RULES.map((rule) => `- ${rule}`),
+    '',
+    selfCheckRules(condition),
   ];
 
   return parts.join('\n');

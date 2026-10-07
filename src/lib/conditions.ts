@@ -46,6 +46,7 @@ export interface SurveyParams {
   participantId: string;
   conditionId: number;
   surpriseMode: string;
+  favoriteOutfitId?: string;
   expectedOutfitBeforeAI: string;
   /** @deprecated 舊版參數，會對應至 expectedOutfitBeforeAI */
   favoriteOutfitBeforeAI?: string;
@@ -70,7 +71,9 @@ export function buildSurveyUrl(surveyUrl: string, params: SurveyParams): string 
   url.searchParams.set('pid', params.participantId);
   url.searchParams.set('condition', String(params.conditionId));
   url.searchParams.set('surprise', params.surpriseMode);
-  url.searchParams.set('favorite', expectedOutfitBeforeAI);
+  // 保留既有 favorite query key，但內容改為真正的 Favorite；
+  // 舊呼叫未提供時才退回歷史 Prediction alias。
+  url.searchParams.set('favorite', params.favoriteOutfitId || expectedOutfitBeforeAI);
   url.searchParams.set('expected', expectedOutfitBeforeAI);
   url.searchParams.set('final', params.finalRecommendedOutfit);
   url.searchParams.set('mismatch', String(params.expectationMismatch ?? ''));

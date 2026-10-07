@@ -264,14 +264,7 @@ export function detectBottomPreference(userMessages: string[]): 'pants' | 'skirt
         pantsScore += 2;
       }
 
-      if (
-        hasAcceptancePolarity(unit) &&
-        /褲/.test(unit) &&
-        !/裙/.test(unit) &&
-        !hasDislike
-      ) {
-        pantsScore += 1;
-      }
+      // 「褲子都可以／都行／沒差」代表沒有特定偏好，不可加分成偏好褲裝。
     }
   }
 

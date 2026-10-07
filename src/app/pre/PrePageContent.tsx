@@ -28,6 +28,7 @@ import { emptyChatPreferences } from '@/lib/chatPreferences';
 import { buildFinalRecommendationText } from '@/lib/surpriseRecommendation';
 import { captureSurveyEntry } from '@/lib/surveyReturn';
 import { PkRoundRecord, summarizeTournamentPk } from '@/lib/outfitPk';
+import { getAllOutfitIds } from '@/lib/looks';
 
 type PreStep = 'category' | 'favorite' | 'pk' | 'expected';
 
@@ -112,6 +113,7 @@ export default function PrePageContent() {
   }
 
   const eligibleOutfitIds = participantData.allowedOutfits;
+  const visibleOutfitIds = getAllOutfitIds();
 
   const handleCategorySubmit = (category: OutfitCategory) => {
     const pools = getOutfitPools(category);
@@ -125,8 +127,8 @@ export default function PrePageContent() {
   };
 
   const handleFavoriteSubmit = (favoriteOutfitId: string) => {
-    if (!eligibleOutfitIds.includes(favoriteOutfitId)) {
-      alert('所選穿搭不在目前類別可選範圍內。');
+    if (!visibleOutfitIds.includes(favoriteOutfitId)) {
+      alert('請選擇有效的穿搭。');
       return;
     }
     setParticipantData({
@@ -155,8 +157,8 @@ export default function PrePageContent() {
     const condition = getCondition(participantData.conditionId);
     if (!condition) return;
 
-    if (!eligibleOutfitIds.includes(expectedOutfitBeforeAI)) {
-      alert('所選穿搭不在目前類別可選範圍內。');
+    if (!visibleOutfitIds.includes(expectedOutfitBeforeAI)) {
+      alert('請選擇有效的穿搭。');
       return;
     }
 
@@ -218,7 +220,7 @@ export default function PrePageContent() {
 
         {currentStep === 'favorite' && eligibleOutfitIds.length > 0 && (
           <FavoriteOutfitForm
-            outfitIds={eligibleOutfitIds}
+            outfitIds={visibleOutfitIds}
             onSubmit={handleFavoriteSubmit}
           />
         )}
@@ -233,7 +235,7 @@ export default function PrePageContent() {
 
         {currentStep === 'expected' && eligibleOutfitIds.length > 0 && (
           <ExpectedOutfitForm
-            outfitIds={eligibleOutfitIds}
+            outfitIds={visibleOutfitIds}
             onSubmit={handleExpectedSubmit}
           />
         )}

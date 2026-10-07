@@ -2,19 +2,20 @@
 
 import React, { useState } from 'react';
 import { Condition } from '@/lib/conditions';
-import { getConditionTheme } from '@/lib/conditionTheme';
-import { ChatMessage } from '@/lib/dataRecorder';
+import { ChatMessage, ParticipantData } from '@/lib/dataRecorder';
 import { Outfit } from '@/lib/outfits';
 import { buildRecommendationSections } from '@/lib/recommendationText';
 import { getLookLabel, getLookNumberFromOutfitId } from '@/lib/looks';
 import { isProactiveNoteMessage } from '@/lib/proactiveNotes';
 import { OverlayModal } from '@/components/OverlayModal';
+import { extractPreferencesFromParticipant } from '@/lib/chatPreferences';
 
 interface RecommendationReviewToolsProps {
   outfit: Outfit;
   condition: Condition;
   recommendationText: string;
   chatLog: ChatMessage[];
+  participantData?: ParticipantData;
   onViewChatLog?: () => void;
   onViewFullRecommendation?: () => void;
   hintText?: string;
@@ -24,15 +25,19 @@ function RecommendationFullContent({
   outfit,
   condition,
   recommendationText,
+  participantData,
 }: {
   outfit: Outfit;
   condition: Condition;
   recommendationText: string;
+  participantData?: ParticipantData;
 }) {
-  const theme = getConditionTheme(condition);
   const lookNumber = getLookNumberFromOutfitId(outfit.outfitId);
   const lookLabel = lookNumber ? getLookLabel(lookNumber) : '';
-  const sections = buildRecommendationSections(condition, outfit);
+  const preferences = participantData
+    ? extractPreferencesFromParticipant(participantData)
+    : undefined;
+  const sections = buildRecommendationSections(condition, outfit, preferences);
 
   const blocks: { title: string; content: string }[] = [];
 
@@ -60,7 +65,7 @@ function RecommendationFullContent({
     <div className="space-y-4">
       <div className="text-center">
         {lookLabel && (
-          <p className={`text-sm font-semibold ${theme.recommendationAccent}`}>{lookLabel}</p>
+          <p className="text-sm font-semibold text-blue-700">{lookLabel}</p>
         )}
         <p className="mt-1 text-lg font-bold text-gray-900">{outfit.outfitName}</p>
       </div>
@@ -118,6 +123,7 @@ export function RecommendationReviewTools({
   condition,
   recommendationText,
   chatLog,
+  participantData,
   onViewChatLog,
   onViewFullRecommendation,
   hintText = '填寫問卷前，可隨時用下方按鈕回顧完整推薦說明與對話紀錄，無需離開本頁。',
@@ -166,6 +172,7 @@ export function RecommendationReviewTools({
           outfit={outfit}
           condition={condition}
           recommendationText={recommendationText}
+          participantData={participantData}
         />
       </OverlayModal>
 

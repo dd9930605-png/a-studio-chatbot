@@ -2,6 +2,10 @@ import { Condition } from '@/lib/conditions';
 import { ExperimentChatContext } from '@/lib/experimentKnowledge';
 import { messageMentionsUnavailableBottom, messageMentionsUnavailableColor, messageMentionsUnavailableStyle, CATALOG_BOTTOM_SUMMARY, CATALOG_COLOR_SUMMARY } from '@/lib/catalogBoundaries';
 import { getOutfit } from '@/lib/outfits';
+import {
+  extractChatPreferences,
+  hasExplicitPreferences,
+} from '@/lib/chatPreferences';
 
 export type ResponseStep =
   | 'stylePreference'
@@ -262,12 +266,24 @@ const KEYWORD_RULES: Record<ResponseStep, { keywords: string[]; response: string
 
 function applyTone(response: string, condition: Condition): string {
   if (condition.anthropomorphism === 'low') {
-    return response
+    const quotedSegments: string[] = [];
+    const protectedResponse = response.replace(/「[^」]*」/g, (quoted) => {
+      const placeholder = `__QUOTED_${quotedSegments.length}__`;
+      quotedSegments.push(quoted);
+      return placeholder;
+    });
+
+    const neutralResponse = protectedResponse
       .replace(/^了解，/, '已記錄：')
       .replace(/我會/g, '系統將')
       .replace(/我/g, '系統')
       .replace(/^抱歉，/, '提示：')
       .replace(/請再試一次/g, '請重新輸入');
+
+    return neutralResponse.replace(
+      /__QUOTED_(\d+)__/g,
+      (_, index: string) => quotedSegments[Number(index)] ?? '',
+    );
   }
 
   return response;
@@ -373,14 +389,66 @@ export function validateChatInput(
 const ACCESSORY_PATTERN =
   /項鍊|耳環|戒指|手錶|墨鏡|太陽眼鏡|帽子|圍巾|包包|鞋|球鞋|皮鞋|高跟|靴|配件|銀飾|金飾/;
 
+type SimpleHistory = Array<{ sender: 'user' | 'bot'; message: string }>;
+
+function shouldAskFallbackQuestion(
+  condition: Condition,
+  conversationHistory: SimpleHistory,
+): boolean {
+  if (condition.proactivity !== 'high') return false;
+  const lastBot = [...conversationHistory].reverse().find((entry) => entry.sender === 'bot');
+  return !lastBot?.message.includes('？') && !lastBot?.message.includes('?');
+}
+
+function appendFallbackQuestion(
+  base: string,
+  question: string,
+  condition: Condition,
+  conversationHistory: SimpleHistory,
+): string {
+  return shouldAskFallbackQuestion(condition, conversationHistory)
+    ? `${base}${question}`
+    : base;
+}
+
+function buildNextMissingInfoQuestion(
+  userMessages: string[],
+): string {
+  const preferences = extractChatPreferences(userMessages);
+  if (!hasExplicitPreferences(preferences)) {
+    return '你目前比較在意面試穿著的正式程度、顏色，還是版型呢？';
+  }
+  if (
+    preferences.likedColors.length === 0 &&
+    preferences.dislikedColors.length === 0
+  ) {
+    return '你已經說明風格方向；目前還沒提到色系，有偏好的深色或淺色嗎？';
+  }
+  if (
+    preferences.preferredFitLevels.length === 0 &&
+    preferences.avoidedFitLevels.length === 0 &&
+    preferences.softAvoidFitLevels.length === 0
+  ) {
+    return '色系偏好已經清楚；版型方面偏好俐落合身，還是稍微寬鬆呢？';
+  }
+  return '';
+}
+
 /** 無 OpenAI 時的自由對話備援，不做關鍵字篩選。 */
 export function generateFreeChatFallbackReply(
   userInput: string,
   condition: Condition,
   experimentContext?: ExperimentChatContext,
+  conversationHistory: SimpleHistory = [],
 ): string {
   const trimmed = userInput.trim();
   const topic = trimmed.length > 40 ? `${trimmed.slice(0, 40)}…` : trimmed;
+  const userMessages = [
+    ...conversationHistory
+      .filter((entry) => entry.sender === 'user')
+      .map((entry) => entry.message),
+    trimmed,
+  ];
 
   if (ACCESSORY_PATTERN.test(trimmed)) {
     return applyTone(
@@ -392,7 +460,12 @@ export function generateFreeChatFallbackReply(
   const unavailableColor = messageMentionsUnavailableColor(trimmed);
   if (unavailableColor) {
     return applyTone(
-      `本網站目前的 12 套面試穿搭沒有${unavailableColor}單品；現有色系以${CATALOG_COLOR_SUMMARY}為主。若以面試顧問角度，我們可以從這些現有搭配中找符合您需求的方向——您想優先給人乾淨俐落，還是穩重專業的印象呢？`,
+      appendFallbackQuestion(
+        `本網站目前的 12 套面試穿搭沒有${unavailableColor}單品；現有色系以${CATALOG_COLOR_SUMMARY}為主。可從現有搭配中選擇符合面試需求的方向。`,
+        '你想優先呈現乾淨俐落，還是穩重專業的印象呢？',
+        condition,
+        conversationHistory,
+      ),
       condition,
     );
   }
@@ -400,7 +473,12 @@ export function generateFreeChatFallbackReply(
   const unavailableBottom = messageMentionsUnavailableBottom(trimmed);
   if (unavailableBottom) {
     return applyTone(
-      `本網站目前沒有${unavailableBottom}這類單品；現有下裝以${CATALOG_BOTTOM_SUMMARY}為主。以面試情境來說，我們可以改從這些現有褲型／裙裝來找適合您的方向——您比較想走牛仔褲、西褲、寬褲，還是及膝裙呢？`,
+      appendFallbackQuestion(
+        `本網站目前沒有${unavailableBottom}這類單品；現有下裝以${CATALOG_BOTTOM_SUMMARY}為主。可改從這些現有褲型／裙裝選擇面試搭配。`,
+        '你比較想選牛仔褲、西褲、寬褲，還是及膝裙呢？',
+        condition,
+        conversationHistory,
+      ),
       condition,
     );
   }
@@ -412,7 +490,12 @@ export function generateFreeChatFallbackReply(
     !messageMentionsUnavailableColor(trimmed)
   ) {
     return applyTone(
-      `了解，您提到棕色／咖啡色系。本網站有咖啡色、深棕等單品，面試場合也很常見；我會把這個色系偏好記下來。您比較希望整體偏穩重，還是再柔和一點呢？`,
+      appendFallbackQuestion(
+        '已記錄棕色／咖啡色系偏好；網站有咖啡色、深棕等單品，可用於面試搭配。',
+        '你希望整體偏穩重，還是柔和一些呢？',
+        condition,
+        conversationHistory,
+      ),
       condition,
     );
   }
@@ -424,7 +507,12 @@ export function generateFreeChatFallbackReply(
     !messageMentionsUnavailableBottom(trimmed)
   ) {
     return applyTone(
-      `了解，您想走裙裝方向。本網站有及膝裙的面試搭配，正式又俐落；我會以此作為偏好參考。您比較希望給人專業俐落，還是柔和親和的印象呢？`,
+      appendFallbackQuestion(
+        '已記錄裙裝偏好；網站有及膝裙的面試搭配。',
+        '你希望呈現專業俐落，還是柔和親和的印象呢？',
+        condition,
+        conversationHistory,
+      ),
       condition,
     );
   }
@@ -432,7 +520,12 @@ export function generateFreeChatFallbackReply(
   // 詢問有哪些顏色：固定回完整清單，避免模型漏列深棕／棕色
   if (/還有什麼.*色|有哪些.*色|什麼.*顏色|商品顏色|現有.*色系|顏色有哪些/.test(trimmed)) {
     return applyTone(
-      `目前網站這 12 套面試穿搭的色系包含：${CATALOG_COLOR_SUMMARY}。您對其中哪一個色系特別有興趣呢？`,
+      appendFallbackQuestion(
+        `目前網站這 12 套面試穿搭的色系包含：${CATALOG_COLOR_SUMMARY}。`,
+        '你對其中哪一個色系特別有興趣呢？',
+        condition,
+        conversationHistory,
+      ),
       condition,
     );
   }
@@ -444,16 +537,42 @@ export function generateFreeChatFallbackReply(
     );
   }
 
-  if (/還行|行呀|可以呀|好啊|沒問題/.test(trimmed) && trimmed.length <= 8) {
+  if (/還行|好像還行|算可以|行呀|可以呀|好啊|沒問題/.test(trimmed) && trimmed.length <= 10) {
     return applyTone(
-      '了解！我會把您剛才提到的偏好記下來。互動結束後，結果頁會為您呈現最適合的面試穿搭說明；若還想聊面試前的緊張感或想給人的印象，也可以繼續說。',
+      appendFallbackQuestion(
+        '了解，這表示目前可以接受，但不會把它視為強烈偏好。',
+        buildNextMissingInfoQuestion(userMessages),
+        condition,
+        conversationHistory,
+      ),
       condition,
     );
   }
 
-  if (/約會|咖啡廳|聚餐|旅遊/.test(trimmed)) {
+  if (/不知道|我穿都可以|都可以|都行|沒差|無所謂|隨便/.test(trimmed)) {
     return applyTone(
-      '了解你的場合需求。這次我們聚焦在面試穿搭，我會依你的職業與偏好來討論正式度與風格。',
+      appendFallbackQuestion(
+        '了解，目前沒有記錄成特定的正向穿搭偏好。',
+        buildNextMissingInfoQuestion(userMessages),
+        condition,
+        conversationHistory,
+      ),
+      condition,
+    );
+  }
+
+  if (/約會|咖啡廳|聚餐|旅遊|麥當勞|晚餐|午餐|早餐|肚子餓|吃什麼|想吃/.test(trimmed)) {
+    return applyTone(
+      appendFallbackQuestion(
+        '題外話可以簡短聊一下；這次諮詢仍以完成面試穿搭選擇為主。',
+        buildNextMissingInfoQuestion(
+          conversationHistory
+            .filter((entry) => entry.sender === 'user')
+            .map((entry) => entry.message),
+        ),
+        condition,
+        conversationHistory,
+      ),
       condition,
     );
   }
@@ -468,31 +587,37 @@ export function generateFreeChatFallbackReply(
     }
   }
 
-  if (experimentContext && condition.proactivity === 'high') {
-    return applyTone(
-      `了解，你提到「${topic}」。我會依面試情境，從網站上的 12 套穿搭方向來整理適合你的正式度與色系。你還想補充身形修飾或風格偏好嗎？`,
+  let reply: string;
+  if (condition.explainability === 'high') {
+    reply =
+      condition.anthropomorphism === 'high'
+        ? `你提到「${topic}」。面試穿搭需要兼顧整潔感與適中的正式度，我會用這兩項標準整理方向，因此先建議從俐落配色與清楚線條的搭配著手。`
+        : `使用者提供「${topic}」。判斷依據為面試整潔感與適中正式度；因此建議優先選擇俐落配色與清楚線條的搭配。`;
+  } else {
+    reply =
+      condition.anthropomorphism === 'high'
+        ? '可以先從俐落配色與清楚線條的面試搭配著手。'
+        : '建議優先選擇俐落配色與清楚線條的面試搭配。';
+  }
+
+  if (condition.twoSidedMessage === 'high') {
+    reply +=
+      '這類方向能呈現整潔、穩重的印象；不過版型若過度寬鬆，在非常保守的面試場合正式感可能稍弱。';
+  } else {
+    reply += '這類方向能呈現整潔、穩重的印象。';
+  }
+
+  const nextQuestion = buildNextMissingInfoQuestion(userMessages);
+  if (nextQuestion) {
+    reply = appendFallbackQuestion(
+      reply,
+      nextQuestion,
       condition,
+      conversationHistory,
     );
   }
 
-  if (condition.anthropomorphism === 'high') {
-    if (condition.proactivity === 'high') {
-      return applyTone(
-        `了解，你提到「${topic}」。我會把這個需求納入面試穿著的考量，並依你的職業與場合調整正式度與版型。你還想補充偏好的顏色或風格嗎？`,
-        condition,
-      );
-    }
-    return applyTone(`了解，我會把「${topic}」納入你的面試穿搭建議。`, condition);
-  }
-
-  if (condition.proactivity === 'high') {
-    return applyTone(
-      `已收到需求：「${topic}」。建議可從正式度、色系與身形修飾三方面調整面試穿搭。`,
-      condition,
-    );
-  }
-
-  return applyTone(`已收到：「${topic}」，將納入穿著建議參考。`, condition);
+  return applyTone(reply, condition);
 }
 
 export function generateAcknowledgment(

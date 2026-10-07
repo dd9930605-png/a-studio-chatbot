@@ -31,6 +31,8 @@ export interface ChatPreferences {
   /** 僅扣分、不整批剔除的版型（例如不喜歡太合身） */
   softAvoidFitLevels: FitLevel[];
   wantsFormal: boolean;
+  /** 明確表示不要過度正式／專業；與 wantsFormal 互斥 */
+  wantsLessFormal: boolean;
   dislikesSkirt: boolean;
   dislikesJeans: boolean;
   /** 不喜歡西褲 */
@@ -84,6 +86,9 @@ const FORMAL_MARKERS = [
   '襯衫領帶',
 ];
 
+const LESS_FORMAL_PATTERN =
+  /(?:不想(?:要)?|不要|不希望|避免|怕)(?:穿得|看起來|顯得|太|那麼|過度|很|過於|太過)*(?:正式|專業|嚴肅|保守)|(?:正式|專業|嚴肅)感?(?:不要太多|太多了|過頭)/;
+
 const SKIRT_DISLIKE_MARKERS = ['不要裙', '不喜歡裙', '討厭裙', '不穿裙', '別推裙'];
 const JEANS_DISLIKE_MARKERS = [
   '不要牛仔',
@@ -130,8 +135,6 @@ const DRESS_PANTS_LIKE_MARKERS = [
   '偏向西裝褲',
   '西褲好了',
   '西裝褲好了',
-  '西褲好',
-  '西裝褲好',
 ];
 const WIDE_PANTS_DISLIKE_MARKERS = [
   '不要寬褲',
@@ -358,6 +361,7 @@ export function emptyChatPreferences(): ChatPreferences {
     preferredFitLevels: [],
     softAvoidFitLevels: [],
     wantsFormal: false,
+    wantsLessFormal: false,
     dislikesSkirt: false,
     dislikesJeans: false,
     dislikesDressPants: false,
@@ -383,6 +387,7 @@ export function extractChatPreferences(userMessages: string[]): ChatPreferences 
   const preferredFits = new Set<FitLevel>();
   const softAvoidFits = new Set<FitLevel>();
   let wantsFormal = false;
+  let wantsLessFormal = false;
   let dislikesSkirt = false;
   let dislikesJeans = false;
   let dislikesDressPants = false;
@@ -436,14 +441,18 @@ export function extractChatPreferences(userMessages: string[]): ChatPreferences 
     });
     fitPref.softAvoid.forEach((fit) => softAvoidFits.add(fit));
 
-    if (
-      FORMAL_MARKERS.some((marker) => {
-        // 「西裝褲」含「西裝」字樣，不應單獨當成要穿西裝／很正式
-        const scoped = message.replace(/西裝褲/g, '　');
-        return scoped.includes(marker);
-      })
-    ) {
-      wantsFormal = true;
+    for (const clause of clauses) {
+      // 「西裝褲」含「西裝」，不可單獨視為希望正式。
+      const scoped = clause.replace(/西裝褲/g, '　');
+      const mentionsFormal = FORMAL_MARKERS.some((marker) => scoped.includes(marker));
+      if (!mentionsFormal) continue;
+
+      if (LESS_FORMAL_PATTERN.test(scoped)) {
+        wantsLessFormal = true;
+        wantsFormal = false;
+      } else if (!isAnyDislikeMessage(scoped) && !wantsLessFormal) {
+        wantsFormal = true;
+      }
     }
     if (SKIRT_DISLIKE_MARKERS.some((marker) => message.includes(marker))) {
       dislikesSkirt = true;
@@ -479,9 +488,12 @@ export function extractChatPreferences(userMessages: string[]): ChatPreferences 
     ) {
       dislikesPants = true;
     }
-    for (const keyword of STYLE_KEYWORDS) {
-      if (message.includes(keyword)) {
-        matchedStyleKeywords.add(keyword);
+    for (const clause of clauses) {
+      if (isAnyDislikeMessage(clause)) continue;
+      for (const keyword of STYLE_KEYWORDS) {
+        if (clause.includes(keyword)) {
+          matchedStyleKeywords.add(keyword);
+        }
       }
     }
   }
@@ -516,6 +528,7 @@ export function extractChatPreferences(userMessages: string[]): ChatPreferences 
     preferredFitLevels: Array.from(preferredFits),
     softAvoidFitLevels: Array.from(softAvoidFits),
     wantsFormal,
+    wantsLessFormal,
     dislikesSkirt,
     dislikesJeans,
     dislikesDressPants,
@@ -542,6 +555,7 @@ export function hasExplicitPreferences(preferences: ChatPreferences): boolean {
     preferences.preferredFitLevels.length > 0 ||
     preferences.softAvoidFitLevels.length > 0 ||
     preferences.wantsFormal ||
+    preferences.wantsLessFormal ||
     preferences.dislikesSkirt ||
     preferences.dislikesJeans ||
     preferences.dislikesDressPants ||
@@ -723,6 +737,13 @@ function scoreOutfitForPreferences(outfitId: string, preferences: ChatPreference
       score += 2;
     }
   }
+  if (preferences.wantsLessFormal) {
+    const isFormalTagged = outfit.styleTags.some((tag) =>
+      FORMAL_STYLE_TAGS.some((formal) => tag.includes(formal)),
+    );
+    if (!isFormalTagged) score += 2;
+    if (isFormalTagged) score -= 1;
+  }
 
   for (const keyword of preferences.matchedStyleKeywords) {
     if (text.includes(keyword) || outfit.styleTags.some((tag) => tag.includes(keyword))) {
@@ -823,6 +844,9 @@ export function formatPreferencesSummary(preferences: ChatPreferences): string {
   }
   if (preferences.wantsFormal) {
     parts.push('希望正式、專業感');
+  }
+  if (preferences.wantsLessFormal) {
+    parts.push('希望不要過度正式或過於專業');
   }
   if (preferences.prefersPants) {
     parts.push('偏好褲裝');
@@ -949,6 +973,9 @@ function buildPreferenceContentItems(
 
   if (preferences.wantsFormal) {
     items.push({ high: '希望偏正式專業', low: '偏好正式專業感' });
+  }
+  if (preferences.wantsLessFormal) {
+    items.push({ high: '希望不要過度正式或拘謹', low: '偏好較低的正式程度' });
   }
 
   if (preferences.prefersJeans) {

@@ -136,6 +136,7 @@ export default function SurveyPageContent() {
             condition={condition}
             recommendationText={participantData.finalRecommendationText}
             chatLog={participantData.chatLog}
+            participantData={participantData}
             onViewChatLog={handleViewChatLog}
           />
         )}

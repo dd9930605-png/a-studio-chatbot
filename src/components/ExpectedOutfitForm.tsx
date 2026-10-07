@@ -21,7 +21,7 @@ export function ExpectedOutfitForm({ outfitIds, onSubmit }: ExpectedOutfitFormPr
     }
 
     if (!outfitIds.includes(selected[0])) {
-      setError('請從目前類別可選的穿搭中選擇。');
+      setError('請從畫面顯示的穿搭中選擇。');
       return;
     }
 
