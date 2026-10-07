@@ -1,5 +1,9 @@
 import { Condition } from '@/lib/conditions';
-import { ChatPreferences, formatPreferencesSummary } from '@/lib/chatPreferences';
+import {
+  ChatPreferences,
+  formatPreferencesSummary,
+  hasExplicitPreferences,
+} from '@/lib/chatPreferences';
 import { Outfit } from '@/lib/outfits';
 import { getLookLabel, getLookNumberFromOutfitId } from '@/lib/looks';
 
@@ -62,36 +66,41 @@ export function buildFixedLimitation(outfit: Outfit): string {
 }
 
 function buildUserNeedSentence(preferences: ChatPreferences | undefined): string {
-  if (!preferences) {
-    return '希望面試穿著合宜，呈現合適的整體印象。';
+  if (!preferences || !hasExplicitPreferences(preferences)) {
+    return '對話中尚未提出明確的穿搭偏好。';
   }
 
   const summary = formatPreferencesSummary(preferences);
-  if (summary && summary !== '（尚未明確表達偏好）') {
-    // 濃縮成一句「需求」陳述，避免長文
-    if (preferences.wantsFormal) {
-      return '希望面試時呈現專業感，同時維持合宜的正式程度。';
-    }
-    if (preferences.likedColors.length > 0 || preferences.matchedStyleKeywords.length > 0) {
-      const bits: string[] = [];
-      if (preferences.matchedStyleKeywords.length > 0) {
-        bits.push(preferences.matchedStyleKeywords.slice(0, 2).join('、'));
-      }
-      if (preferences.likedColors.length > 0) {
-        bits.push(`偏好特定色系`);
-      }
-      return `希望面試穿著能符合「${bits.join('、')}」相關需求。`;
-    }
-  }
-
-  return '希望面試穿著合宜，呈現合適的整體印象。';
+  const conciseSummary = summary.split('；').slice(0, 2).join('；');
+  return `你在對話中明確提到：${conciseSummary}。`;
 }
 
 function buildCriterionSentence(preferences: ChatPreferences | undefined): string {
+  if (!preferences || !hasExplicitPreferences(preferences)) {
+    return '在沒有明確偏好的情況下，判斷以面試合宜性、整潔感與適中正式度為主。';
+  }
   if (preferences?.wantsFormal) {
     return '因此優先考慮穩重配色、俐落剪裁，以及適中而不過度休閒的正式程度。';
   }
-  return '因此優先考慮穩重配色、俐落線條與適中的正式程度。';
+  if (preferences.wantsLessFormal) {
+    return '因此優先考慮整潔、俐落但不過度正式或拘謹的搭配。';
+  }
+  if (preferences.dislikedColors.length > 0 || preferences.strongDislikedColors.length > 0) {
+    return '因此先避開你明確不喜歡的色系，再以面試所需的整潔感與正式度判斷。';
+  }
+  if (preferences.likedColors.length > 0) {
+    return '因此優先考慮你偏好的色系，同時檢查版型是否符合面試情境。';
+  }
+  if (
+    preferences.prefersJeans ||
+    preferences.prefersDressPants ||
+    preferences.prefersWidePants ||
+    preferences.prefersPants ||
+    preferences.prefersSkirt
+  ) {
+    return '因此優先考慮你明確提到的下裝方向，再檢查整體正式度與俐落感。';
+  }
+  return '因此依你明確提到的偏好，評估配色、版型與面試正式程度。';
 }
 
 function buildThereforeSentence(outfit: Outfit): string {

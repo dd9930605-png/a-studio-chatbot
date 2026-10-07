@@ -2,18 +2,19 @@
 
 import React, { useState } from 'react';
 import { Condition } from '@/lib/conditions';
-import { getConditionTheme } from '@/lib/conditionTheme';
-import { ChatMessage } from '@/lib/dataRecorder';
+import { ChatMessage, ParticipantData } from '@/lib/dataRecorder';
 import { Outfit } from '@/lib/outfits';
 import { buildRecommendationSections } from '@/lib/recommendationText';
 import { getLookLabel, getLookNumberFromOutfitId } from '@/lib/looks';
 import { RecommendationReviewTools } from '@/components/RecommendationReviewTools';
+import { extractPreferencesFromParticipant } from '@/lib/chatPreferences';
 
 interface RecommendationRecapProps {
   outfit: Outfit;
   condition: Condition;
   recommendationText: string;
   chatLog: ChatMessage[];
+  participantData: ParticipantData;
   onViewChatLog?: () => void;
 }
 
@@ -22,13 +23,14 @@ export function RecommendationRecap({
   condition,
   recommendationText,
   chatLog,
+  participantData,
   onViewChatLog,
 }: RecommendationRecapProps) {
   const [imageFailed, setImageFailed] = useState(false);
-  const theme = getConditionTheme(condition);
   const lookNumber = getLookNumberFromOutfitId(outfit.outfitId);
   const lookLabel = lookNumber ? getLookLabel(lookNumber) : '';
-  const sections = buildRecommendationSections(condition, outfit);
+  const preferences = extractPreferencesFromParticipant(participantData);
+  const sections = buildRecommendationSections(condition, outfit, preferences);
   const summary =
     sections.conclusion ||
     sections.thereforeRecommend ||
@@ -55,7 +57,7 @@ export function RecommendationRecap({
           {lookLabel && <p className="text-xs font-semibold text-blue-700">{lookLabel}</p>}
           <h2 className="mt-1 text-lg font-bold text-gray-900">{outfit.outfitName}</h2>
           <p className="mt-2 text-sm leading-relaxed text-gray-700">{summary}</p>
-          <p className={`mt-2 text-xs ${theme.isPersona ? 'text-rose-600' : 'text-slate-500'}`}>
+          <p className="mt-2 text-xs text-slate-500">
             下方按鈕可查看完整推薦說明與對話紀錄，字級適中、不需跳轉頁面。
           </p>
         </div>
@@ -67,6 +69,7 @@ export function RecommendationRecap({
           condition={condition}
           recommendationText={recommendationText}
           chatLog={chatLog}
+          participantData={participantData}
           onViewChatLog={onViewChatLog}
           hintText="填寫問卷時，可用下方按鈕隨時回顧完整推薦說明或對話紀錄，無需離開問卷頁面。"
         />

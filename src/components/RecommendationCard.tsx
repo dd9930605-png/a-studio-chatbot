@@ -256,7 +256,7 @@ export function RecommendationCard({
           onClick={() => setCatalogOpen(true)}
           className="rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
         >
-          回顧可選穿搭
+          回顧完整 12 套穿搭
         </button>
       </div>
 
@@ -307,21 +307,17 @@ export function RecommendationCard({
 
       <OverlayModal
         open={catalogOpen}
-        title="回顧可選穿搭"
+        title="回顧完整 12 套穿搭"
         onClose={() => setCatalogOpen(false)}
       >
         <div className="space-y-4">
           <p className="text-sm leading-relaxed text-slate-700 sm:text-base">
             本次推薦為
             <strong className="mx-1">{lookLabel || outfit.outfitName}</strong>
-            。以下為本類別可選穿搭。
+            。以下可回顧實驗中的完整 12 套穿搭。
           </p>
           <OutfitGrid
-            outfitIds={
-              participantData.allowedOutfits?.length
-                ? participantData.allowedOutfits
-                : getAllOutfitIds()
-            }
+            outfitIds={getAllOutfitIds()}
             selectedIds={[outfit.outfitId]}
             onChange={() => undefined}
             mode="single"

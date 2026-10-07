@@ -342,6 +342,9 @@ export function clearParticipantDraft(): void {
   if (typeof window === 'undefined') return;
   sessionStorage.removeItem(PARTICIPANT_DRAFT_KEY);
   sessionStorage.removeItem(SESSION_SERIAL_KEY);
+  // 一位受試者完成後清除分派；同一分頁開始下一位時必須重新獨立隨機。
+  // 實驗進行中的 refresh 不會呼叫此函式，仍會保留原 condition。
+  sessionStorage.removeItem(SESSION_KEY);
 }
 
 export function extractUserMessages(data: ParticipantData): string[] {

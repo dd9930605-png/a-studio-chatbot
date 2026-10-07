@@ -1,6 +1,7 @@
 import { getLookLabel, getLookNumberFromOutfitId } from '@/lib/looks';
 import { getOutfit, OutfitCategory } from '@/lib/outfits';
 import { SurpriseMode } from '@/lib/outfits';
+import { Condition } from '@/lib/conditions';
 import { buildConsultationThemesBlock } from '@/lib/chatConsultationThemes';
 import {
   ChatPreferences,
@@ -10,8 +11,6 @@ import {
 } from '@/lib/chatPreferences';
 import {
   buildCatalogBoundaryPromptBlock,
-  buildConversationRhythmBlock,
-  buildProfessionalConsultantBlock,
 } from '@/lib/catalogBoundaries';
 
 export interface ExperimentChatContext {
@@ -52,7 +51,10 @@ function buildSurprisePendingAlignmentBlock(context: ExperimentChatContext): str
 - 若聊天偏好與預期套裝衝突，先同理，改聊抽象需求；**禁止**為討好而推薦庫存以外服裝或配件。`;
 }
 
-function buildPreferenceTransitionBlock(context: ExperimentChatContext): string {
+function buildPreferenceTransitionBlock(
+  context: ExperimentChatContext,
+  condition: Pick<Condition, 'explainability' | 'proactivity'>,
+): string {
   const preferences = context.chatPreferences;
   if (!preferences || !hasExplicitPreferences(preferences)) {
     return '';
@@ -64,9 +66,16 @@ function buildPreferenceTransitionBlock(context: ExperimentChatContext): string 
       ? context.expectedOutfitBeforeAI
       : context.finalRecommendedOutfit;
   const finalConflicts = outfitConflictsWithPreferences(conflictTarget, preferences);
+  const responseRule =
+    condition.explainability === 'high'
+      ? '- 回應建議時，依可解釋性 High 規則把相關偏好連到判斷依據與建議。'
+      : '- 回應時尊重這些偏好，但依可解釋性 Low 規則直接給結論，不展開完整因果鏈。';
+  const progressionRule =
+    condition.proactivity === 'high'
+      ? '- 只追問尚未知道的重要資訊；不得重問已列出的偏好，也不得每輪都問問題。'
+      : '- 不主動追加問題或推進下一個需求蒐集。';
 
-  if (context.surpriseMode === 'surprise') {
-    return `### 使用者聊天偏好（內部參考，用於轉折對話）
+  return `### 使用者聊天偏好（內部事實；不可自行加強或改寫）
 - ${summary}
 ${preferences.requestedUnavailableColors.length > 0 ? `- 使用者曾想要庫存沒有的色系（${preferences.requestedUnavailableColors.join('、')}）：**不要**繼續聊該色怎麼搭；應說明無此商品，並引導至現有白/黑/藍/灰/咖啡／棕/條紋色系。` : ''}
 ${preferences.requestedUnavailableBottoms.length > 0 ? `- 使用者曾想要庫存沒有的下裝（${preferences.requestedUnavailableBottoms.join('、')}）：**第一句說明沒有**，引導至牛仔褲／西褲／寬褲／及膝裙；禁止把現有商品硬說成該類型。` : ''}
@@ -75,17 +84,10 @@ ${preferences.prefersJeans ? '- 使用者偏好牛仔褲：回扣此偏好，優
 ${preferences.prefersDressPants ? '- 使用者偏好西褲：回扣此偏好，優先討論西褲搭配。' : ''}
 ${preferences.prefersWidePants ? '- 使用者偏好寬褲：回扣此偏好，優先討論寬褲搭配。' : ''}
 ${preferences.prefersSkirt ? '- 使用者偏好裙裝／不太想穿褲：女裝優先討論及膝裙。' : ''}
-- surprise 組：結果頁會依對話偏好從候選池中挑選最合適的一套；**聊天中請先理解需求，不要急著定案**。
-${finalConflicts ? `- 若預選／候選與使用者拒絕的色系或條件衝突：先**回扣對方說過的話**（例如「因為您說不喜歡藍色」），可專業說服 1 次並給替代方案；若再次拒絕則停止該色。結果頁會優先避開這些色系。` : `- 若使用者表達喜歡／不喜歡：回覆時務必點名回扣（「因為您提到…所以…」），讓對方感覺偏好有被記住；同一排斥最多說服 1 次。`}`;
-  }
-
-  return `### 使用者聊天偏好（內部參考）
-- ${summary}
-${preferences.requestedUnavailableColors.length > 0 ? `- 使用者曾想要庫存沒有的色系：請引導至現有商品，最終推薦時需在說明中交代。` : ''}
-${preferences.requestedUnavailableBottoms.length > 0 ? `- 使用者曾想要庫存沒有的下裝（${preferences.requestedUnavailableBottoms.join('、')}）：說明沒有並引導至現有下裝類型。` : ''}
-${preferences.prefersPants ? '- 使用者偏好褲裝：聊天時勿以裙裝為主推方向（最終推薦固定，但可專業說明該套褲/裙的取捨）。' : ''}
-- no_surprise 組最終推薦固定為預期套裝，但請展現專業顧問判斷：若偏好與推薦不完全一致，先**回扣對方說過的喜歡／不喜歡**，再以面試需求說明為何仍推薦此套；**不要**只說「好的了解」。若使用者連續兩次拒絕同一元素則停止推銷該元素。
-- 說話時多用「因為您剛才提到…，所以我…」句型。`;
+${context.surpriseMode === 'surprise' ? '- surprise 組會在聊天結束後從 eligible pool 選款；聊天中不得提前定案。' : '- no_surprise 組的最終 Look 固定等於 Prediction；聊天中不得透露此操弄。'}
+${finalConflicts ? '- 目前固定／候選方向可能與偏好衝突：同一元素最多說服一次；再次拒絕後停止推銷。' : ''}
+${responseRule}
+${progressionRule}`;
 }
 
 function buildNoSurpriseModeRules(): string {
@@ -123,18 +125,24 @@ function buildFinalOutfitAlignmentBlock(context: ExperimentChatContext): string 
 - **其餘時間**：專注陪聊需求、心情、身形、面試印象，用**抽象維度**（正式度、版型修飾、俐落感）回應，**不要每輪都重複同一套完整穿著描述**。
 
 #### 當使用者不喜歡、拒絕、或偏好與此套裝不同時
-- 先**回扣對方說過的話**（例如「因為您剛才說不太喜歡黑色」），再以專業顧問角度說明面試情境下的取捨（1–2 句），不要只順著說「那就不要」。
-- 若對方僅「較不喜歡」某色系，可說明為何現有庫存中此套仍適合面試，並指出可接受的替代感受（如深灰比純黑柔和）。
+- 尊重對方已表達的偏好；具體回覆形式必須遵守可解釋性與雙面訊息 High/Low 規則。
+- 若對方僅「較不喜歡」某色系，可在現有庫存範圍內討論其他方向。
 - 若使用者**連續兩次**明確拒絕同一元素，停止推銷該元素，改聊版型、正式度、印象，並給出其他可討論方向。
 - **禁止**為討好使用者而描述庫存以外的單品或配件。
-- 若使用者堅持問「那你到底推薦什麼」：此時才清楚描述「${final.outfitName}」（與結果頁一致），並用「因為您提到…，所以…」簡短說明為何呼應面試需求與偏好。
+- 若使用者堅持問「那你到底推薦什麼」：此時才清楚描述「${final.outfitName}」（與結果頁一致），但不得提前透露 Look 編號。
 
 #### 硬性邊界
 - 一旦描述具體上衣、下裝、色系，**只能**與「${final.outfitName}」一致，不可出現結果頁沒有的組合。
 - **禁止**提前說 Look 編號。`;
 }
 
-export function buildExperimentKnowledgeBlock(context: ExperimentChatContext): string {
+export function buildExperimentKnowledgeBlock(
+  context: ExperimentChatContext,
+  condition: Pick<
+    Condition,
+    'explainability' | 'proactivity' | 'anthropomorphism' | 'twoSidedMessage'
+  >,
+): string {
   const categoryLabel = context.selectedOutfitCategory === 'male' ? '男款' : '女款';
   const catalogLines = context.allowedOutfits.map(formatOutfitLine).join('\n');
   const expected = getOutfit(context.expectedOutfitBeforeAI);
@@ -160,19 +168,15 @@ export function buildExperimentKnowledgeBlock(context: ExperimentChatContext): s
 ${buildFinalOutfitAlignmentBlock(context)}
 
 ### 對話哲學
-- 這段聊天的價值是：**像真人顧問一樣了解使用者，並提供有專業判斷的建議**——不是單純討好或複述使用者原話。
-- 每一輪**優先呼應使用者剛說的話**，但可禮貌提出不同觀點（面試正式度、現有庫存限制）。
-- 使用者說怕胖、緊張、沒想法時，**先陪聊與釐清**，不要第一句就丟完整套裝推薦。
+- 這是任務導向的面試穿搭顧問；不是單純討好，也不是一般閒聊機器人。
+- 回覆風格、理由透明度、限制資訊與追問方式，一律以實驗操弄 High/Low 規則為最高優先。
+- 使用者說怕胖、緊張、沒想法時，先回應當下內容，不要第一句就丟完整套裝推薦。
 
 ${buildCatalogBoundaryPromptBlock()}
 
-${buildProfessionalConsultantBlock()}
-
-${buildConversationRhythmBlock()}
-
 ${buildConsultationThemesBlock()}
 
-${buildPreferenceTransitionBlock(context)}
+${buildPreferenceTransitionBlock(context, condition)}
 
 ### 使用者背景（內部參考，勿主動反覆提起）
 - 瀏覽後預期 AI 會推薦的一套：${expectedLine}
