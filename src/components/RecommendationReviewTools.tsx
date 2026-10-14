@@ -2,13 +2,14 @@
 
 import React, { useState } from 'react';
 import { Condition } from '@/lib/conditions';
-import { ChatMessage, ParticipantData } from '@/lib/dataRecorder';
+import { ChatMessage, ParticipantData, extractUserMessages } from '@/lib/dataRecorder';
 import { Outfit } from '@/lib/outfits';
-import { buildRecommendationSections } from '@/lib/recommendationText';
 import { getLookLabel, getLookNumberFromOutfitId } from '@/lib/looks';
 import { isProactiveNoteMessage } from '@/lib/proactiveNotes';
 import { OverlayModal } from '@/components/OverlayModal';
-import { extractPreferencesFromParticipant } from '@/lib/chatPreferences';
+import { ResultExplanationView } from '@/components/ResultExplanationView';
+import { buildResultContent } from '@/lib/resultContent';
+import { defaultResultLayout } from '@/lib/resultLayout';
 
 interface RecommendationReviewToolsProps {
   outfit: Outfit;
@@ -34,58 +35,39 @@ function RecommendationFullContent({
 }) {
   const lookNumber = getLookNumberFromOutfitId(outfit.outfitId);
   const lookLabel = lookNumber ? getLookLabel(lookNumber) : '';
-  const preferences = participantData
-    ? extractPreferencesFromParticipant(participantData)
-    : undefined;
-  const sections = buildRecommendationSections(condition, outfit, preferences);
-
-  const blocks: { title: string; content: string }[] = [];
-
-  if (sections.showExplainability) {
-    if (sections.userNeed) blocks.push({ title: '你的需求', content: sections.userNeed });
-    if (sections.criterion) blocks.push({ title: 'AI 判斷依據', content: sections.criterion });
-    if (sections.thereforeRecommend) {
-      blocks.push({ title: '因此推薦', content: sections.thereforeRecommend });
-    }
-  } else if (sections.conclusion) {
-    blocks.push({ title: '推薦說明', content: sections.conclusion });
-  }
-
-  blocks.push({ title: '搭配優點', content: sections.benefit });
-
-  if (sections.showLimitation && sections.limitation) {
-    blocks.push({ title: '需要注意', content: sections.limitation });
-  }
-
-  if (blocks.length === 0 && recommendationText) {
-    blocks.push({ title: '推薦說明', content: recommendationText });
-  }
+  const content = buildResultContent({
+    outfit,
+    preferenceFormality: participantData?.preferenceFormality ?? '',
+    preferenceImpression: participantData?.preferenceImpression ?? '',
+    preferenceColor: participantData?.preferenceColor ?? '',
+    userMessages: participantData ? extractUserMessages(participantData) : [],
+  });
+  const layout =
+    participantData?.resultLayoutVersion === 'card' || participantData?.resultLayoutVersion === 'paragraph'
+      ? participantData.resultLayoutVersion
+      : defaultResultLayout();
 
   return (
     <div className="space-y-4">
       <div className="text-center">
-        {lookLabel && (
-          <p className="text-sm font-semibold text-blue-700">{lookLabel}</p>
-        )}
+        <p className="text-sm font-semibold text-slate-600">AI 穿搭推薦</p>
+        {lookLabel && <p className="mt-1 text-sm font-semibold text-blue-700">{lookLabel}</p>}
         <p className="mt-1 text-lg font-bold text-gray-900">{outfit.outfitName}</p>
       </div>
 
       {outfit.outfitImage && (
         <div className="mx-auto flex max-w-sm items-center justify-center rounded-lg border border-gray-200 bg-neutral-50 p-3">
-          <img
-            src={outfit.outfitImage}
-            alt={outfit.outfitName}
-            className="max-h-56 w-full object-contain"
-          />
+          <img src={outfit.outfitImage} alt={outfit.outfitName} className="max-h-56 w-full object-contain" />
         </div>
       )}
 
-      {blocks.map((block) => (
-        <div key={block.title} className="rounded-xl border border-gray-200 bg-gray-50 p-5">
-          <h4 className="text-lg font-bold text-gray-900">{block.title}</h4>
-          <p className="mt-3 text-base leading-[1.85] text-gray-900 sm:text-lg">{block.content}</p>
-        </div>
-      ))}
+      <ResultExplanationView
+        content={content}
+        explainability={condition.explainability}
+        twoSidedMessage={condition.twoSidedMessage}
+        layout={layout}
+      />
+      {recommendationText ? <span className="sr-only">{recommendationText}</span> : null}
     </div>
   );
 }

@@ -39,9 +39,9 @@ function buildGuidedManipulationRules(condition: Condition) {
         '語氣精簡冷淡，像自動記錄系統。',
       ];
 
-  const explainRules = highExplain
-    ? ['可簡要說明為何這項資訊對面試穿搭建議有幫助。']
-    : ['不需要解釋背後邏輯，直接給建議或回應即可。'];
+  const explainRules = [
+    '自由對話不呈現可解釋性高低：不要輸出推理鏈，也不要加限制或缺點。',
+  ];
 
   return { highAnthro, highProactive, highExplain, personaRules, proactiveRules, explainRules };
 }

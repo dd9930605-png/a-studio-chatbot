@@ -2,12 +2,11 @@
 
 import React, { useState } from 'react';
 import { Condition } from '@/lib/conditions';
-import { ChatMessage, ParticipantData } from '@/lib/dataRecorder';
+import { ChatMessage, ParticipantData, extractUserMessages } from '@/lib/dataRecorder';
 import { Outfit } from '@/lib/outfits';
-import { buildRecommendationSections } from '@/lib/recommendationText';
 import { getLookLabel, getLookNumberFromOutfitId } from '@/lib/looks';
 import { RecommendationReviewTools } from '@/components/RecommendationReviewTools';
-import { extractPreferencesFromParticipant } from '@/lib/chatPreferences';
+import { buildResultContent, buildResultParagraph } from '@/lib/resultContent';
 
 interface RecommendationRecapProps {
   outfit: Outfit;
@@ -29,13 +28,18 @@ export function RecommendationRecap({
   const [imageFailed, setImageFailed] = useState(false);
   const lookNumber = getLookNumberFromOutfitId(outfit.outfitId);
   const lookLabel = lookNumber ? getLookLabel(lookNumber) : '';
-  const preferences = extractPreferencesFromParticipant(participantData);
-  const sections = buildRecommendationSections(condition, outfit, preferences);
-  const summary =
-    sections.conclusion ||
-    sections.thereforeRecommend ||
-    sections.benefit ||
-    recommendationText;
+  const content = buildResultContent({
+    outfit,
+    preferenceFormality: participantData.preferenceFormality,
+    preferenceImpression: participantData.preferenceImpression,
+    preferenceColor: participantData.preferenceColor,
+    userMessages: extractUserMessages(participantData),
+  });
+  const summary = buildResultParagraph(
+    content,
+    condition.explainability,
+    condition.twoSidedMessage,
+  );
 
   return (
     <aside className="rounded-xl border-2 border-blue-100 bg-gradient-to-b from-blue-50 to-white p-5 shadow-sm">

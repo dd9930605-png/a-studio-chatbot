@@ -1,4 +1,5 @@
 import { Condition } from '@/lib/conditions';
+import { describeResultModules } from '@/lib/resultContent';
 import {
   ChatPreferences,
   formatPreferencesSummary,
@@ -206,16 +207,7 @@ export function countRecommendationBlocks(sections: RecommendationSections): num
   return count;
 }
 
-/** Condition isolation QA helper */
+/** Condition isolation QA helper：結果頁只看 EX × TS。 */
 export function describeResultPageModules(condition: Condition): string[] {
-  const modules = ['推薦結果', '搭配優點'];
-  if (condition.explainability === 'high') {
-    modules.splice(1, 0, '你的需求', 'AI 判斷依據', '因此推薦');
-  } else {
-    modules.splice(1, 0, '推薦說明');
-  }
-  if (condition.twoSidedMessage === 'high') {
-    modules.push('需要注意');
-  }
-  return modules;
+  return describeResultModules(condition.explainability, condition.twoSidedMessage);
 }

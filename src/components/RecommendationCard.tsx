@@ -4,14 +4,20 @@ import React, { useState } from 'react';
 import { Noto_Sans_TC, Noto_Serif_TC } from 'next/font/google';
 import { Condition } from '@/lib/conditions';
 import { Outfit } from '@/lib/outfits';
-import { ChatMessage, ParticipantData, generateCompletionCode } from '@/lib/dataRecorder';
+import {
+  ChatMessage,
+  ParticipantData,
+  ResultLayoutVersion,
+  extractUserMessages,
+  generateCompletionCode,
+} from '@/lib/dataRecorder';
 import { getAllOutfitIds, getLookLabel, getLookNumberFromOutfitId } from '@/lib/looks';
 import { isExternalSurveyMode } from '@/lib/surveyMode';
 import { OverlayModal } from '@/components/OverlayModal';
 import { OutfitGrid } from '@/components/OutfitGrid';
 import { isProactiveNoteMessage } from '@/lib/proactiveNotes';
-import { extractPreferencesFromParticipant } from '@/lib/chatPreferences';
-import { buildRecommendationSections } from '@/lib/recommendationText';
+import { buildResultContent } from '@/lib/resultContent';
+import { ResultExplanationView } from '@/components/ResultExplanationView';
 
 const recommendationSans = Noto_Sans_TC({
   subsets: ['latin'],
@@ -33,41 +39,7 @@ interface RecommendationCardProps {
   chatLog: ChatMessage[];
   onSurveyClick: () => void;
   onViewChatLog?: () => void;
-}
-
-function ExplanationBlock({
-  title,
-  content,
-  tone,
-}: {
-  title: string;
-  content: string;
-  tone: 'neutral' | 'reason' | 'benefit' | 'caution';
-}) {
-  const toneClass = {
-    neutral: 'border-slate-200 bg-slate-50',
-    reason: 'border-sky-200 bg-sky-50',
-    benefit: 'border-teal-200 bg-teal-50',
-    caution: 'border-stone-300 bg-stone-50',
-  }[tone];
-
-  const titleClass = {
-    neutral: 'text-slate-900',
-    reason: 'text-sky-950',
-    benefit: 'text-teal-950',
-    caution: 'text-stone-900',
-  }[tone];
-
-  return (
-    <div className={`rounded-xl border p-5 sm:p-6 ${toneClass}`}>
-      <h4 className={`text-base font-bold sm:text-lg ${titleClass}`}>{title}</h4>
-      <p
-        className={`${recommendationSerif.className} mt-3 text-base leading-[1.85] text-slate-800 sm:text-lg sm:leading-[1.9]`}
-      >
-        {content}
-      </p>
-    </div>
-  );
+  resultLayout?: ResultLayoutVersion;
 }
 
 function ChatLogContent({ chatLog }: { chatLog: ChatMessage[] }) {
@@ -106,6 +78,7 @@ export function RecommendationCard({
   chatLog,
   onSurveyClick,
   onViewChatLog,
+  resultLayout = 'card',
 }: RecommendationCardProps) {
   const [imageFailed, setImageFailed] = useState(false);
   const [catalogOpen, setCatalogOpen] = useState(false);
@@ -123,55 +96,13 @@ export function RecommendationCard({
     participantData.completionCode || generateCompletionCode(participantData.participantId);
 
   const visibleChatCount = chatLog.filter((m) => !isProactiveNoteMessage(m.message)).length;
-  const preferences = extractPreferencesFromParticipant(participantData);
-  const sections = buildRecommendationSections(condition, outfit, preferences);
-
-  // EX × TS only；Proactivity / Anthropomorphism 不改變區塊結構
-  const explanationBlocks: {
-    title: string;
-    content: string;
-    tone: 'neutral' | 'reason' | 'benefit' | 'caution';
-  }[] = [];
-
-  if (sections.showExplainability) {
-    if (sections.userNeed) {
-      explanationBlocks.push({ title: '你的需求', content: sections.userNeed, tone: 'reason' });
-    }
-    if (sections.criterion) {
-      explanationBlocks.push({
-        title: 'AI 判斷依據',
-        content: sections.criterion,
-        tone: 'reason',
-      });
-    }
-    if (sections.thereforeRecommend) {
-      explanationBlocks.push({
-        title: '因此推薦',
-        content: sections.thereforeRecommend,
-        tone: 'reason',
-      });
-    }
-  } else if (sections.conclusion) {
-    explanationBlocks.push({
-      title: '推薦說明',
-      content: sections.conclusion,
-      tone: 'neutral',
-    });
-  }
-
-  explanationBlocks.push({
-    title: '搭配優點',
-    content: sections.benefit,
-    tone: 'benefit',
+  const resultContent = buildResultContent({
+    outfit,
+    preferenceFormality: participantData.preferenceFormality,
+    preferenceImpression: participantData.preferenceImpression,
+    preferenceColor: participantData.preferenceColor,
+    userMessages: extractUserMessages(participantData),
   });
-
-  if (sections.showLimitation && sections.limitation) {
-    explanationBlocks.push({
-      title: '需要注意',
-      content: sections.limitation,
-      tone: 'caution',
-    });
-  }
 
   const handleCopyCode = async () => {
     try {
@@ -192,9 +123,7 @@ export function RecommendationCard({
   return (
     <div className={`${recommendationSans.className} rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8`}>
       <div className="mb-5 text-center sm:mb-6">
-        <p className="text-sm font-semibold tracking-wide text-slate-600 sm:text-base">
-          AI 穿搭顧問推薦結果
-        </p>
+        <p className="text-sm font-semibold tracking-wide text-slate-600 sm:text-base">AI 穿搭推薦</p>
         {lookLabel && (
           <p className="mt-2 text-xl font-bold text-slate-800 sm:text-2xl">{lookLabel}</p>
         )}
@@ -224,22 +153,17 @@ export function RecommendationCard({
       )}
 
       <div className="mb-4">
-        <h3 className="text-xl font-bold text-slate-950 sm:text-2xl">推薦說明</h3>
-        <p className="mt-2 text-sm leading-relaxed text-slate-600 sm:text-base">
+        <p className="text-sm leading-relaxed text-slate-600 sm:text-base">
           請完整閱讀以下內容，後續問卷將根據本頁體驗作答。
         </p>
       </div>
 
-      <div className="space-y-4">
-        {explanationBlocks.map((block) => (
-          <ExplanationBlock
-            key={block.title}
-            title={block.title}
-            content={block.content}
-            tone={block.tone}
-          />
-        ))}
-      </div>
+      <ResultExplanationView
+        content={resultContent}
+        explainability={condition.explainability}
+        twoSidedMessage={condition.twoSidedMessage}
+        layout={resultLayout}
+      />
 
       <div className="mt-6 flex flex-col items-stretch gap-2 sm:flex-row sm:justify-center sm:gap-4">
         {visibleChatCount > 0 && (

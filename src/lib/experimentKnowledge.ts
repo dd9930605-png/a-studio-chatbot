@@ -67,9 +67,7 @@ function buildPreferenceTransitionBlock(
       : context.finalRecommendedOutfit;
   const finalConflicts = outfitConflictsWithPreferences(conflictTarget, preferences);
   const responseRule =
-    condition.explainability === 'high'
-      ? '- 回應建議時，依可解釋性 High 規則把相關偏好連到判斷依據與建議。'
-      : '- 回應時尊重這些偏好，但依可解釋性 Low 規則直接給結論，不展開完整因果鏈。';
+    '- 只確認這些偏好，不要展開推理鏈，不要加優缺點、限制或 Look 編號。可解釋性與雙面訊息不在聊天呈現。';
   const progressionRule =
     condition.proactivity === 'high'
       ? '- 只追問尚未知道的重要資訊；不得重問已列出的偏好，也不得每輪都問問題。'

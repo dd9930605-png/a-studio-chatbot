@@ -9,9 +9,10 @@ import {
 } from '@/lib/chatPreferences';
 import { CATALOG_BOTTOM_SUMMARY, CATALOG_COLOR_SUMMARY } from '@/lib/catalogBoundaries';
 import { getOutfit } from '@/lib/outfits';
+import { QuickColor, QuickFormality, QuickImpression } from '@/lib/quickPreferences';
+import { buildResultContent, buildResultParagraph } from '@/lib/resultContent';
 import {
   buildRecommendationSections,
-  buildRecommendationText,
   sectionsToPlainText,
 } from '@/lib/recommendationText';
 
@@ -118,13 +119,27 @@ export function buildFinalRecommendationText(params: {
   expectedOutfitBeforeAI: string;
   surpriseMode: 'surprise' | 'no_surprise';
   preferences: ChatPreferences;
+  preferenceFormality?: QuickFormality | '';
+  preferenceImpression?: QuickImpression | '';
+  preferenceColor?: QuickColor | '';
+  userMessages?: string[];
 }): string {
   const outfit = getOutfit(params.finalOutfitId);
   if (!outfit) return '';
 
-  // 結果頁正文僅依 EX×TS；偏好因果橋接不再附加，避免 Low EX 被污染。
-  // surprise 選款演算法仍只看 expectedOutfitBeforeAI，與此文字無關。
-  return buildRecommendationText(params.condition, outfit, params.preferences);
+  // 結果頁正文只依 EX×TS 選擇欄位；選款演算法不讀這些文字，也不讀快速三題。
+  const content = buildResultContent({
+    outfit,
+    preferenceFormality: params.preferenceFormality ?? '',
+    preferenceImpression: params.preferenceImpression ?? '',
+    preferenceColor: params.preferenceColor ?? '',
+    userMessages: params.userMessages ?? [],
+  });
+  return buildResultParagraph(
+    content,
+    params.condition.explainability,
+    params.condition.twoSidedMessage,
+  );
 }
 
 export function buildFinalRecommendationSections(params: {
