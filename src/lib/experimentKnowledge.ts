@@ -53,7 +53,7 @@ function buildSurprisePendingAlignmentBlock(context: ExperimentChatContext): str
 
 function buildPreferenceTransitionBlock(
   context: ExperimentChatContext,
-  condition: Pick<Condition, 'explainability' | 'proactivity'>,
+  _condition: Pick<Condition, 'explainability' | 'proactivity'>,
 ): string {
   const preferences = context.chatPreferences;
   if (!preferences || !hasExplicitPreferences(preferences)) {
@@ -69,9 +69,7 @@ function buildPreferenceTransitionBlock(
   const responseRule =
     '- 只確認這些偏好，不要展開推理鏈，不要加優缺點、限制或 Look 編號。可解釋性與雙面訊息不在聊天呈現。';
   const progressionRule =
-    condition.proactivity === 'high'
-      ? '- 只追問尚未知道的重要資訊；不得重問已列出的偏好，也不得每輪都問問題。'
-      : '- 不主動追加問題或推進下一個需求蒐集。';
+    '- 一般聊天不主動追問，也不因主動性高低改變提問數量或資訊量。';
 
   return `### 使用者聊天偏好（內部事實；不可自行加強或改寫）
 - ${summary}

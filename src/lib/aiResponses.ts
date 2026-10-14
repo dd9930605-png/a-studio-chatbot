@@ -392,12 +392,11 @@ const ACCESSORY_PATTERN =
 type SimpleHistory = Array<{ sender: 'user' | 'bot'; message: string }>;
 
 function shouldAskFallbackQuestion(
-  condition: Condition,
-  conversationHistory: SimpleHistory,
+  _condition: Condition,
+  _conversationHistory: SimpleHistory,
 ): boolean {
-  if (condition.proactivity !== 'high') return false;
-  const lastBot = [...conversationHistory].reverse().find((entry) => entry.sender === 'bot');
-  return !lastBot?.message.includes('？') && !lastBot?.message.includes('?');
+  // 主動性只由需求整理事件呈現，一般回覆不再因 High 多問一題。
+  return false;
 }
 
 function appendFallbackQuestion(
@@ -587,7 +586,7 @@ export function generateFreeChatFallbackReply(
     }
   }
 
-  // 可解釋性與雙面訊息不在聊天呈現；高低組資訊量相同，只差擬人化語氣與主動追問。
+  // 可解釋性、雙面訊息與主動追問都不在一般聊天呈現；高低組資訊量相同，只差擬人化語氣。
   let reply =
     condition.anthropomorphism === 'high'
       ? `了解～你提到「${topic}」，我記住了 😊`

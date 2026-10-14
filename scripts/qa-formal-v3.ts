@@ -215,7 +215,13 @@ const replyExLow = generateFreeChatFallbackReply('我希望簡約', getCondition
 assert.equal(replyExHigh, replyExLow);
 const replyTsLow = generateFreeChatFallbackReply('我希望簡約', getCondition(5)!);
 assert.equal(replyExHigh, replyTsLow);
-console.log('PASS chat fallback and prompt do not carry EX or TS');
+const replyProLow = generateFreeChatFallbackReply('我希望簡約', getCondition(2)!);
+assert.equal(replyExHigh, replyProLow);
+assert.doesNotMatch(replyExHigh, /[？?]/);
+const promptProLow = buildFreeChatSystemPrompt({ condition: getCondition(2)! });
+assert.equal(promptHighEx, promptProLow);
+assert.doesNotMatch(promptHighEx, /每輪最多 1 個問題/);
+console.log('PASS chat fallback and prompt do not carry EX, TS, or an extra PRO question');
 
 const male = getOutfitPools('male');
 const surprise = resolveFinalOutfit({

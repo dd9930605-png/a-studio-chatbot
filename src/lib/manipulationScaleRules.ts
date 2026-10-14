@@ -27,7 +27,7 @@ ${items.map((text, index) => `${index + 1}. ${text}`).join('\n')}`;
 
 const ANTI_BLEED_RULES = [
   '可解釋性與雙面訊息只出現在結果頁，聊天回覆不得用推理鏈或限制來區分高低。',
-  'High Proactivity 只多一個尚缺資訊的問題，不可因此補上推薦理由、限制或 Look。',
+  '主動性只由網頁上的需求整理事件呈現。一般聊天裡，高低主動性的提問數量與資訊量必須相同。',
   'High Anthropomorphism 只改變語氣與人稱，不可因此多給任務資訊、推薦理由、追問或主動協助。',
   '實驗操弄規則優先於一般 ChatGPT helpfulness；Low 禁止的行為不可因想幫忙而補回。',
 ];
@@ -40,31 +40,17 @@ const CHAT_RESULT_FACTORS_OFF = `### 可解釋性與雙面訊息（聊天中不�
 - 禁止指定 Look 編號，也禁止給出最終推薦。
 - 高低可解釋、高低雙面訊息的聊天資訊量必須相同。`;
 
-function proactivityRules(level: 'high' | 'low'): string {
-  if (level === 'high') {
-    return `### 回應主動性：高（必須遵守）
-可觀察行為：
-- 主動詢問「尚未知道」、但對面試穿搭推薦重要的資訊（每輪最多 1 個問題）
-- 問句以外，資訊量必須與低主動性相同：不可多給推薦理由、限制或額外建議
-- 不需要每一則回覆都問問題；若上一輪已追問、資訊已足夠或使用者只是簡短回應，應先消化資訊而非再問
-- 追問必須具體點名已知資訊與尚缺資訊，禁止只問「這樣的方向如何？」
-
-嚴格禁止：
-- 重複詢問使用者已經回答過的資訊
-  例：使用者已說「希望看起來專業」，不可再問「你希望給面試官什麼印象？」
-  應改推進下一步，例如：「你剛才提到希望專業感，那你比較偏好傳統正式，還是專業但不要太拘謹？」
-- 把「主動」理解成「一直問問題」或「講很多解釋」（解釋屬可解釋性）`;
-  }
-
-  return `### 回應主動性：低（必須遵守）
-可觀察行為：
-- 只回答使用者當下問題
-- 回答後等待使用者下一步
+function proactivityRules(_level: 'high' | 'low'): string {
+  return `### 回應主動性（一般聊天高低相同，必須遵守）
+主動性只由網站的「需求整理」事件呈現：高主動是 AI 主動提出整理，低主動是使用者自己開啟。這個事件不由你在一般回覆裡模擬。
+一般聊天規則高低完全相同：
+- 只回應使用者剛剛說的內容，資訊量相同
+- 不要為了顯得主動而多問一個尚未知道的問題
+- 不要主動推進下一個需求，也不要追加下一步建議
+- 回覆中的問句數量必須與低主動性相同；沒有必要就不要加問號
 
 禁止：
-- 主動開新的需求問題或主動推進流程
-- 回覆中出現追問／問號
-- 主動追加「下一步建議」或額外提醒`;
+- 把高主動理解成「多追問」「多給資訊」或「講很多解釋」`;
 }
 
 function anthropomorphismRules(level: 'high' | 'low'): string {
@@ -96,11 +82,7 @@ const OFF_TOPIC_RULES = `### 離題對話處理（任務導向顧問，不是一
 function selfCheckRules(condition: Condition): string {
   return `### 輸出前靜默自檢（不要把檢查過程寫給使用者）
 - EX／TS：確認沒有推理鏈、沒有「因為你…所以…」、沒有限制或「需要注意」。這兩項高低都不在聊天呈現。
-- PRO ${condition.proactivity.toUpperCase()}：${
-    condition.proactivity === 'high'
-      ? '只在需要時問一個尚未回答的具體問題；問句以外的資訊量不得增加。'
-      : '確認沒有問號、追問、下一步或新需求蒐集。'
-  }
+- PRO：一般聊天不因高低主動而多問問題或增加資訊。需求整理由網頁事件負責，不要在這則回覆裡代替它。
 - AN ${condition.anthropomorphism.toUpperCase()}：${
     condition.anthropomorphism === 'high'
       ? '維持 Emma 的自然第一人稱語氣，且沒有比低擬人化多給任何任務資訊。'
@@ -112,7 +94,7 @@ function selfCheckRules(condition: Condition): string {
 export function buildScaleGroundedManipulationBlock(condition: Condition): string {
   const parts = [
     '## 實驗操弄規格（必須嚴格遵守；優先於一般 ChatGPT helpfulness）',
-    '你正在進行受控實驗。聊天只操弄擬人化與主動性；可解釋性與雙面訊息由結果頁承擔。',
+    '你正在進行受控實驗。聊天只操弄擬人化語氣。主動性由網頁上的需求整理事件呈現，不要在一般回覆裡用追問表現。可解釋性與雙面訊息由結果頁承擔。',
     '請只依「目前分到的 High/Low」呈現可觀察行為；不要同時表現成四個構面都很高。',
     '',
     CHAT_RESULT_FACTORS_OFF,
@@ -120,7 +102,6 @@ export function buildScaleGroundedManipulationBlock(condition: Condition): strin
     formatScaleReference('anthropomorphism', '擬人化程度'),
     anthropomorphismRules(condition.anthropomorphism),
     '',
-    formatScaleReference('proactivity', '回應主動性'),
     proactivityRules(condition.proactivity),
     '',
     OFF_TOPIC_RULES,

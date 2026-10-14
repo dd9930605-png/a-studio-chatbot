@@ -180,19 +180,20 @@ const pairs: Array<[number, number, string]> = [
 for (const [a, b, factor] of pairs) {
   const aReply = generateFreeChatFallbackReply(userInput, getCondition(a)!);
   const bReply = generateFreeChatFallbackReply(userInput, getCondition(b)!);
-  if (factor === 'AN' || factor === 'PRO') {
+  if (factor === 'AN') {
     assert.notEqual(aReply, bReply, `${factor} fallback output`);
   }
-  if (factor === 'EX' || factor === 'TS') {
+  if (factor === 'EX' || factor === 'TS' || factor === 'PRO') {
     assert.equal(aReply, bReply, `${factor} must not change chat fallback`);
     assert.doesNotMatch(aReply, /因此先建議|正式感可能稍弱/);
+    if (factor === 'PRO') {
+      assert.doesNotMatch(aReply, /[？?]/);
+    }
   } else if (factor === 'AN') {
     assert.match(aReply, /我記住了/);
     assert.match(bReply, /^已記錄：/);
     assert.doesNotMatch(bReply.replace(/「[^」]*」/g, ''), /我/);
-    assert.ok(aReply.includes('？') && bReply.includes('？'));
-  } else if (factor === 'PRO') {
-    assert.match(aReply, /？$/);
+    assert.doesNotMatch(aReply, /[？?]/);
     assert.doesNotMatch(bReply, /[？?]/);
   }
   console.log(`${factor} ${a}/${b}`, { aReply, bReply });
@@ -206,7 +207,10 @@ assert.doesNotMatch(prompt1, /使用者資訊 → 判斷依據/);
 assert.doesNotMatch(prompt9, /使用者資訊 → 判斷依據/);
 assert.match(buildFreeChatSystemPrompt({ condition: getCondition(5)! }), /聊天中不操弄/);
 assert.match(buildFreeChatSystemPrompt({ condition: getCondition(3)! }), /不要使用第一人稱/);
-assert.match(buildFreeChatSystemPrompt({ condition: getCondition(2)! }), /回覆中出現追問／問號/);
+const prompt2 = buildFreeChatSystemPrompt({ condition: getCondition(2)! });
+assert.equal(prompt1, prompt2);
+assert.match(prompt2, /一般聊天高低相同/);
+assert.doesNotMatch(prompt1, /每輪最多 1 個問題/);
 console.log('PASS prompt-level one-factor rules');
 
 console.log('ALL FORMAL V2 FOLLOW-UP QA PASSED');
