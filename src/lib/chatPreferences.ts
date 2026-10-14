@@ -341,6 +341,14 @@ function hasLikeMarker(text: string): boolean {
   return LIKE_MARKERS.some((marker) => text.includes(marker));
 }
 
+/** 點名某個顏色再說「也不錯／好吧」算選定該色，但不把這種弱肯定套到版型。 */
+const COLOR_ACCEPTANCE_MARKERS = ['不錯', '也好', '好吧', '可以接受', '挺好', '蠻好', '也行', '也可以', '就好'];
+
+function hasColorAcceptance(text: string): boolean {
+  if (isAnyDislikeMessage(text)) return false;
+  return hasLikeMarker(text) || COLOR_ACCEPTANCE_MARKERS.some((marker) => text.includes(marker));
+}
+
 function countColorDislikeMentions(userMessages: string[], color: ColorKey): number {
   const terms = COLOR_TERMS[color];
   let count = 0;
@@ -414,7 +422,7 @@ export function extractChatPreferences(userMessages: string[]): ChatPreferences 
         if (isStrongDislikeMessage(clause)) {
           colors.forEach((color) => strongDisliked.add(color));
         }
-      } else if (hasLikeMarker(clause)) {
+      } else if (hasColorAcceptance(clause)) {
         colors.forEach((color) => liked.add(color));
       }
     }
@@ -426,7 +434,7 @@ export function extractChatPreferences(userMessages: string[]): ChatPreferences 
         if (isStrongDislikeMessage(message)) {
           colors.forEach((color) => strongDisliked.add(color));
         }
-      } else if (colors.length > 0 && hasLikeMarker(message)) {
+      } else if (colors.length > 0 && hasColorAcceptance(message)) {
         colors.forEach((color) => liked.add(color));
       }
     }

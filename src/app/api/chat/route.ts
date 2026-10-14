@@ -1,17 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { buildChatSystemPrompt, buildFreeChatSystemPrompt } from '@/lib/botPrompts';
-import { ResponseStep, generateFreeChatFallbackReply } from '@/lib/aiResponses';
-import { Condition } from '@/lib/conditions';
-import { ExperimentChatContext, buildExperimentKnowledgeBlock } from '@/lib/experimentKnowledge';
-import { correctFalseUnavailableCatalogClaims, CATALOG_COLOR_SUMMARY } from '@/lib/catalogBoundaries';
 import {
+  ResponseStep,
   generateAcknowledgment,
+  generateFreeChatFallbackReply,
   getDeterministicAcknowledgment,
   hasOutfitRelevanceSignal,
   isClearlyOffTopic,
+  omitUnsolicitedQuestions,
   validateChatInput,
 } from '@/lib/aiResponses';
+import { Condition } from '@/lib/conditions';
+import { ExperimentChatContext, buildExperimentKnowledgeBlock } from '@/lib/experimentKnowledge';
+import { correctFalseUnavailableCatalogClaims, CATALOG_COLOR_SUMMARY } from '@/lib/catalogBoundaries';
 
 export const dynamic = 'force-dynamic';
 
@@ -92,7 +94,11 @@ async function handleFreeChat(
 
   const withCatalogGuard = (reply: string, source: 'openai' | 'fallback'): ChatResponseBody => ({
     relevant: true,
-    reply: correctFalseUnavailableCatalogClaims(reply, trimmedInput),
+    reply: omitUnsolicitedQuestions(
+      correctFalseUnavailableCatalogClaims(reply, trimmedInput),
+      trimmedInput,
+      condition.anthropomorphism,
+    ),
     source,
   });
 
