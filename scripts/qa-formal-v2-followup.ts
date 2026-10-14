@@ -13,15 +13,12 @@ import {
   summarizeTournamentPk,
 } from '../src/lib/outfitPk';
 import {
-  emptyChatPreferences,
   extractChatPreferences,
   formatPreferencesSummary,
   hasExplicitPreferences,
 } from '../src/lib/chatPreferences';
-import {
-  buildRecommendationSections,
-  describeResultPageModules,
-} from '../src/lib/recommendationText';
+import { describeResultPageModules } from '../src/lib/recommendationText';
+import { buildResultContent } from '../src/lib/resultContent';
 import { generateFreeChatFallbackReply } from '../src/lib/aiResponses';
 import { buildFreeChatSystemPrompt } from '../src/lib/botPrompts';
 
@@ -149,22 +146,22 @@ console.log('PASS weak/no preference and formal-negation parsing');
 
 const outfit = getOutfit('M4');
 assert.ok(outfit);
-const formalPrefs = emptyChatPreferences();
-formalPrefs.wantsFormal = true;
-const lessFormalSections = buildRecommendationSections(
-  getCondition(1)!,
+const lessFormalContent = buildResultContent({
   outfit,
-  lessFormal,
-);
-assert.match(lessFormalSections.userNeed ?? '', /不要過度正式/);
-assert.doesNotMatch(lessFormalSections.userNeed ?? '', /希望正式、專業感/);
+  preferenceFormality: '',
+  preferenceImpression: '',
+  preferenceColor: '',
+  userMessages: ['我不想要太專業'],
+});
+assert.match(lessFormalContent.userNeed1, /不要太正式/);
+assert.doesNotMatch(`${lessFormalContent.userNeed1}${lessFormalContent.userNeed2}`, /偏正式/);
 console.log('PASS High EX user-need fidelity');
 
 const resultExpected: Record<number, string[]> = {
-  1: ['推薦結果', '你的需求', 'AI 判斷依據', '因此推薦', '搭配優點', '需要注意'],
-  5: ['推薦結果', '你的需求', 'AI 判斷依據', '因此推薦', '搭配優點'],
-  9: ['推薦結果', '推薦說明', '搭配優點', '需要注意'],
-  13: ['推薦結果', '推薦說明', '搭配優點'],
+  1: ['AI 穿搭推薦', '你的需求', 'AI 判斷重點', '本次推薦', 'AI 穿搭評估', '推薦亮點', '需要注意'],
+  5: ['AI 穿搭推薦', '你的需求', 'AI 判斷重點', '本次推薦', 'AI 穿搭評估', '推薦亮點', '另一項亮點'],
+  9: ['AI 穿搭推薦', '色系', '版型', '整體風格', '本次推薦', 'AI 穿搭評估', '推薦亮點', '需要注意'],
+  13: ['AI 穿搭推薦', '色系', '版型', '整體風格', '本次推薦', 'AI 穿搭評估', '推薦亮點', '另一項亮點'],
 };
 for (const [idText, modules] of Object.entries(resultExpected)) {
   assert.deepEqual(describeResultPageModules(getCondition(Number(idText))!), modules);
@@ -183,19 +180,20 @@ const pairs: Array<[number, number, string]> = [
 for (const [a, b, factor] of pairs) {
   const aReply = generateFreeChatFallbackReply(userInput, getCondition(a)!);
   const bReply = generateFreeChatFallbackReply(userInput, getCondition(b)!);
-  assert.notEqual(aReply, bReply, `${factor} fallback output`);
-  if (factor === 'EX') {
-    assert.match(aReply, /你提到.*需要兼顧.*因此先建議/);
-    assert.doesNotMatch(bReply, /你提到.*需要兼顧.*因此先建議/);
-  } else if (factor === 'TS') {
-    assert.match(aReply, /不過.*正式感可能稍弱/);
-    assert.doesNotMatch(bReply, /不過|限制|稍弱/);
+  if (factor === 'AN') {
+    assert.notEqual(aReply, bReply, `${factor} fallback output`);
+  }
+  if (factor === 'EX' || factor === 'TS' || factor === 'PRO') {
+    assert.equal(aReply, bReply, `${factor} must not change chat fallback`);
+    assert.doesNotMatch(aReply, /因此先建議|正式感可能稍弱/);
+    if (factor === 'PRO') {
+      assert.doesNotMatch(aReply, /[？?]/);
+    }
   } else if (factor === 'AN') {
-    assert.match(aReply, /我會/);
-    assert.match(bReply, /^使用者提供/);
-    assert.doesNotMatch(bReply, /系統希望|我會/);
-  } else if (factor === 'PRO') {
-    assert.match(aReply, /？$/);
+    assert.match(aReply, /我記住了/);
+    assert.match(bReply, /^已記錄：/);
+    assert.doesNotMatch(bReply.replace(/「[^」]*」/g, ''), /我/);
+    assert.doesNotMatch(aReply, /[？?]/);
     assert.doesNotMatch(bReply, /[？?]/);
   }
   console.log(`${factor} ${a}/${b}`, { aReply, bReply });
@@ -203,11 +201,16 @@ for (const [a, b, factor] of pairs) {
 
 const prompt1 = buildFreeChatSystemPrompt({ condition: getCondition(1)! });
 const prompt9 = buildFreeChatSystemPrompt({ condition: getCondition(9)! });
-assert.match(prompt1, /使用者資訊 → 判斷依據 → 建議／推薦/);
-assert.match(prompt9, /不要完整呈現/);
-assert.match(buildFreeChatSystemPrompt({ condition: getCondition(5)! }), /僅呈現正面/);
+assert.match(prompt1, /聊天中不操弄/);
+assert.match(prompt9, /聊天中不操弄/);
+assert.doesNotMatch(prompt1, /使用者資訊 → 判斷依據/);
+assert.doesNotMatch(prompt9, /使用者資訊 → 判斷依據/);
+assert.match(buildFreeChatSystemPrompt({ condition: getCondition(5)! }), /聊天中不操弄/);
 assert.match(buildFreeChatSystemPrompt({ condition: getCondition(3)! }), /不要使用第一人稱/);
-assert.match(buildFreeChatSystemPrompt({ condition: getCondition(2)! }), /回覆中出現追問／問號/);
+const prompt2 = buildFreeChatSystemPrompt({ condition: getCondition(2)! });
+assert.equal(prompt1, prompt2);
+assert.match(prompt2, /一般聊天高低相同/);
+assert.doesNotMatch(prompt1, /每輪最多 1 個問題/);
 console.log('PASS prompt-level one-factor rules');
 
 console.log('ALL FORMAL V2 FOLLOW-UP QA PASSED');

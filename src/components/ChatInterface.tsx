@@ -6,6 +6,14 @@ import { getConditionTheme } from '@/lib/conditionTheme';
 import { isProactiveNoteMessage } from '@/lib/proactiveNotes';
 import { extractChatPreferences } from '@/lib/chatPreferences';
 import { ChatMessage, ParticipantData, extractUserMessages } from '@/lib/dataRecorder';
+import { OverlayModal } from '@/components/OverlayModal';
+import {
+  PRO_SUMMARY_CTA_LABEL,
+  PRO_SUMMARY_LOW_BUTTON,
+  buildNeedSummaryFromParticipant,
+  formatNeedSummary,
+  proSummaryCtaMessage,
+} from '@/lib/needSummary';
 
 interface ChatInterfaceProps {
   participantData: ParticipantData;
@@ -24,12 +32,18 @@ interface ChatApiResponse {
   source: 'openai' | 'fallback';
 }
 
-function createMessage(step: string, sender: ChatMessage['sender'], message: string): ChatMessage {
+function createMessage(
+  step: string,
+  sender: ChatMessage['sender'],
+  message: string,
+  kind: ChatMessage['kind'] = 'text',
+): ChatMessage {
   return {
     step,
     sender,
     message,
     timestamp: new Date().toISOString(),
+    kind,
   };
 }
 
@@ -67,11 +81,14 @@ export function ChatInterface({
   const [inputValue, setInputValue] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  const [summaryOpen, setSummaryOpen] = useState(false);
+  const [summaryText, setSummaryText] = useState('');
   const theme = getConditionTheme(condition);
+  const isHighProactivity = condition.proactivity === 'high';
 
   const userMessageCount =
-    participantData.userMessageCount ||
-    extractUserMessages(participantData).length;
+    participantData.userMessageCount || extractUserMessages(participantData).length;
+  const summaryUnlocked = userMessageCount >= 2;
   const remainingMinMs = Math.max(0, minChatMs - elapsedMs);
   const remainingMessages = Math.max(0, minUserMessages - userMessageCount);
   const elapsedSec = Math.floor(elapsedMs / 1000);
@@ -91,6 +108,24 @@ export function ChatInterface({
             .filter(Boolean)
             .join('；') + '。';
 
+  const openSummary = (initiator: 'ai' | 'user') => {
+    const summary = buildNeedSummaryFromParticipant(participantData);
+    const text = formatNeedSummary(summary);
+    const now = new Date().toISOString();
+    onUpdateData({
+      ...participantData,
+      proSummaryOpened: true,
+      proSummaryOpenedAt: participantData.proSummaryOpenedAt ?? now,
+      proSummaryOpenCount: (participantData.proSummaryOpenCount ?? 0) + 1,
+      proSummaryContent: text,
+      proSummaryTriggeredOnce: true,
+      proSummaryInitiator: participantData.proSummaryInitiator || initiator,
+      proSummaryEligibleAt: participantData.proSummaryEligibleAt ?? now,
+    });
+    setSummaryText(text);
+    setSummaryOpen(true);
+  };
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
@@ -102,11 +137,7 @@ export function ChatInterface({
 
     const userMessage = createMessage('freeChat', 'user', answer);
 
-    // 含本輪訊息，避免偏好落後一回合（否則剛說「不喜歡黑」當下仍像沒被記住）
-    const livePreferences = extractChatPreferences([
-      ...extractUserMessages(participantData),
-      answer,
-    ]);
+    const livePreferences = extractChatPreferences([...extractUserMessages(participantData), answer]);
 
     try {
       const response = await fetch('/api/chat', {
@@ -144,20 +175,41 @@ export function ChatInterface({
       }
 
       const result = (await response.json()) as ChatApiResponse;
-
       const botMessage = createMessage('freeChat', 'bot', result.reply);
-      const nextChatLog = [...participantData.chatLog, userMessage, botMessage];
-      const nextUserMessageCount = nextChatLog.filter((message) => message.sender === 'user').length;
+      const additions = [userMessage, botMessage];
+      const nextUserMessageCount =
+        [...participantData.chatLog, userMessage].filter((message) => message.sender === 'user').length;
+      const now = new Date().toISOString();
+      let proPatch: Partial<ParticipantData> = {};
+
+      if (isHighProactivity && nextUserMessageCount >= 2 && !participantData.proSummaryTriggeredOnce) {
+        additions.push(
+          createMessage(
+            'freeChat',
+            'bot',
+            proSummaryCtaMessage(condition.anthropomorphism),
+            'proSummaryCta',
+          ),
+        );
+        proPatch = {
+          proSummaryTriggeredOnce: true,
+          proSummaryInitiator: 'ai',
+          proSummaryEligibleAt: participantData.proSummaryEligibleAt ?? now,
+        };
+      } else if (nextUserMessageCount >= 2 && !participantData.proSummaryEligibleAt) {
+        proPatch = { proSummaryEligibleAt: now };
+      }
 
       const updatedData: ParticipantData = {
         ...participantData,
+        ...proPatch,
         answers: {
           ...participantData.answers,
           usualStyleInput: participantData.answers.usualStyleInput
             ? `${participantData.answers.usualStyleInput}\n${answer}`
             : answer,
         },
-        chatLog: nextChatLog,
+        chatLog: [...participantData.chatLog, ...additions],
         userMessageCount: nextUserMessageCount,
       };
 
@@ -192,9 +244,7 @@ export function ChatInterface({
         </p>
         <div className="mt-2 h-2 w-full rounded-full bg-white/70">
           <div
-            className={`h-2 rounded-full transition-all ${
-              metTime ? 'bg-green-500' : 'bg-amber-500'
-            }`}
+            className={`h-2 rounded-full transition-all ${metTime ? 'bg-green-500' : 'bg-amber-500'}`}
             style={{ width: `${elapsedPercent}%` }}
           />
         </div>
@@ -216,21 +266,29 @@ export function ChatInterface({
         {participantData.chatLog
           .filter((message) => !isProactiveNoteMessage(message.message))
           .map((message, index) => (
-          <div
-            key={`${message.timestamp}-${index}`}
-            className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-          >
             <div
-              className={`max-w-[85%] px-4 py-3 ${
-                message.sender === 'user'
-                  ? theme.chatUserBubbleClass
-                  : getBotBubbleClass(message.message, theme)
-              }`}
+              key={`${message.timestamp}-${index}`}
+              className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
             >
-              {message.message}
+              <div
+                className={`max-w-[85%] px-4 py-3 ${
+                  message.sender === 'user' ? theme.chatUserBubbleClass : getBotBubbleClass(message.message, theme)
+                }`}
+                data-testid={message.kind === 'proSummaryCta' ? 'pro-summary-cta' : undefined}
+              >
+                <p>{message.message}</p>
+                {message.kind === 'proSummaryCta' && (
+                  <button
+                    type="button"
+                    onClick={() => openSummary('ai')}
+                    className="mt-3 rounded-lg bg-white px-3 py-2 text-sm font-bold text-slate-900 shadow-sm"
+                  >
+                    {PRO_SUMMARY_CTA_LABEL}
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
 
         <div className="flex justify-start">
           <div className={`max-w-[85%] px-4 py-3 ${theme.chatBotBubbleClass}`}>
@@ -244,13 +302,28 @@ export function ChatInterface({
         </div>
       </div>
 
+      {!isHighProactivity && (
+        <div className="px-4 pb-2">
+          <button
+            type="button"
+            data-testid="pro-summary-low-button"
+            disabled={!summaryUnlocked}
+            onClick={() => {
+              if (!summaryUnlocked) return;
+              openSummary('user');
+            }}
+            className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-800 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+          >
+            {PRO_SUMMARY_LOW_BUTTON}
+          </button>
+        </div>
+      )}
+
       <form
         onSubmit={handleSubmit}
         className={`border-t p-4 ${theme.isPersona ? 'border-rose-100' : 'border-slate-300'}`}
       >
-        {submitError && (
-          <p className="mb-3 rounded-lg bg-red-50 p-3 text-sm text-red-600">{submitError}</p>
-        )}
+        {submitError && <p className="mb-3 rounded-lg bg-red-50 p-3 text-sm text-red-600">{submitError}</p>}
         <div className="flex gap-3">
           <input
             type="text"
@@ -263,22 +336,24 @@ export function ChatInterface({
                 : 'rounded-md border-slate-300 font-mono focus:border-slate-500'
             }`}
             placeholder={
-              chatLocked
-                ? '已達聊天上限，請查看推薦結果'
-                : isSubmitting
-                  ? 'AI 正在思考回覆...'
-                  : '請輸入你的回答...'
+              chatLocked ? '已達聊天上限，請查看推薦結果' : isSubmitting ? 'AI 正在思考回覆...' : '請輸入你的回答...'
             }
           />
-          <button
-            type="submit"
-            disabled={!inputValue.trim() || isSubmitting || chatLocked}
-            className={submitButtonClass}
-          >
+          <button type="submit" disabled={!inputValue.trim() || isSubmitting || chatLocked} className={submitButtonClass}>
             {isSubmitting ? '處理中...' : '送出'}
           </button>
         </div>
       </form>
+
+      <OverlayModal open={summaryOpen} title="目前需求整理" onClose={() => setSummaryOpen(false)}>
+        <div data-testid="pro-summary-board" className="space-y-3">
+          {summaryText.split('\n').map((line) => (
+            <p key={line} className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-relaxed text-slate-900 sm:text-base">
+              {line}
+            </p>
+          ))}
+        </div>
+      </OverlayModal>
     </div>
   );
 }

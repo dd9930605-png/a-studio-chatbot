@@ -392,12 +392,11 @@ const ACCESSORY_PATTERN =
 type SimpleHistory = Array<{ sender: 'user' | 'bot'; message: string }>;
 
 function shouldAskFallbackQuestion(
-  condition: Condition,
-  conversationHistory: SimpleHistory,
+  _condition: Condition,
+  _conversationHistory: SimpleHistory,
 ): boolean {
-  if (condition.proactivity !== 'high') return false;
-  const lastBot = [...conversationHistory].reverse().find((entry) => entry.sender === 'bot');
-  return !lastBot?.message.includes('？') && !lastBot?.message.includes('?');
+  // 主動性只由需求整理事件呈現，一般回覆不再因 High 多問一題。
+  return false;
 }
 
 function appendFallbackQuestion(
@@ -587,25 +586,11 @@ export function generateFreeChatFallbackReply(
     }
   }
 
-  let reply: string;
-  if (condition.explainability === 'high') {
-    reply =
-      condition.anthropomorphism === 'high'
-        ? `你提到「${topic}」。面試穿搭需要兼顧整潔感與適中的正式度，我會用這兩項標準整理方向，因此先建議從俐落配色與清楚線條的搭配著手。`
-        : `使用者提供「${topic}」。判斷依據為面試整潔感與適中正式度；因此建議優先選擇俐落配色與清楚線條的搭配。`;
-  } else {
-    reply =
-      condition.anthropomorphism === 'high'
-        ? '可以先從俐落配色與清楚線條的面試搭配著手。'
-        : '建議優先選擇俐落配色與清楚線條的面試搭配。';
-  }
-
-  if (condition.twoSidedMessage === 'high') {
-    reply +=
-      '這類方向能呈現整潔、穩重的印象；不過版型若過度寬鬆，在非常保守的面試場合正式感可能稍弱。';
-  } else {
-    reply += '這類方向能呈現整潔、穩重的印象。';
-  }
+  // 可解釋性、雙面訊息與主動追問都不在一般聊天呈現；高低組資訊量相同，只差擬人化語氣。
+  let reply =
+    condition.anthropomorphism === 'high'
+      ? `了解～你提到「${topic}」，我記住了 😊`
+      : `已記錄：「${topic}」。`;
 
   const nextQuestion = buildNextMissingInfoQuestion(userMessages);
   if (nextQuestion) {

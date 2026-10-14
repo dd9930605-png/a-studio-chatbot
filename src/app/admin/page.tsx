@@ -357,7 +357,84 @@ export default function AdminPage() {
                   <Field label="平時穿搭風格" value={selectedParticipant.answers.usualStyleInput} />
                 </Section>
 
-                <Section title="推薦敘述">
+                <Section title="快速基本需求（三題）">
+                  <Grid>
+                    <Field
+                      label="preferenceFormality"
+                      value={selectedParticipant.preferenceFormality || '—'}
+                    />
+                    <Field
+                      label="preferenceImpression"
+                      value={selectedParticipant.preferenceImpression || '—'}
+                    />
+                    <Field label="preferenceColor" value={selectedParticipant.preferenceColor || '—'} />
+                    <Field
+                      label="quickPreferencesCompletedAt"
+                      value={selectedParticipant.quickPreferencesCompletedAt ?? '—'}
+                    />
+                  </Grid>
+                </Section>
+
+                <Section title="Proactivity 需求整理事件">
+                  <Grid>
+                    <Field
+                      label="proSummaryEligibleAt"
+                      value={selectedParticipant.proSummaryEligibleAt ?? '—'}
+                    />
+                    <Field
+                      label="proSummaryInitiator"
+                      value={selectedParticipant.proSummaryInitiator || '—'}
+                    />
+                    <Field
+                      label="proSummaryOpened"
+                      value={selectedParticipant.proSummaryOpened ? '是' : '否'}
+                    />
+                    <Field
+                      label="proSummaryOpenedAt"
+                      value={selectedParticipant.proSummaryOpenedAt ?? '—'}
+                    />
+                    <Field
+                      label="proSummaryOpenCount"
+                      value={String(selectedParticipant.proSummaryOpenCount ?? 0)}
+                    />
+                    <Field
+                      label="proSummaryTriggeredOnce"
+                      value={selectedParticipant.proSummaryTriggeredOnce ? '是' : '否'}
+                    />
+                  </Grid>
+                  <Field
+                    label="proSummaryContent"
+                    value={selectedParticipant.proSummaryContent || '—'}
+                  />
+                </Section>
+
+                <Section title="結果頁內容紀錄（EX／TS）">
+                  <Grid>
+                    <Field label="positiveAId" value={selectedParticipant.positiveAId || '—'} />
+                    <Field label="positiveBId" value={selectedParticipant.positiveBId || '—'} />
+                    <Field label="cautionId" value={selectedParticipant.cautionId || '—'} />
+                    <Field
+                      label="resultLayoutVersion"
+                      value={selectedParticipant.resultLayoutVersion || '—'}
+                    />
+                  </Grid>
+                  <Field
+                    label="exEvidenceItems"
+                    value={
+                      selectedParticipant.exEvidenceItems?.length
+                        ? selectedParticipant.exEvidenceItems
+                            .map((item) => `${item.source}:${item.value}`)
+                            .join(' | ')
+                        : '—'
+                    }
+                  />
+                  <Field
+                    label="exJudgmentPoints"
+                    value={selectedParticipant.exJudgmentPoints?.join(' | ') || '—'}
+                  />
+                </Section>
+
+                <Section title="推薦敘述（單段落語意紀錄）">
                   <p className="text-sm text-gray-800">{selectedParticipant.finalRecommendationText}</p>
                 </Section>
 

@@ -1,12 +1,14 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { BotHeader } from '@/components/BotHeader';
 import { ChatInterface } from '@/components/ChatInterface';
+import { QuickPreferenceStep } from '@/components/QuickPreferenceStep';
 import { RecommendationCard } from '@/components/RecommendationCard';
 import {
   ParticipantData,
+  ResultLayoutVersion,
   clearParticipantDraft,
   extractUserMessages,
   generateCompletionCode,
@@ -23,8 +25,12 @@ import {
   selectSurpriseOutfitBPlus,
 } from '@/lib/chatPreferences';
 import { isExternalSurveyMode, resolveExternalSurveyUrl } from '@/lib/surveyMode';
+import { QuickPreferences, isQuickPreferencesComplete } from '@/lib/quickPreferences';
+import { proSummaryGateMessage } from '@/lib/needSummary';
+import { buildResultContent, buildResultParagraph } from '@/lib/resultContent';
+import { isResultLayoutSwitchEnabled, resolveResultLayout } from '@/lib/resultLayout';
 
-type Step = 'greeting' | 'chat' | 'recommendation';
+type Step = 'quick' | 'greeting' | 'chat' | 'recommendation';
 
 const GREETING_DISPLAY_MS = 3200;
 const MIN_CHAT_MS = 3 * 60 * 1000;
@@ -33,9 +39,13 @@ const MIN_USER_MESSAGES = 3;
 
 export default function ChatPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [participantData, setParticipantData] = useState<ParticipantData | null>(null);
   const [condition, setCondition] = useState<ReturnType<typeof getCondition>>(undefined);
-  const [currentStep, setCurrentStep] = useState<Step>('greeting');
+  const [currentStep, setCurrentStep] = useState<Step>('quick');
+  const [resultLayout, setResultLayout] = useState<ResultLayoutVersion>(() =>
+    resolveResultLayout(searchParams.get('resultLayout')),
+  );
   const [chatStartedAt, setChatStartedAt] = useState<number | null>(null);
   const [elapsedMs, setElapsedMs] = useState(0);
   const [timingNotice, setTimingNotice] = useState('');
@@ -57,21 +67,45 @@ export default function ChatPageContent() {
     setParticipantData(draft);
     setCondition(cond);
 
-    const timer = setTimeout(() => {
-      setCurrentStep('chat');
-      const enteredAt = new Date().toISOString();
-      const startMs = Date.now();
+    if (!isQuickPreferencesComplete(draft)) {
+      setCurrentStep('quick');
+      return;
+    }
+
+    if (draft.chatPageEnteredAt) {
+      const startMs = new Date(draft.chatPageEnteredAt).getTime();
       setChatStartedAt(startMs);
-      const updatedDraft: ParticipantData = {
-        ...draft,
-        chatPageEnteredAt: enteredAt,
-      };
-      setParticipantData(updatedDraft);
-      saveParticipantDraft(updatedDraft);
+      setElapsedMs(Math.max(0, Date.now() - startMs));
+      setCurrentStep('chat');
+      return;
+    }
+
+    setCurrentStep('greeting');
+  }, [router]);
+
+  useEffect(() => {
+    if (currentStep !== 'greeting' || !participantData) return;
+    if (!isQuickPreferencesComplete(participantData)) return;
+    if (participantData.chatPageEnteredAt) return;
+
+    const timer = window.setTimeout(() => {
+      const enteredAt = new Date().toISOString();
+      setParticipantData((current) => {
+        if (!current) return current;
+        const updated: ParticipantData = {
+          ...current,
+          chatPageEnteredAt: current.chatPageEnteredAt ?? enteredAt,
+        };
+        saveParticipantDraft(updated);
+        return updated;
+      });
+      setChatStartedAt(Date.now());
+      setElapsedMs(0);
+      setCurrentStep('chat');
     }, GREETING_DISPLAY_MS);
 
-    return () => clearTimeout(timer);
-  }, [router]);
+    return () => window.clearTimeout(timer);
+  }, [currentStep, participantData]);
 
   useEffect(() => {
     if (currentStep !== 'chat' || !chatStartedAt) return;
@@ -122,6 +156,11 @@ export default function ChatPageContent() {
       setTimingNotice(
         `請至少與 AI 顧問完成 3 次互動，並體驗滿 3 分鐘後查看推薦。（尚缺：${missing.join('；')}）`,
       );
+      return;
+    }
+
+    if (!participantData.proSummaryOpened) {
+      setTimingNotice(proSummaryGateMessage(condition.proactivity));
       return;
     }
 
@@ -193,6 +232,33 @@ export default function ChatPageContent() {
         expectationMismatch: 0,
         chatPreferenceSummary: formatPreferencesSummary(preferences),
         finalRecommendationVersion: `${participantData.conditionId}-${participantData.expectedOutfitBeforeAI}`,
+      };
+    }
+
+    const finalOutfit = getOutfit(nextData.finalRecommendedOutfit);
+    const resultContent = finalOutfit
+      ? buildResultContent({
+          outfit: finalOutfit,
+          preferenceFormality: participantData.preferenceFormality,
+          preferenceImpression: participantData.preferenceImpression,
+          preferenceColor: participantData.preferenceColor,
+          userMessages: extractUserMessages(participantData),
+        })
+      : null;
+    if (resultContent) {
+      nextData = {
+        ...nextData,
+        finalRecommendationText: buildResultParagraph(
+          resultContent,
+          condition.explainability,
+          condition.twoSidedMessage,
+        ),
+        exEvidenceItems: resultContent.evidenceItems,
+        exJudgmentPoints: [resultContent.judgmentPoint1, resultContent.judgmentPoint2],
+        positiveAId: resultContent.positiveAId,
+        positiveBId: resultContent.positiveBId,
+        cautionId: resultContent.cautionId,
+        resultLayoutVersion: resultLayout,
       };
     }
 
@@ -281,6 +347,25 @@ export default function ChatPageContent() {
   // 訊息數未達標時即使超過 5 分鐘仍可繼續輸入，避免卡死
   const chatLocked = elapsedMs >= MAX_CHAT_MS && metMinMessages;
 
+  const handleQuickComplete = (preferences: QuickPreferences) => {
+    const updated: ParticipantData = {
+      ...participantData,
+      ...preferences,
+      quickPreferencesCompletedAt: new Date().toISOString(),
+    };
+    setParticipantData(updated);
+    saveParticipantDraft(updated);
+    setCurrentStep('greeting');
+  };
+
+  const switchResultLayout = (next: ResultLayoutVersion) => {
+    if (!isResultLayoutSwitchEnabled()) return;
+    setResultLayout(next);
+    const url = new URL(window.location.href);
+    url.searchParams.set('resultLayout', next);
+    window.history.replaceState(null, '', `${url.pathname}${url.search}`);
+  };
+
   const missingHints: string[] = [];
   if (!metMinMessages) {
     missingHints.push(`尚需 ${MIN_USER_MESSAGES - userMessageCount} 則互動訊息`);
@@ -292,6 +377,8 @@ export default function ChatPageContent() {
   return (
     <div className="min-h-screen px-4 py-8">
       <div className="mx-auto max-w-4xl">
+        {currentStep === 'quick' && <QuickPreferenceStep onComplete={handleQuickComplete} />}
+
         {currentStep === 'greeting' && (
           <div className="space-y-6 py-8">
             <BotHeader condition={condition} greeting={condition.greetingText} />
@@ -346,6 +433,11 @@ export default function ChatPageContent() {
                   則訊息才能查看推薦。
                 </p>
               )}
+              {canViewRecommendation && !participantData.proSummaryOpened && (
+                <p className="mt-2 text-sm font-medium text-slate-800">
+                  {proSummaryGateMessage(condition.proactivity)}
+                </p>
+              )}
               <button
                 type="button"
                 onClick={handleViewRecommendation}
@@ -361,15 +453,27 @@ export default function ChatPageContent() {
                 <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl">
                   <h3 className="text-lg font-bold text-gray-900">已達互動上限</h3>
                   <p className="mt-2 text-sm leading-relaxed text-gray-700">
-                    你已完成 5 分鐘互動，為維持實驗一致性，現在請進入推薦結果頁面。
+                    {participantData.proSummaryOpened
+                      ? '你已完成 5 分鐘互動，為維持實驗一致性，現在請進入推薦結果頁面。'
+                      : proSummaryGateMessage(condition.proactivity)}
                   </p>
-                  <button
-                    type="button"
-                    onClick={handleViewRecommendation}
-                    className="mt-4 w-full rounded-lg bg-blue-600 px-4 py-3 font-bold text-white"
-                  >
-                    前往查看推薦結果
-                  </button>
+                  {participantData.proSummaryOpened ? (
+                    <button
+                      type="button"
+                      onClick={handleViewRecommendation}
+                      className="mt-4 w-full rounded-lg bg-blue-600 px-4 py-3 font-bold text-white"
+                    >
+                      前往查看推薦結果
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setShowMaxTimeDialog(false)}
+                      className="mt-4 w-full rounded-lg bg-slate-700 px-4 py-3 font-bold text-white"
+                    >
+                      返回確認
+                    </button>
+                  )}
                 </div>
               </div>
             )}
@@ -377,15 +481,33 @@ export default function ChatPageContent() {
         )}
 
         {currentStep === 'recommendation' && displayOutfit && (
-          <RecommendationCard
-            outfit={displayOutfit}
-            condition={condition}
-            recommendationText={participantData.finalRecommendationText}
-            participantData={participantData}
-            chatLog={participantData.chatLog}
-            onSurveyClick={handleSurveyClick}
-            onViewChatLog={handleViewChatLog}
-          />
+          <div className="space-y-3">
+            {isResultLayoutSwitchEnabled() && (
+              <div className="flex flex-wrap items-center justify-end gap-2 text-xs text-slate-500" data-testid="result-layout-switch">
+                <span>版面預覽（測試用，正式實驗不會顯示）</span>
+                <button type="button" onClick={() => switchResultLayout('card')} className="rounded border border-slate-300 px-2 py-1">
+                  卡片
+                </button>
+                <button
+                  type="button"
+                  onClick={() => switchResultLayout('paragraph')}
+                  className="rounded border border-slate-300 px-2 py-1"
+                >
+                  段落
+                </button>
+              </div>
+            )}
+            <RecommendationCard
+              outfit={displayOutfit}
+              condition={condition}
+              recommendationText={participantData.finalRecommendationText}
+              participantData={participantData}
+              chatLog={participantData.chatLog}
+              onSurveyClick={handleSurveyClick}
+              onViewChatLog={handleViewChatLog}
+              resultLayout={resultLayout}
+            />
+          </div>
         )}
       </div>
     </div>

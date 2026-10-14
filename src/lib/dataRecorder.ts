@@ -1,11 +1,25 @@
 import { OutfitCategory, SurpriseMode } from '@/lib/outfits';
 import type { PkRoundRecord } from '@/lib/outfitPk';
+import type { QuickColor, QuickFormality, QuickImpression } from '@/lib/quickPreferences';
+
+/** EX High「你的需求」證據來源 */
+export type ExEvidenceSource = 'chat' | 'quick_preference' | 'scenario';
+
+export interface ExEvidenceItem {
+  value: string;
+  source: ExEvidenceSource;
+}
+
+/** 結果頁版面（僅測試切換用，不是實驗因子） */
+export type ResultLayoutVersion = 'card' | 'paragraph';
 
 export interface ChatMessage {
   step: string;
   sender: 'user' | 'bot';
   message: string;
   timestamp: string;
+  /** proSummaryCta：High Proactivity 在第 2 則使用者訊息後附上的整理入口 */
+  kind?: 'text' | 'proSummaryCta';
 }
 
 export type { PkRoundRecord };
@@ -106,6 +120,35 @@ export interface ParticipantData {
   surpriseSelectionMode?: 'random' | 'preference_scored' | '';
   /** 聊天偏好摘要（記錄用） */
   chatPreferenceSummary?: string;
+
+  /* ---------- 快速基本需求（所有組相同；不影響 surpriseMode） ---------- */
+  preferenceFormality: QuickFormality | '';
+  preferenceImpression: QuickImpression | '';
+  preferenceColor: QuickColor | '';
+  quickPreferencesCompletedAt: string | null;
+
+  /* ---------- Proactivity：AI 需求整理事件 ---------- */
+  /** 第 2 則使用者訊息送出、整理功能可用的時間 */
+  proSummaryEligibleAt: string | null;
+  /** High：'ai'（AI 主動送出）；Low：'user'（使用者按鈕觸發） */
+  proSummaryInitiator: 'ai' | 'user' | '';
+  proSummaryOpenedAt: string | null;
+  proSummaryOpened: boolean;
+  proSummaryOpenCount: number;
+  /** 整理面板實際顯示的文字（固定四欄，兩組格式相同） */
+  proSummaryContent: string;
+  /** 事件是否已觸發過（一次 session 只觸發一次；reload 不重複） */
+  proSummaryTriggeredOnce: boolean;
+
+  /* ---------- 結果頁內容紀錄（EX／TS） ---------- */
+  exEvidenceItems: ExEvidenceItem[];
+  exJudgmentPoints: string[];
+  positiveAId: string;
+  positiveBId: string;
+  cautionId: string;
+  /** card / paragraph；僅 debug 用途，非實驗因子 */
+  resultLayoutVersion: ResultLayoutVersion | '';
+
   sessionStartTime: string;
   sessionEndTime: string | null;
 }
@@ -257,6 +300,23 @@ export function initializeParticipantData(
     viewedChatLogAt: null,
     viewedChatLogFrom: '',
     surveyPageEnteredAt: null,
+    preferenceFormality: '',
+    preferenceImpression: '',
+    preferenceColor: '',
+    quickPreferencesCompletedAt: null,
+    proSummaryEligibleAt: null,
+    proSummaryInitiator: '',
+    proSummaryOpenedAt: null,
+    proSummaryOpened: false,
+    proSummaryOpenCount: 0,
+    proSummaryContent: '',
+    proSummaryTriggeredOnce: false,
+    exEvidenceItems: [],
+    exJudgmentPoints: [],
+    positiveAId: '',
+    positiveBId: '',
+    cautionId: '',
+    resultLayoutVersion: '',
     sessionStartTime: new Date().toISOString(),
     sessionEndTime: null,
   };
@@ -315,6 +375,23 @@ export function normalizeParticipantData(raw: ParticipantData): ParticipantData 
     chatPreferenceAdjusted: raw.chatPreferenceAdjusted ?? false,
     surpriseSelectionMode: raw.surpriseSelectionMode ?? '',
     chatPreferenceSummary: raw.chatPreferenceSummary ?? '',
+    preferenceFormality: raw.preferenceFormality ?? '',
+    preferenceImpression: raw.preferenceImpression ?? '',
+    preferenceColor: raw.preferenceColor ?? '',
+    quickPreferencesCompletedAt: raw.quickPreferencesCompletedAt ?? null,
+    proSummaryEligibleAt: raw.proSummaryEligibleAt ?? null,
+    proSummaryInitiator: raw.proSummaryInitiator ?? '',
+    proSummaryOpenedAt: raw.proSummaryOpenedAt ?? null,
+    proSummaryOpened: raw.proSummaryOpened ?? false,
+    proSummaryOpenCount: raw.proSummaryOpenCount ?? 0,
+    proSummaryContent: raw.proSummaryContent ?? '',
+    proSummaryTriggeredOnce: raw.proSummaryTriggeredOnce ?? false,
+    exEvidenceItems: raw.exEvidenceItems ?? [],
+    exJudgmentPoints: raw.exJudgmentPoints ?? [],
+    positiveAId: raw.positiveAId ?? '',
+    positiveBId: raw.positiveBId ?? '',
+    cautionId: raw.cautionId ?? '',
+    resultLayoutVersion: raw.resultLayoutVersion ?? '',
     sessionEndTime: raw.sessionEndTime ?? null,
     invalidInputCount: raw.invalidInputCount ?? 0,
     invalidInputs: raw.invalidInputs ?? [],

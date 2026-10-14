@@ -98,10 +98,8 @@ async function handleFreeChat(
 
   // 詢問現有色系：直接回完整清單，避免模型漏列深棕／棕色
   if (/還有什麼.*色|有哪些.*色|什麼.*顏色|商品顏色|現有.*色系|顏色有哪些/.test(trimmedInput)) {
-    const followUp =
-      condition.proactivity === 'high' ? '你對其中哪一個色系特別有興趣呢？' : '';
     return withCatalogGuard(
-      `目前網站這 12 套面試穿搭的色系包含：${CATALOG_COLOR_SUMMARY}。${followUp}`,
+      `目前網站這 12 套面試穿搭的色系包含：${CATALOG_COLOR_SUMMARY}。`,
       'fallback',
     );
   }
