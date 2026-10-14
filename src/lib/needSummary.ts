@@ -54,7 +54,31 @@ const COLOR_PATTERNS: { value: QuickColor; re: RegExp }[] = [
   { value: 'neutral', re: /中性色|中性/ },
 ];
 
-const LIKE_MARKER = /喜歡|偏好|想要|想穿|希望|偏向/;
+const COLOR_ACCEPTANCE =
+  /喜歡|偏好|想要|想穿|希望|偏向|不錯|也好|好吧|可以接受|挺好|蠻好|也行|也可以|就好/;
+
+/** 「不是黑色」「不要白色」先拿掉，避免後段的喜歡被誤判成選了被否定的顏色。 */
+function withoutNegatedColors(clause: string): string {
+  return clause.replace(
+    /不(?:是|要|喜歡|想要|想|太)?(?:黑色|黑|深藍|深灰|咖啡色|咖啡|深棕|棕色|棕|米白色|米白|淺藍色|淺藍|白色|白|深灰色|灰色|灰)/g,
+    '',
+  );
+}
+
+function specificColorFamily(clause: string): QuickColor | null {
+  const text = withoutNegatedColors(clause);
+  if (/黑|深藍|深灰|咖啡|深棕|棕/.test(text)) return 'dark';
+  if (/米白|淺藍|白/.test(text)) return 'light';
+  if (/灰/.test(text)) return 'neutral';
+  return null;
+}
+
+function clauseChoosesColor(clause: string): boolean {
+  if (COLOR_ACCEPTANCE.test(clause)) return true;
+  return /(?:就|改成|換成|選|用)(?:個|這|一件)?(?:黑色|黑|白色|白|米白|淺藍|深藍|深灰|灰色|灰|咖啡|深棕|棕色|棕)/.test(
+    clause,
+  );
+}
 
 function lastPattern<T extends string>(
   clause: string,
@@ -108,11 +132,8 @@ export function extractExplicitChatNeeds(userMessages: string[]): ChatNeedOverri
       if (!isDislikeClause(clause)) {
         const color = lastPattern(clause, COLOR_PATTERNS);
         if (color) result.color = color;
-        if (LIKE_MARKER.test(clause)) {
-          if (/黑|深藍|深灰|咖啡|深棕|棕/.test(clause)) result.color = 'dark';
-          else if (/米白|淺藍|白/.test(clause)) result.color = 'light';
-          else if (/灰/.test(clause)) result.color = 'neutral';
-        }
+        const specific = specificColorFamily(clause);
+        if (specific && clauseChoosesColor(clause)) result.color = specific;
       }
     }
   }

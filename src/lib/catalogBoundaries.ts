@@ -277,11 +277,13 @@ export function buildCatalogBoundaryPromptBlock(): string {
   return `### 網站庫存色系與下裝邊界（必須遵守）
 - **網站現有色系（有賣，不可說沒有）**：${CATALOG_COLOR_SUMMARY}。
   - 特別注意：**咖啡色、深棕、棕色都有**（例如咖啡外搭、深棕西褲）；使用者說「棕色／咖啡色／深棕」時，**禁止**回覆「沒有棕色／沒有咖啡色」。
-- **網站沒有的色系**：綠色、紅色、粉色、紫色、黃色、橘色等；**禁止**假裝有這些顏色的衣服，也**禁止**與使用者長聊「綠色/紅色…該怎麼搭」彷彿庫存中有售。
+- **淺色／淺色系有賣**：白色、米白、淺藍都是淺色。使用者說喜歡淺色、改成淺色時，**禁止**回覆「沒有淺色」「沒有淺色的單品」。只確認這個偏好，不要改口說缺貨，也不要接著追問要哪一個顏色。
+- **深色／深色系有賣**：黑色、深藍、深灰、咖啡色、深棕、棕色都是深色。**禁止**回覆「沒有深色」。
+- **網站沒有的色系**：綠色、紅色、粉色、紫色、黃色、橘色等；**禁止**假裝有這些顏色的衣服，也**禁止**與使用者長聊「綠色/紅色…該怎麼搭」彷彿庫存中有售。淺色、深色不在這份缺貨清單裡。
 - 若使用者想要庫存沒有的顏色（例如綠色、紫色）或風格（例如賽車風、街頭龐克）：
   1. **第一句就要說明**本網站目前沒有該色單品；
-  2. 邀請使用者改從**現有完整色系**（${CATALOG_COLOR_SUMMARY}）中討論面試需求；
-  3. 可建議「若重視 X 印象，現有庫存中可考慮藍/灰/白等方向」，**不要**繼續描述不存在的綠色穿搭。
+  2. 下一句只列出現有色系（${CATALOG_COLOR_SUMMARY}），不要加問句；
+  3. **不要**繼續描述不存在的綠色穿搭，也不要另外建議印象或替代色。
 - 若使用者問「有哪些顏色／還有什麼商品顏色」：**必須一字不漏列出**「${CATALOG_COLOR_SUMMARY}」，不可自行縮短或漏掉深棕、棕色。
 - **網站現有下裝（有賣，不可說沒有）**：${CATALOG_BOTTOM_SUMMARY}。
   - 特別注意：**有裙子**，即女款**及膝裙**兩套（F5、F6）。使用者說「裙子／裙裝／及膝裙」時，**禁止**回覆「沒有裙子」；應直接以及膝裙方案討論。
@@ -324,6 +326,20 @@ export function correctFalseUnavailableCatalogClaims(
   const replyDeniesSkirt =
     /沒有[^。！？\n]{0,16}裙子/.test(text) ||
     /裙子[^。！？\n]{0,12}沒有/.test(text);
+  const userMentionsLight = /淺色/.test(input);
+  const replyDeniesLight =
+    /沒有[^。！？\n]{0,16}淺色/.test(text) || /淺色[^。！？\n]{0,12}沒有/.test(text);
+  const userMentionsDark = /深色/.test(input);
+  const replyDeniesDark =
+    /沒有[^。！？\n]{0,16}深色/.test(text) || /深色[^。！？\n]{0,12}沒有/.test(text);
+
+  if (userMentionsLight && replyDeniesLight && !messageMentionsUnavailableColor(input)) {
+    return '網站有淺色單品，包含白色、米白、淺藍。已記下淺色偏好。';
+  }
+
+  if (userMentionsDark && replyDeniesDark && !messageMentionsUnavailableColor(input)) {
+    return '網站有深色單品，包含黑色、深藍、深灰、咖啡色、深棕、棕色。已記下深色偏好。';
+  }
 
   if (userMentionsBrown && replyDeniesBrown) {
     return `本網站有咖啡色、深棕、棕色等單品，可以往這個色系討論面試穿搭。我會把您對棕色／咖啡色的偏好記下來；您比較希望整體偏穩重，還是再柔和一點呢？`;

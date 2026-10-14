@@ -391,6 +391,21 @@ const ACCESSORY_PATTERN =
 
 type SimpleHistory = Array<{ sender: 'user' | 'bot'; message: string }>;
 
+/** 使用者沒先發問時，拿掉模型自己加的問句。整則都是問句時，改成短確認。 */
+export function omitUnsolicitedQuestions(
+  reply: string,
+  userInput: string,
+  anthropomorphism: 'high' | 'low',
+): string {
+  if (/[？?]/.test(userInput)) return reply;
+  const kept = reply
+    .split(/(?<=[。！？?!])/)
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0 && !/[？?]/.test(part));
+  if (kept.length > 0) return kept.join('');
+  return anthropomorphism === 'high' ? '了解～我記住了 😊' : '已記錄。';
+}
+
 function shouldAskFallbackQuestion(
   _condition: Condition,
   _conversationHistory: SimpleHistory,

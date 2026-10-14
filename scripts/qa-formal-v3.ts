@@ -24,7 +24,9 @@ import {
 import { resolveResultLayout } from '../src/lib/resultLayout';
 import { describeResultPageModules } from '../src/lib/recommendationText';
 import { buildFreeChatSystemPrompt } from '../src/lib/botPrompts';
-import { generateFreeChatFallbackReply } from '../src/lib/aiResponses';
+import { generateFreeChatFallbackReply, omitUnsolicitedQuestions } from '../src/lib/aiResponses';
+import { correctFalseUnavailableCatalogClaims } from '../src/lib/catalogBoundaries';
+import { buildConsultationThemesBlock } from '../src/lib/chatConsultationThemes';
 import {
   emptyChatPreferences,
   extractChatPreferences,
@@ -77,6 +79,42 @@ const weakBoard = buildNeedSummary({
 assert.equal(weakBoard.formality.value, '偏正式');
 assert.equal(weakBoard.formality.source, 'quick_preference');
 console.log('PASS weak statements do not override');
+
+const colorRevision = buildNeedSummary({
+  preferenceFormality: 'formal',
+  preferenceImpression: 'minimal',
+  preferenceColor: 'dark',
+  userMessages: ['我現在突然喜歡淺色', '黑色的好像也不錯'],
+});
+assert.equal(colorRevision.color.value, '深色系');
+assert.equal(colorRevision.color.source, 'chat');
+assert.equal(colorRevision.formality.value, '偏正式');
+assert.equal(colorRevision.impression.value, '簡約俐落');
+assert.match(colorRevision.other.value, /黑色/);
+const revisedPrefs = extractChatPreferences(['我現在突然喜歡淺色', '黑色的好像也不錯']);
+assert.ok(revisedPrefs.likedColors.includes('black'));
+console.log('PASS later acceptance of black overrides light family');
+
+const bareWeakColor = extractExplicitChatNeeds(['黑色還行']);
+assert.equal(bareWeakColor.color, null);
+console.log('PASS 還行 beside a color does not override');
+
+const falseLight = correctFalseUnavailableCatalogClaims(
+  '淺色的確明亮！不過，我們網站目前沒有淺色的單品，能否考慮從現有的色系中選擇呢？',
+  '我現在突然喜歡淺色',
+);
+assert.equal(falseLight, '網站有淺色單品，包含白色、米白、淺藍。已記下淺色偏好。');
+assert.doesNotMatch(falseLight, /沒有淺色|[？?]/);
+console.log('PASS false no-light-stock claim is corrected');
+
+const stripped = omitUnsolicitedQuestions(
+  '了解你突然喜歡淺色。你對哪個顏色比較有興趣呢？',
+  '我現在突然喜歡淺色',
+  'high',
+);
+assert.equal(stripped, '了解你突然喜歡淺色。');
+assert.doesNotMatch(buildConsultationThemesBlock(), /主動性高：可在回覆末尾/);
+console.log('PASS unsolicited questions and proactivity follow-ups are removed');
 
 const conflict = buildNeedSummary({
   preferenceFormality: 'formal',
