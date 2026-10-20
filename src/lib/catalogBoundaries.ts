@@ -1,8 +1,8 @@
-import { outfits, getOutfit } from '@/lib/outfits';
+import { CATALOG_COLOR_LABELS, getLookFeatures } from '@/data/lookFeatures';
+import { outfits } from '@/lib/outfits';
 
-/** 網站 12 套穿搭實際有的色系（供 AI 與選款參考） */
-export const CATALOG_COLOR_SUMMARY =
-  '白色、米白、黑色、淺藍、深藍、灰色、深灰、咖啡色、深棕、棕色、條紋';
+/** 網站 12 套穿搭實際有的色系（供 AI 與選款參考）。條紋是圖案，不列在色名。 */
+export const CATALOG_COLOR_SUMMARY = CATALOG_COLOR_LABELS.join('、');
 
 const UNAVAILABLE_COLOR_GROUPS: { label: string; terms: string[] }[] = [
   { label: '綠色', terms: ['綠色', '綠', '墨綠', '橄欖綠', '草綠'] },
@@ -150,9 +150,7 @@ function mentionsGeneralPantsDislike(message: string): boolean {
 }
 
 export function outfitIsSkirt(outfitId: string): boolean {
-  const outfit = getOutfit(outfitId);
-  if (!outfit) return false;
-  return SKIRT_LIKE_MARKERS.some((term) => outfit.outfitName.includes(term));
+  return getLookFeatures(outfitId).bottom === 'skirt';
 }
 
 export function outfitIsPants(outfitId: string): boolean {
@@ -277,7 +275,10 @@ export function buildCatalogBoundaryPromptBlock(): string {
   return `### 網站庫存色系與下裝邊界（必須遵守）
 - **網站現有色系（有賣，不可說沒有）**：${CATALOG_COLOR_SUMMARY}。
   - 特別注意：**咖啡色、深棕、棕色都有**（例如咖啡外搭、深棕西褲）；使用者說「棕色／咖啡色／深棕」時，**禁止**回覆「沒有棕色／沒有咖啡色」。
+  - **淺色有現貨**（白色、米白、淺藍等）；**深色也有現貨**（黑色、深灰、深藍、深棕等）。**禁止**回覆「沒有淺色」或「沒有深色」。
+  - 條紋是圖案，不是獨立色系；有條紋的 Look 仍屬現有商品。
 - **網站沒有的色系**：綠色、紅色、粉色、紫色、黃色、橘色等；**禁止**假裝有這些顏色的衣服，也**禁止**與使用者長聊「綠色/紅色…該怎麼搭」彷彿庫存中有售。
+- 使用者可以表達庫存沒有的偏好（例如綠色）；系統可記住這是偏好，但必須區分「使用者偏好」與「目前商品池是否存在」。不可承諾最後會推薦不存在的款式，也不可把黑色說成符合綠色偏好。
 - 若使用者想要庫存沒有的顏色（例如綠色、紫色）或風格（例如賽車風、街頭龐克）：
   1. **第一句就要說明**本網站目前沒有該色單品；
   2. 邀請使用者改從**現有完整色系**（${CATALOG_COLOR_SUMMARY}）中討論面試需求；
@@ -317,6 +318,8 @@ export function correctFalseUnavailableCatalogClaims(
   const userMentionsBrown = /棕色|咖啡色|深棕|咖啡/.test(input);
   const userMentionsSkirt =
     /裙/.test(input) && !/迷你裙|長裙|拖地裙|百褶裙|短裙/.test(input);
+  const userMentionsLight = /淺色/.test(input);
+  const userMentionsDark = /深色/.test(input);
 
   const replyDeniesBrown =
     /沒有[^。！？\n]{0,16}(棕色|咖啡色|深棕)/.test(text) ||
@@ -324,6 +327,10 @@ export function correctFalseUnavailableCatalogClaims(
   const replyDeniesSkirt =
     /沒有[^。！？\n]{0,16}裙子/.test(text) ||
     /裙子[^。！？\n]{0,12}沒有/.test(text);
+  const replyDeniesLight =
+    /沒有[^。！？\n]{0,16}淺色/.test(text) || /淺色[^。！？\n]{0,16}沒有/.test(text);
+  const replyDeniesDark =
+    /沒有[^。！？\n]{0,16}深色/.test(text) || /深色[^。！？\n]{0,16}沒有/.test(text);
 
   if (userMentionsBrown && replyDeniesBrown) {
     return `本網站有咖啡色、深棕、棕色等單品，可以往這個色系討論面試穿搭。我會把您對棕色／咖啡色的偏好記下來；您比較希望整體偏穩重，還是再柔和一點呢？`;
@@ -331,6 +338,14 @@ export function correctFalseUnavailableCatalogClaims(
 
   if (userMentionsSkirt && replyDeniesSkirt) {
     return `本網站有及膝裙的面試搭配（可作裙裝方案）。我會把您想穿裙子的偏好記下來；您比較希望給人專業俐落，還是柔和親和的印象呢？`;
+  }
+
+  if (userMentionsLight && replyDeniesLight) {
+    return `本網站有淺色系單品（例如白色、米白、淺藍），可以往這個色系討論面試穿搭。我會把您對淺色的偏好記下來。`;
+  }
+
+  if (userMentionsDark && replyDeniesDark) {
+    return `本網站有深色系單品（例如黑色、深灰、深藍、深棕），可以往這個色系討論面試穿搭。我會把您對深色的偏好記下來。`;
   }
 
   return reply;

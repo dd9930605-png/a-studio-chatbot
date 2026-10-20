@@ -6,6 +6,11 @@ import {
   extractChatPreferences,
   hasExplicitPreferences,
 } from '@/lib/chatPreferences';
+import {
+  AMBIGUOUS_STYLE_TYPOS,
+  isFashionRelated,
+  isOffTopicForPreferences,
+} from '@/lib/preferenceLanguage';
 
 export type ResponseStep =
   | 'stylePreference'
@@ -23,8 +28,7 @@ export interface ChatValidationResult {
 const OFF_TOPIC_KEYWORDS = [
   '獸醫', '醫師', '醫生', '護士', '護理', '會計', '工程師', '程式', '寫程式',
   '天氣', '下雨', '晴天', '足球', '籃球', '棒球', '遊戲', '打電動', '玩遊戲', '打遊戲',
-  '電影', '追劇', '唱歌', '煮飯', '做菜', '寵物', '貓咪', '狗狗', '數學', '物理',
-  '化學', '歷史', '地理', '考試', '作業', '上班', '加班', '薪水', '吐司', '吃東西', '想吃',
+  '追劇', '唱歌', '煮飯', '做菜', '吐司', '吃東西', '想吃',
   '英雄聯盟', '電競', '手遊', '魔獸', '寶可夢', '傳說對決', '吃雞', '打lol', '打LOL',
 ];
 
@@ -37,7 +41,8 @@ const OFF_TOPIC_PATTERNS = [
 const SHORT_STYLE_TERMS = [
   '美式', '韓系', '日系', '歐美', '休閒', '正式', '簡約', '街頭', '運動', '商務',
   '高冷', '帥氣', '甜美', '知性', '幹練', '專業', '自然', '親切', '俐落', '百搭',
-  '日常', '寬鬆', 'oversize', '西裝', '學院', '復古', '潮流', '古裝', '漢服', '民族',
+  '日常', '寬鬆', 'oversize', 'oversized', '西裝', '學院', '復古', '潮流', '古裝', '漢服', '民族',
+  '古著', 'vintage', 'Y2K', 'y2k', 'old money', 'quiet luxury', '商務休閒', '極簡', '通勤', '層次穿搭',
 ];
 
 const BODY_SHAPE_TERMS = [
@@ -293,11 +298,15 @@ function normalizeUserInput(input: string): string {
   return input.trim().replace(/[吧呢啊喔哦～~!！。,.，]/g, '');
 }
 
-/** 明顯離題：遊戲、職業、天氣等，優先於其他判斷。 */
+/** 明顯離題：遊戲、職業、天氣等。穿搭／風格詞即使夾雜也不當離題。 */
 export function isClearlyOffTopic(userInput: string): boolean {
   const normalized = userInput.trim();
   if (!normalized) {
     return true;
+  }
+
+  if (isFashionRelated(normalized)) {
+    return false;
   }
 
   const compact = normalizeUserInput(normalized);
@@ -327,6 +336,10 @@ export function hasOutfitRelevanceSignal(step: ResponseStep, userInput: string):
     return false;
   }
 
+  if (isFashionRelated(normalized)) {
+    return true;
+  }
+
   if (matchesShortStyleTerm(normalized)) {
     return true;
   }
@@ -346,10 +359,11 @@ export function hasOutfitRelevanceSignal(step: ResponseStep, userInput: string):
 }
 
 function matchesShortStyleTerm(normalized: string): boolean {
-  const compact = normalizeUserInput(normalized);
-  return SHORT_STYLE_TERMS.some(
-    (term) => compact === term || compact.includes(term) || term.includes(compact),
-  );
+  const compact = normalizeUserInput(normalized).toLowerCase();
+  return SHORT_STYLE_TERMS.some((term) => {
+    const lower = term.toLowerCase();
+    return compact === lower || compact.includes(lower) || lower.includes(compact);
+  });
 }
 
 function matchesBodyShapeTerm(normalized: string): boolean {
@@ -410,25 +424,41 @@ function appendFallbackQuestion(
     : base;
 }
 
+function userSaidNoMorePreferences(userMessages: string[]): boolean {
+  return userMessages.some((message) =>
+    /沒有其他偏好|沒有特別偏好|沒別的了|沒有了|這樣就好|沒有其他/.test(message),
+  );
+}
+
 function buildNextMissingInfoQuestion(
   userMessages: string[],
 ): string {
+  if (userSaidNoMorePreferences(userMessages)) {
+    return '';
+  }
   const preferences = extractChatPreferences(userMessages);
+  const knowsColor =
+    Boolean(preferences.likedColorFamily) ||
+    preferences.likedColors.length > 0 ||
+    preferences.dislikedColors.length > 0 ||
+    Boolean(preferences.dislikedColorFamily);
+  const knowsFormality = preferences.wantsFormal || preferences.wantsLessFormal;
+  const knowsFit =
+    preferences.preferredFitLevels.length > 0 ||
+    preferences.avoidedFitLevels.length > 0 ||
+    preferences.softAvoidFitLevels.length > 0;
+
   if (!hasExplicitPreferences(preferences)) {
     return '你目前比較在意面試穿著的正式程度、顏色，還是版型呢？';
   }
-  if (
-    preferences.likedColors.length === 0 &&
-    preferences.dislikedColors.length === 0
-  ) {
+  if (!knowsColor) {
     return '你已經說明風格方向；目前還沒提到色系，有偏好的深色或淺色嗎？';
   }
-  if (
-    preferences.preferredFitLevels.length === 0 &&
-    preferences.avoidedFitLevels.length === 0 &&
-    preferences.softAvoidFitLevels.length === 0
-  ) {
-    return '色系偏好已經清楚；版型方面偏好俐落合身，還是稍微寬鬆呢？';
+  if (!knowsFit && knowsColor) {
+    return '';
+  }
+  if (knowsFormality && knowsColor) {
+    return '';
   }
   return '';
 }
@@ -452,6 +482,30 @@ export function generateFreeChatFallbackReply(
   if (ACCESSORY_PATTERN.test(trimmed)) {
     return applyTone(
       '本網站目前僅提供上衣與下裝（及套裝內含的領帶等）組合建議，不包含配件。我們可以專注在面試服裝的版型、顏色與正式度。',
+      condition,
+    );
+  }
+
+  for (const typo of AMBIGUOUS_STYLE_TYPOS) {
+    if (trimmed.includes(typo.typed) && !trimmed.includes(typo.typed === '韓式' ? '韓系' : '簡約')) {
+      return applyTone(typo.question, condition);
+    }
+  }
+
+  if (isOffTopicForPreferences(trimmed) || isClearlyOffTopic(trimmed)) {
+    return applyTone(
+      condition.anthropomorphism === 'high'
+        ? '了解～不過這次我主要是幫你準備面試穿搭。我們先把穿搭需求確認完整。'
+        : '本題與面試穿搭無關。請改描述風格、正式度、顏色或版型需求。',
+      condition,
+    );
+  }
+
+  if (userSaidNoMorePreferences(userMessages)) {
+    return applyTone(
+      condition.anthropomorphism === 'high'
+        ? '了解，目前這些資訊已經足夠，我不會再追問其他偏好。'
+        : '已記錄：目前沒有其他偏好。',
       condition,
     );
   }
@@ -483,6 +537,20 @@ export function generateFreeChatFallbackReply(
   }
 
   // 庫存「有」的項目：避免 fallback 也誤說沒有
+  if (/淺色/.test(trimmed) && /喜歡|想要|偏好|想穿|有沒有/.test(trimmed)) {
+    return applyTone(
+      '了解，你比較偏好淺色；網站有白色、米白、淺藍等淺色單品，可用於面試搭配。',
+      condition,
+    );
+  }
+
+  if (/深色/.test(trimmed) && /喜歡|想要|偏好|想穿|有沒有/.test(trimmed)) {
+    return applyTone(
+      '了解，你比較偏好深色；網站有黑色、深灰、深藍、深棕等深色單品，可用於面試搭配。',
+      condition,
+    );
+  }
+
   if (
     /喜歡|想要|偏好|想穿|有沒有/.test(trimmed) &&
     /棕色|咖啡色|深棕/.test(trimmed) &&
@@ -562,16 +630,7 @@ export function generateFreeChatFallbackReply(
 
   if (/約會|咖啡廳|聚餐|旅遊|麥當勞|晚餐|午餐|早餐|肚子餓|吃什麼|想吃/.test(trimmed)) {
     return applyTone(
-      appendFallbackQuestion(
-        '題外話可以簡短聊一下；這次諮詢仍以完成面試穿搭選擇為主。',
-        buildNextMissingInfoQuestion(
-          conversationHistory
-            .filter((entry) => entry.sender === 'user')
-            .map((entry) => entry.message),
-        ),
-        condition,
-        conversationHistory,
-      ),
+      '題外話可以簡短聊一下；這次諮詢仍以完成面試穿搭選擇為主。我們可以繼續確認正式度、色系或版型。',
       condition,
     );
   }

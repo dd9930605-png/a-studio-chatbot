@@ -21,7 +21,7 @@ import {
   countSentences,
   listLookResultOutfitIds,
 } from '../src/lib/resultContent';
-import { resolveResultLayout } from '../src/lib/resultLayout';
+import { isResultLayoutSwitchEnabled, resolveResultLayout } from '../src/lib/resultLayout';
 import { describeResultPageModules } from '../src/lib/recommendationText';
 import { buildFreeChatSystemPrompt } from '../src/lib/botPrompts';
 import { generateFreeChatFallbackReply } from '../src/lib/aiResponses';
@@ -100,16 +100,29 @@ assert.ok(insufficient.evidenceItems.every((item) => item.source === 'scenario')
 assert.doesNotMatch(insufficient.userNeed1, /你說|你選擇|你在對話中/);
 console.log('PASS insufficient info uses scenario fallback without fake quotes');
 
-const chatNeed = buildResultContent({
+const chatNeedMismatch = buildResultContent({
   outfit: getOutfit('M4')!,
   preferenceFormality: 'formal',
   preferenceImpression: 'none',
   preferenceColor: 'dark',
   userMessages: ['我想穿淺色'],
 });
+assert.doesNotMatch(
+  `${chatNeedMismatch.userNeed1}${chatNeedMismatch.userNeed2}`,
+  /淺色/,
+);
+assert.match(`${chatNeedMismatch.userNeed1}${chatNeedMismatch.userNeed2}`, /偏正式|面試需要/);
+console.log('PASS EX drops chat evidence that contradicts the final Look');
+
+const chatNeed = buildResultContent({
+  outfit: getOutfit('F1')!,
+  preferenceFormality: 'none',
+  preferenceImpression: 'none',
+  preferenceColor: 'none',
+  userMessages: ['我想穿淺色'],
+});
 assert.match(chatNeed.userNeed1, /你在對話中提到希望淺色系/);
 assert.equal(chatNeed.evidenceItems[0]?.source, 'chat');
-assert.match(chatNeed.userNeed2, /你選擇：偏正式/);
 console.log('PASS EX source priority is chat then quick');
 
 assert.equal(listLookResultOutfitIds().length, 12);
@@ -248,19 +261,10 @@ assert.ok(surprise.surpriseCandidateOutfits.includes(pickedAgain.finalOutfit));
 assert.notEqual(pickedAgain.finalOutfit, 'M1');
 console.log('PASS surprise selection stays on chat preferences and ignores quick-question fields');
 
-const previousSwitch = process.env.NEXT_PUBLIC_RESULT_LAYOUT_SWITCH;
-const previousDefault = process.env.NEXT_PUBLIC_RESULT_LAYOUT;
-process.env.NEXT_PUBLIC_RESULT_LAYOUT_SWITCH = '1';
-delete process.env.NEXT_PUBLIC_RESULT_LAYOUT;
-assert.equal(resolveResultLayout('paragraph'), 'paragraph');
+assert.equal(isResultLayoutSwitchEnabled(), false);
+assert.equal(resolveResultLayout('paragraph'), 'card');
 assert.equal(resolveResultLayout('card'), 'card');
 assert.equal(resolveResultLayout(null), 'card');
-process.env.NEXT_PUBLIC_RESULT_LAYOUT_SWITCH = '0';
-assert.equal(resolveResultLayout('paragraph'), 'card');
-if (previousSwitch === undefined) delete process.env.NEXT_PUBLIC_RESULT_LAYOUT_SWITCH;
-else process.env.NEXT_PUBLIC_RESULT_LAYOUT_SWITCH = previousSwitch;
-if (previousDefault === undefined) delete process.env.NEXT_PUBLIC_RESULT_LAYOUT;
-else process.env.NEXT_PUBLIC_RESULT_LAYOUT = previousDefault;
-console.log('PASS layout switch is test-only');
+console.log('PASS production result layout is card-only');
 
 console.log('ALL FORMAL V3 QA PASSED');

@@ -7,9 +7,16 @@ interface OverlayModalProps {
   title: string;
   onClose: () => void;
   children: React.ReactNode;
+  size?: 'default' | 'reading';
 }
 
-export function OverlayModal({ open, title, onClose, children }: OverlayModalProps) {
+export function OverlayModal({
+  open,
+  title,
+  onClose,
+  children,
+  size = 'default',
+}: OverlayModalProps) {
   useEffect(() => {
     if (!open) return;
 
@@ -30,7 +37,11 @@ export function OverlayModal({ open, title, onClose, children }: OverlayModalPro
       role="presentation"
     >
       <div
-        className="flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl"
+        className={
+          size === 'reading'
+            ? 'flex h-[96vh] w-full max-w-5xl flex-col overflow-hidden rounded-none bg-white shadow-2xl sm:h-[90vh] sm:rounded-xl'
+            : 'flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl'
+        }
         onClick={(event) => event.stopPropagation()}
         role="dialog"
         aria-modal="true"

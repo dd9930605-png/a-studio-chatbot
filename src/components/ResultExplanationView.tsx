@@ -1,35 +1,19 @@
 'use client';
 
 import React from 'react';
-import { ResultContent, buildResultParagraph } from '@/lib/resultContent';
+import { ResultContent } from '@/lib/resultContent';
 
 interface ResultExplanationViewProps {
   content: ResultContent;
   explainability: 'high' | 'low';
   twoSidedMessage: 'high' | 'low';
-  layout: 'card' | 'paragraph';
 }
 
 export function ResultExplanationView({
   content,
   explainability,
   twoSidedMessage,
-  layout,
 }: ResultExplanationViewProps) {
-  if (layout === 'paragraph') {
-    const paragraph = buildResultParagraph(content, explainability, twoSidedMessage);
-    return (
-      <div data-testid="result-layout" data-layout="paragraph" data-ex={explainability} data-ts={twoSidedMessage}>
-        <p
-          data-testid="result-paragraph"
-          className="text-base leading-[1.9] text-slate-800 sm:text-lg"
-        >
-          {paragraph}
-        </p>
-      </div>
-    );
-  }
-
   return (
     <div
       data-testid="result-layout"

@@ -408,6 +408,71 @@ export default function AdminPage() {
                   />
                 </Section>
 
+                <Section title="直接操弄辨識題">
+                  <Grid>
+                    <Field
+                      label="directCheckExplainability"
+                      value={selectedParticipant.directCheckExplainability || '—'}
+                    />
+                    <Field
+                      label="directCheckTwoSided"
+                      value={selectedParticipant.directCheckTwoSided || '—'}
+                    />
+                    <Field
+                      label="directCheckAnthropomorphism"
+                      value={selectedParticipant.directCheckAnthropomorphism || '—'}
+                    />
+                    <Field
+                      label="directCheckProactivity"
+                      value={selectedParticipant.directCheckProactivity || '—'}
+                    />
+                    <Field
+                      label="directCheckEXCorrect"
+                      value={
+                        selectedParticipant.directCheckEXCorrect == null
+                          ? '—'
+                          : selectedParticipant.directCheckEXCorrect
+                            ? 'true'
+                            : 'false'
+                      }
+                    />
+                    <Field
+                      label="directCheckTSCorrect"
+                      value={
+                        selectedParticipant.directCheckTSCorrect == null
+                          ? '—'
+                          : selectedParticipant.directCheckTSCorrect
+                            ? 'true'
+                            : 'false'
+                      }
+                    />
+                    <Field
+                      label="directCheckANCorrect"
+                      value={
+                        selectedParticipant.directCheckANCorrect == null
+                          ? '—'
+                          : selectedParticipant.directCheckANCorrect
+                            ? 'true'
+                            : 'false'
+                      }
+                    />
+                    <Field
+                      label="directCheckPROCorrect"
+                      value={
+                        selectedParticipant.directCheckPROCorrect == null
+                          ? '—'
+                          : selectedParticipant.directCheckPROCorrect
+                            ? 'true'
+                            : 'false'
+                      }
+                    />
+                    <Field
+                      label="directCheckCompletedAt"
+                      value={selectedParticipant.directCheckCompletedAt ?? '—'}
+                    />
+                  </Grid>
+                </Section>
+
                 <Section title="結果頁內容紀錄（EX／TS）">
                   <Grid>
                     <Field label="positiveAId" value={selectedParticipant.positiveAId || '—'} />

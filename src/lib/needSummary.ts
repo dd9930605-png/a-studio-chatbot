@@ -1,6 +1,19 @@
 import { ChatPreferences, extractChatPreferences } from '@/lib/chatPreferences';
 import { ChatMessage, ParticipantData } from '@/lib/dataRecorder';
 import {
+  clauseColorFamily,
+  clauseColorTokens,
+  includesUnnegated,
+  isAcceptanceNotRequest,
+  isOffTopicForPreferences,
+  isSoftNegative,
+  isStrongLike,
+  isStrongNegative,
+  isWeakPreference,
+  isWeakStandalone,
+  splitPreferenceClauses,
+} from '@/lib/preferenceLanguage';
+import {
   QuickColor,
   QuickFormality,
   QuickImpression,
@@ -16,10 +29,8 @@ export type NeedSource = 'chat' | 'quick_preference' | 'none';
 
 export interface NeedField {
   label: string;
-  /** 顯示文字；未作答為「尚未提供」 */
   value: string;
   source: NeedSource;
-  /** 有實質偏好（可進入 EX High）；「無特別偏好」不是實質偏好 */
   substantive: boolean;
 }
 
@@ -30,8 +41,7 @@ export interface NeedSummary {
   other: NeedField;
 }
 
-const WEAK_CLAUSE =
-  /^(都可以|還行|應該可以吧|應該可以|隨便|隨便都可以|我穿都可以|不知道|沒差|無所謂|都行|還可以|算可以|好像還行|我都可以|嗯|哦|好|好啊|可以)$/;
+type Strength = 'strong' | 'weak';
 
 const FORMALITY_PATTERNS: { value: QuickFormality; re: RegExp }[] = [
   {
@@ -47,14 +57,6 @@ const IMPRESSION_PATTERNS: { value: QuickImpression; re: RegExp }[] = [
   { value: 'minimal', re: /簡約俐落|簡約|俐落|乾淨俐落/ },
   { value: 'approachable', re: /親和自然|親和|親切|希望自然|偏自然|想要自然|自然一點/ },
 ];
-
-const COLOR_PATTERNS: { value: QuickColor; re: RegExp }[] = [
-  { value: 'dark', re: /深色系|深色|偏深|暗色/ },
-  { value: 'light', re: /淺色系|淺色|偏淺|亮色/ },
-  { value: 'neutral', re: /中性色|中性/ },
-];
-
-const LIKE_MARKER = /喜歡|偏好|想要|想穿|希望|偏向/;
 
 function lastPattern<T extends string>(
   clause: string,
@@ -72,8 +74,15 @@ function lastPattern<T extends string>(
   return best;
 }
 
-function isDislikeClause(clause: string): boolean {
-  return /不喜歡|討厭|不要|別推|不想/.test(clause);
+function applyTracked<T>(
+  current: { value: T; strength: Strength } | null,
+  next: T | null,
+  strength: Strength,
+): { value: T; strength: Strength } | null {
+  if (!next) return current;
+  if (!current) return { value: next, strength };
+  if (strength === 'weak' && current.strength === 'strong') return current;
+  return { value: next, strength };
 }
 
 export interface ChatNeedOverrides {
@@ -82,42 +91,67 @@ export interface ChatNeedOverrides {
   color: QuickColor | null;
 }
 
-/**
- * 由早到晚掃描使用者原文。較新的明確陳述覆蓋較早的；
- * 弱表述（都可以、還行、不知道等）不覆蓋。
- */
 export function extractExplicitChatNeeds(userMessages: string[]): ChatNeedOverrides {
-  const result: ChatNeedOverrides = { formality: null, impression: null, color: null };
+  let formality: { value: QuickFormality; strength: Strength } | null = null;
+  let impression: { value: QuickImpression; strength: Strength } | null = null;
+  let color: { value: QuickColor; strength: Strength } | null = null;
 
   for (const message of userMessages) {
-    const clauses = message.split(/[，,。！？?!；;\n]|但是|不過|可是|而且/);
-    for (const rawClause of clauses) {
-      const clause = rawClause.trim();
-      if (!clause || WEAK_CLAUSE.test(clause)) continue;
+    if (isOffTopicForPreferences(message)) continue;
+    for (const clause of splitPreferenceClauses(message)) {
+      if (!clause || isWeakStandalone(clause)) continue;
+      const weak = isWeakPreference(clause);
+      const accept = isAcceptanceNotRequest(clause);
+      const softNeg = isSoftNegative(clause);
+      const strongNeg = isStrongNegative(clause);
+      const strength: Strength = weak || accept ? 'weak' : 'strong';
 
-      const formality = lastPattern(clause, FORMALITY_PATTERNS);
-      if (formality && !(formality === 'formal' && isDislikeClause(clause))) {
-        result.formality = formality;
+      const formalityHit = lastPattern(clause, FORMALITY_PATTERNS);
+      if (formalityHit === 'less_formal') {
+        formality = applyTracked(formality, 'less_formal', 'strong');
+      } else if (formalityHit === 'moderate') {
+        formality = applyTracked(formality, 'moderate', strength);
+      } else if (formalityHit === 'formal' && !accept && !softNeg && !strongNeg && !weak) {
+        formality = applyTracked(formality, 'formal', 'strong');
       }
 
-      const impression = lastPattern(clause, IMPRESSION_PATTERNS);
-      if (impression && !isDislikeClause(clause)) {
-        result.impression = impression;
+      const impressionHit = lastPattern(clause, IMPRESSION_PATTERNS);
+      if (impressionHit && !accept && !softNeg) {
+        const impressionWord =
+          impressionHit === 'minimal' ? '簡約' : impressionHit === 'professional' ? '穩重' : '親和';
+        if (!strongNeg || includesUnnegated(clause, impressionWord) || includesUnnegated(clause, '俐落')) {
+          impression = applyTracked(impression, impressionHit, strength);
+        }
       }
 
-      if (!isDislikeClause(clause)) {
-        const color = lastPattern(clause, COLOR_PATTERNS);
-        if (color) result.color = color;
-        if (LIKE_MARKER.test(clause)) {
-          if (/黑|深藍|深灰|咖啡|深棕|棕/.test(clause)) result.color = 'dark';
-          else if (/米白|淺藍|白/.test(clause)) result.color = 'light';
-          else if (/灰/.test(clause)) result.color = 'neutral';
+      const family = clauseColorFamily(clause);
+      const tokens = clauseColorTokens(clause);
+      if (softNeg && family) {
+        continue;
+      }
+      if (strongNeg && (family || tokens.length > 0)) {
+        continue;
+      }
+      if (family) {
+        const mapped: QuickColor = family === 'dark' ? 'dark' : 'light';
+        color = applyTracked(color, mapped, strength);
+      } else if (tokens.length > 0 && isStrongLike(clause) && !weak) {
+        if (tokens.some((token) => token === 'black' || token === 'darkBlue' || token === 'darkGray' || token === 'brown')) {
+          color = applyTracked(color, 'dark', 'strong');
+        } else if (tokens.some((token) => token === 'white' || token === 'beige' || token === 'lightBlue')) {
+          color = applyTracked(color, 'light', 'strong');
+        } else if (tokens.some((token) => token === 'gray')) {
+          color = applyTracked(color, 'no_clear', 'strong');
         }
       }
     }
   }
 
-  return result;
+  return {
+    formality: formality?.value ?? null,
+    impression: impression?.value ?? null,
+    color: color?.value && color.value !== 'no_clear' ? color.value : color?.value === 'no_clear' ? 'no_clear' : null,
+  };
 }
 
 function fieldFromQuick<T extends string>(
@@ -143,27 +177,32 @@ function fieldFromQuick<T extends string>(
 
 const COLOR_NAME: Record<string, string> = {
   white: '白色',
+  beige: '米白',
   black: '黑色',
-  blue: '藍色',
+  lightBlue: '淺藍',
+  darkBlue: '深藍',
   gray: '灰色',
+  darkGray: '深灰',
   brown: '棕色',
-  stripe: '條紋',
 };
 
 function joinNames(keys: string[]): string {
   return keys.map((key) => COLOR_NAME[key] ?? key).join('、');
 }
 
-/** 三個固定欄位以外、使用者明確提過的需求。不含 Look、不含推薦理由。 */
 export function formatOtherNeeds(preferences: ChatPreferences): string {
   const parts: string[] = [];
 
+  if (preferences.likedColorFamily) {
+    parts.push(`提到喜歡${preferences.likedColorFamily === 'dark' ? '深色系' : '淺色系'}`);
+  }
   if (preferences.likedColors.length > 0) {
     parts.push(`提到喜歡${joinNames(preferences.likedColors)}`);
   }
   if (preferences.dislikedColors.length > 0) {
     parts.push(`提到不喜歡${joinNames(preferences.dislikedColors)}`);
   }
+  if (preferences.avoidsTie) parts.push('提到不要領帶');
   if (preferences.preferredFitLevels.includes('structured')) parts.push('提到偏好較俐落的版型');
   if (preferences.preferredFitLevels.includes('relaxed')) parts.push('提到偏好寬鬆一點的版型');
   if (preferences.avoidedFitLevels.length > 0 || preferences.softAvoidFitLevels.length > 0) {
@@ -256,6 +295,7 @@ export function formatNeedSummary(summary: NeedSummary): string {
 
 export const PRO_SUMMARY_CTA_LABEL = '查看目前需求整理';
 export const PRO_SUMMARY_LOW_BUTTON = '請 AI 整理目前需求';
+export const PRO_SUMMARY_USER_ACTION = '你點選了『請 AI 整理目前需求』';
 
 export function proSummaryCtaMessage(anthropomorphism: 'high' | 'low'): string {
   if (anthropomorphism === 'high') {

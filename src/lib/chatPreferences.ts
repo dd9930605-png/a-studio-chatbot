@@ -1,5 +1,12 @@
 import { extractUserMessages, ParticipantData } from '@/lib/dataRecorder';
 import {
+  ColorFamily,
+  ColorToken,
+  BottomKind,
+  FitLevel,
+  getLookFeatures,
+} from '@/data/lookFeatures';
+import {
   detectBottomPreference,
   detectUnavailableBottomRequests,
   detectUnavailableColorRequests,
@@ -7,17 +14,27 @@ import {
   hasStrongDislikePolarity,
   outfitIsSkirt,
 } from '@/lib/catalogBoundaries';
+import {
+  clauseColorFamily,
+  clauseColorTokens,
+  clauseMentionsStripe,
+  clauseMentionsTie,
+  includesUnnegated,
+  isAcceptanceNotRequest,
+  isOffTopicForPreferences,
+  isSoftNegative,
+  isStrongLike,
+  isStrongNegative,
+  isWeakPreference,
+  isWeakStandalone,
+  splitPreferenceClauses,
+} from '@/lib/preferenceLanguage';
 import { getOutfit } from '@/lib/outfits';
 
-export type ColorKey = 'white' | 'black' | 'blue' | 'gray' | 'brown' | 'stripe';
+export type ColorKey = ColorToken;
+export type { ColorFamily, BottomKind, FitLevel };
 
-/**
- * 版型三級（依本實驗 12 套實際商品界定，避免「寬褲」一刀切）
- * - structured：較俐落／非寬版（裙裝、一般牛仔褲＋領帶等）
- * - relaxed：面試友善寬版（寬腿西褲、寬版牛仔褲等，多數商品）
- * - oversized：明顯過寬／街頭工裝感（才是「太寬鬆」硬排除對象）
- */
-export type FitLevel = 'structured' | 'relaxed' | 'oversized';
+/** 版型三級見 lookFeatures：structured / relaxed / oversized */
 
 export interface ChatPreferences {
   dislikedColors: ColorKey[];
@@ -55,19 +72,26 @@ export interface ChatPreferences {
   requestedUnavailableColors: string[];
   /** 想要但庫存沒有／不納入評分池的下裝（如工裝褲） */
   requestedUnavailableBottoms: string[];
+  likedColorFamily: ColorFamily | null;
+  dislikedColorFamily: ColorFamily | null;
+  avoidsTie: boolean;
+  likesStripe: boolean;
+  dislikesStripe: boolean;
 }
 
-const COLOR_TERMS: Record<ColorKey, string[]> = {
-  white: ['白色', '米白', '白'],
-  black: ['黑色', '黑'],
-  blue: ['淺藍', '深藍', '藍色', '藍'],
-  gray: ['深灰', '灰色', '灰'],
-  brown: ['咖啡色', '深棕', '棕色', '咖啡', '棕'],
-  stripe: ['條紋'],
+const COLOR_LABELS: Record<ColorKey, string> = {
+  white: '白色',
+  beige: '米白',
+  black: '黑色',
+  lightBlue: '淺藍',
+  darkBlue: '深藍',
+  gray: '灰色',
+  darkGray: '深灰',
+  brown: '棕色',
 };
 
 function colorLabel(color: ColorKey): string {
-  return COLOR_TERMS[color][0];
+  return COLOR_LABELS[color];
 }
 
 const SOFT_DISLIKE_MARKERS = ['不喜歡', '不太喜歡', '怕穿', '較不喜歡', '沒那麼喜歡', '不太適合我'];
@@ -105,6 +129,8 @@ const JEANS_LIKE_MARKERS = [
   '比較喜歡牛仔',
   '偏向牛仔',
   '牛仔好了',
+  'jeans',
+  'Jeans',
 ];
 const DRESS_PANTS_DISLIKE_MARKERS = [
   '不要西褲',
@@ -151,6 +177,8 @@ const WIDE_PANTS_LIKE_MARKERS = [
   '比較喜歡寬褲',
   '偏向寬褲',
   '寬褲好了',
+  '寬寬的褲',
+  '寬寬的褲子',
 ];
 /** 不喜歡商品名稱含「工裝」的搭配（不把工裝當加分偏好） */
 const CARGO_DISLIKE_MARKERS = [
@@ -161,58 +189,39 @@ const CARGO_DISLIKE_MARKERS = [
   '別推工裝',
 ];
 
-/**
- * 下裝種類（評分池）：僅對齊庫存實際有的類型
- * - jeans / dress_pants / wide_pants / skirt
- * - 工裝褲等不在此列，喜歡時只記「庫存沒有」，不加分
- */
-export type BottomKind = 'jeans' | 'dress_pants' | 'wide_pants' | 'skirt';
-
-const OUTFIT_BOTTOM_KIND: Record<string, BottomKind> = {
-  M1: 'jeans',
-  M2: 'wide_pants', // 名稱含工裝，但評分池歸「寬褲」；「喜歡工裝」不加分
-  M3: 'jeans',
-  M4: 'dress_pants',
-  M5: 'wide_pants',
-  M6: 'wide_pants',
-  F1: 'jeans',
-  F2: 'dress_pants',
-  F3: 'wide_pants',
-  F4: 'wide_pants',
-  F5: 'skirt',
-  F6: 'skirt',
-};
-
 export function getOutfitBottomKind(outfitId: string): BottomKind {
-  if (OUTFIT_BOTTOM_KIND[outfitId]) return OUTFIT_BOTTOM_KIND[outfitId];
-  return outfitIsSkirt(outfitId) ? 'skirt' : 'wide_pants';
+  return getLookFeatures(outfitId).bottom;
 }
 
 function outfitNameHasCargo(outfitId: string): boolean {
-  const outfit = getOutfit(outfitId);
-  return Boolean(outfit?.outfitName.includes('工裝'));
+  return getLookFeatures(outfitId).cargo;
 }
 
-const STYLE_KEYWORDS = ['簡約', '簡單', '乾淨', '俐落', '韓系', '清爽', '時尚', '知性', '親切', '自然'];
-
-const CASUAL_STYLE_TAGS = ['街頭', '休閒', '個性風格'];
-const FORMAL_STYLE_TAGS = ['正式專業', '俐落正式', '正式', '專業', '襯衫領帶'];
-
-/** 依商品內容人工分級（勿只靠「寬褲」關鍵字，否則幾乎全剔除） */
-const OUTFIT_FIT_LEVEL: Record<string, FitLevel> = {
-  M1: 'structured', // 一般牛仔褲＋領帶，非寬版
-  M2: 'oversized', // 工裝寬褲＋破邊街頭
-  M3: 'relaxed', // 寬版牛仔褲，面試友善寬
-  M4: 'relaxed', // 寬腿西褲，有結構
-  M5: 'relaxed', // 領帶＋寬褲
-  M6: 'relaxed', // 寬褲＋上衣
-  F1: 'relaxed', // 寬褲牛仔褲
-  F2: 'relaxed', // 寬腿西褲＋領帶
-  F3: 'relaxed', // 寬褲＋層次
-  F4: 'oversized', // 抽繩寬褲，較鬆休閒
-  F5: 'structured', // 及膝裙
-  F6: 'structured', // 及膝裙
-};
+const STYLE_KEYWORDS = [
+  '簡約',
+  '簡單',
+  '乾淨',
+  '俐落',
+  '韓系',
+  '清爽',
+  '時尚',
+  '知性',
+  '親切',
+  '自然',
+  '極簡',
+  '通勤',
+  '層次穿搭',
+  '商務休閒',
+  '半正式',
+  '古著',
+  '復古',
+  'vintage',
+  '個性風格',
+  '街頭',
+  '正式專業',
+  '襯衫領帶',
+  '柔和專業',
+];
 
 function fitLevelLabel(level: FitLevel): string {
   if (level === 'structured') return '較俐落版型';
@@ -250,6 +259,7 @@ const PREFER_STRUCTURED_MARKERS = [
   '別太寬鬆',
   '俐落一點',
   '看起來俐落',
+  '合身ㄧ點',
 ];
 const PREFER_RELAXED_MARKERS = [
   '喜歡寬鬆',
@@ -263,6 +273,7 @@ const PREFER_RELAXED_MARKERS = [
   '可以寬鬆',
   '喜歡寬版',
   '想要寬版',
+  '寬寬的',
 ];
 const SOFT_AVOID_STRUCTURED_MARKERS = [
   '不喜歡太合身',
@@ -286,22 +297,22 @@ function messageMentionsFitPreference(message: string): {
   const lower = message.toLowerCase();
 
   if (
-    AVOID_OVERSIZED_MARKERS.some((m) => message.includes(m)) ||
-    (isAnyDislikeMessage(message) && /寬鬆|太寬|oversize|工裝寬/i.test(message))
+    AVOID_OVERSIZED_MARKERS.some((m) => includesUnnegated(message, m) || message.includes(m)) ||
+    (isStrongNegative(message) && /寬鬆|太寬|oversize|工裝寬/i.test(message))
   ) {
     avoided.push('oversized');
   }
 
   if (
-    PREFER_STRUCTURED_MARKERS.some((m) => message.includes(m)) ||
-    (hasLikeMarker(message) && /合身|修身|俐落/.test(message) && !isAnyDislikeMessage(message))
+    PREFER_STRUCTURED_MARKERS.some((m) => includesUnnegated(message, m)) ||
+    (isStrongLike(message) && /合身|修身|俐落/.test(message) && !isStrongNegative(message))
   ) {
     preferred.push('structured');
   }
 
   if (
-    PREFER_RELAXED_MARKERS.some((m) => message.includes(m)) ||
-    (hasLikeMarker(message) && /寬鬆|寬版|oversize/i.test(lower) && !isAnyDislikeMessage(message))
+    PREFER_RELAXED_MARKERS.some((m) => includesUnnegated(message, m)) ||
+    (isStrongLike(message) && /寬鬆|寬版|oversize/i.test(lower) && !isStrongNegative(message))
   ) {
     preferred.push('relaxed');
   }
@@ -317,14 +328,7 @@ function messageMentionsFitPreference(message: string): {
 }
 
 function detectColorsInText(text: string): ColorKey[] {
-  const found: ColorKey[] = [];
-  for (const [key, terms] of Object.entries(COLOR_TERMS) as [ColorKey, string[]][]) {
-    const sorted = [...terms].sort((a, b) => b.length - a.length);
-    if (sorted.some((term) => text.includes(term))) {
-      found.push(key);
-    }
-  }
-  return found;
+  return clauseColorTokens(text);
 }
 
 function isStrongDislikeMessage(text: string): boolean {
@@ -342,10 +346,9 @@ function hasLikeMarker(text: string): boolean {
 }
 
 function countColorDislikeMentions(userMessages: string[], color: ColorKey): number {
-  const terms = COLOR_TERMS[color];
   let count = 0;
   for (const message of userMessages) {
-    if (isAnyDislikeMessage(message) && terms.some((term) => message.includes(term))) {
+    if (isAnyDislikeMessage(message) && clauseColorTokens(message).includes(color)) {
       count += 1;
     }
   }
@@ -376,6 +379,11 @@ export function emptyChatPreferences(): ChatPreferences {
     matchedStyleKeywords: [],
     requestedUnavailableColors: [],
     requestedUnavailableBottoms: [],
+    likedColorFamily: null,
+    dislikedColorFamily: null,
+    avoidsTie: false,
+    likesStripe: false,
+    dislikesStripe: false,
   };
 }
 
@@ -397,37 +405,100 @@ export function extractChatPreferences(userMessages: string[]): ChatPreferences 
   let prefersJeans = false;
   let prefersDressPants = false;
   let prefersWidePants = false;
+  let likedColorFamily: ColorFamily | null = null;
+  let dislikedColorFamily: ColorFamily | null = null;
+  let colorFamilyStrength: 'strong' | 'weak' | null = null;
+  let avoidsTie = false;
+  let likesStripe = false;
+  let dislikesStripe = false;
   const matchedStyleKeywords = new Set<string>();
 
-  for (const message of userMessages) {
-    // 依子句判斷極性，避免「不喜歡黑，比較喜歡白」把白色也算討厭
-    const clauses = message.split(/[，,。！？?!；;]|但是|不過|可是|而且/);
-    let clauseMatched = false;
+  const relevantMessages = userMessages.filter((message) => !isOffTopicForPreferences(message));
+
+  for (const message of relevantMessages) {
+    const clauses = splitPreferenceClauses(message);
 
     for (const clause of clauses) {
+      if (isWeakStandalone(clause)) continue;
       const colors = detectColorsInText(clause);
-      if (colors.length === 0) continue;
-      clauseMatched = true;
+      const family = clauseColorFamily(clause);
+      const weak = isWeakPreference(clause);
+      const acceptOnly = isAcceptanceNotRequest(clause);
+      const softNeg = isSoftNegative(clause);
+      const strongNeg = isStrongNegative(clause);
+      const strongLike = isStrongLike(clause);
 
-      if (isAnyDislikeMessage(clause)) {
-        colors.forEach((color) => disliked.add(color));
-        if (isStrongDislikeMessage(clause)) {
-          colors.forEach((color) => strongDisliked.add(color));
+      if (family) {
+        if (softNeg || strongNeg) {
+          dislikedColorFamily = family;
+          if (likedColorFamily === family) likedColorFamily = null;
+        } else if (acceptOnly || weak) {
+          if (colorFamilyStrength !== 'strong') {
+            likedColorFamily = family;
+            colorFamilyStrength = 'weak';
+          }
+        } else if (strongLike || family) {
+          likedColorFamily = family;
+          colorFamilyStrength = 'strong';
+          if (dislikedColorFamily === family) dislikedColorFamily = null;
         }
-      } else if (hasLikeMarker(clause)) {
-        colors.forEach((color) => liked.add(color));
       }
-    }
 
-    if (!clauseMatched) {
-      const colors = detectColorsInText(message);
-      if (colors.length > 0 && isAnyDislikeMessage(message)) {
-        colors.forEach((color) => disliked.add(color));
-        if (isStrongDislikeMessage(message)) {
-          colors.forEach((color) => strongDisliked.add(color));
+      if (colors.length > 0) {
+        if (softNeg || strongNeg) {
+          colors.forEach((color) => {
+            disliked.add(color);
+            liked.delete(color);
+          });
+          if (isStrongDislikeMessage(clause) || strongNeg) {
+            colors.forEach((color) => strongDisliked.add(color));
+          }
+        } else if ((strongLike || (!weak && !acceptOnly && hasLikeMarker(clause))) && !weak) {
+          colors.forEach((color) => {
+            liked.add(color);
+            disliked.delete(color);
+          });
         }
-      } else if (colors.length > 0 && hasLikeMarker(message)) {
-        colors.forEach((color) => liked.add(color));
+      }
+
+      if (clauseMentionsTie(clause) && strongNeg) avoidsTie = true;
+      if (clauseMentionsStripe(clause)) {
+        if (strongNeg) {
+          dislikesStripe = true;
+          likesStripe = false;
+        } else if (strongLike && !weak) {
+          likesStripe = true;
+        }
+      }
+
+      const scoped = clause.replace(/西裝褲/g, '　');
+      if (LESS_FORMAL_PATTERN.test(scoped)) {
+        wantsLessFormal = true;
+        wantsFormal = false;
+      } else if (
+        FORMAL_MARKERS.some((marker) => scoped.includes(marker)) &&
+        !acceptOnly &&
+        !softNeg &&
+        !strongNeg &&
+        !weak &&
+        !wantsLessFormal
+      ) {
+        wantsFormal = true;
+      }
+
+      if (!strongNeg && !softNeg) {
+        for (const keyword of STYLE_KEYWORDS) {
+          if (clause.toLowerCase().includes(keyword.toLowerCase())) {
+            matchedStyleKeywords.add(keyword);
+          }
+        }
+      } else {
+        for (const keyword of STYLE_KEYWORDS) {
+          const isolated = clause.replace(/不要太正式|不要太專業|不太正式/g, '');
+          if (isolated.toLowerCase().includes(keyword.toLowerCase()) && !strongNeg) {
+            matchedStyleKeywords.add(keyword);
+          }
+        }
       }
     }
 
@@ -441,44 +512,30 @@ export function extractChatPreferences(userMessages: string[]): ChatPreferences 
     });
     fitPref.softAvoid.forEach((fit) => softAvoidFits.add(fit));
 
-    for (const clause of clauses) {
-      // 「西裝褲」含「西裝」，不可單獨視為希望正式。
-      const scoped = clause.replace(/西裝褲/g, '　');
-      const mentionsFormal = FORMAL_MARKERS.some((marker) => scoped.includes(marker));
-      if (!mentionsFormal) continue;
-
-      if (LESS_FORMAL_PATTERN.test(scoped)) {
-        wantsLessFormal = true;
-        wantsFormal = false;
-      } else if (!isAnyDislikeMessage(scoped) && !wantsLessFormal) {
-        wantsFormal = true;
-      }
-    }
     if (SKIRT_DISLIKE_MARKERS.some((marker) => message.includes(marker))) {
       dislikesSkirt = true;
     }
-    if (JEANS_DISLIKE_MARKERS.some((marker) => message.includes(marker))) {
+    if (JEANS_DISLIKE_MARKERS.some((marker) => includesUnnegated(message, marker) || isStrongNegative(message) && message.includes('牛仔'))) {
       dislikesJeans = true;
       prefersJeans = false;
-    } else if (JEANS_LIKE_MARKERS.some((marker) => message.includes(marker))) {
+    } else if (JEANS_LIKE_MARKERS.some((marker) => includesUnnegated(message, marker))) {
       prefersJeans = true;
     }
     if (DRESS_PANTS_DISLIKE_MARKERS.some((marker) => message.includes(marker))) {
       dislikesDressPants = true;
       prefersDressPants = false;
-    } else if (DRESS_PANTS_LIKE_MARKERS.some((marker) => message.includes(marker))) {
+    } else if (DRESS_PANTS_LIKE_MARKERS.some((marker) => includesUnnegated(message, marker))) {
       prefersDressPants = true;
     }
     if (WIDE_PANTS_DISLIKE_MARKERS.some((marker) => message.includes(marker))) {
       dislikesWidePants = true;
       prefersWidePants = false;
-    } else if (WIDE_PANTS_LIKE_MARKERS.some((marker) => message.includes(marker))) {
+    } else if (WIDE_PANTS_LIKE_MARKERS.some((marker) => includesUnnegated(message, marker))) {
       prefersWidePants = true;
     }
     if (CARGO_DISLIKE_MARKERS.some((marker) => message.includes(marker))) {
       dislikesCargo = true;
     }
-    // 泛指不喜歡「褲子」（不是單指牛仔／西褲／寬褲／工裝等）
     if (
       hasDislikePolarity(message) &&
       /不喜歡褲|不喜歡穿褲|不要褲|不要穿褲|討厭褲|不穿褲|不想穿褲/.test(
@@ -487,14 +544,6 @@ export function extractChatPreferences(userMessages: string[]): ChatPreferences 
       !/牛仔|西褲|西裝褲|寬褲|工裝|運動褲|衛褲|皮褲|短褲|卡其|喇叭|緊身|內搭/.test(message)
     ) {
       dislikesPants = true;
-    }
-    for (const clause of clauses) {
-      if (isAnyDislikeMessage(clause)) continue;
-      for (const keyword of STYLE_KEYWORDS) {
-        if (clause.includes(keyword)) {
-          matchedStyleKeywords.add(keyword);
-        }
-      }
     }
   }
 
@@ -541,8 +590,13 @@ export function extractChatPreferences(userMessages: string[]): ChatPreferences 
     prefersPants,
     prefersSkirt,
     matchedStyleKeywords: Array.from(matchedStyleKeywords),
-    requestedUnavailableColors: detectUnavailableColorRequests(userMessages),
-    requestedUnavailableBottoms: detectUnavailableBottomRequests(userMessages),
+    requestedUnavailableColors: detectUnavailableColorRequests(relevantMessages),
+    requestedUnavailableBottoms: detectUnavailableBottomRequests(relevantMessages),
+    likedColorFamily,
+    dislikedColorFamily,
+    avoidsTie,
+    likesStripe,
+    dislikesStripe,
   };
 }
 
@@ -569,20 +623,21 @@ export function hasExplicitPreferences(preferences: ChatPreferences): boolean {
     preferences.prefersSkirt ||
     preferences.matchedStyleKeywords.length > 0 ||
     preferences.requestedUnavailableColors.length > 0 ||
-    preferences.requestedUnavailableBottoms.length > 0
+    preferences.requestedUnavailableBottoms.length > 0 ||
+    Boolean(preferences.likedColorFamily) ||
+    Boolean(preferences.dislikedColorFamily) ||
+    preferences.avoidsTie ||
+    preferences.likesStripe ||
+    preferences.dislikesStripe
   );
 }
 
 export function getOutfitColorKeys(outfitId: string): ColorKey[] {
-  const outfit = getOutfit(outfitId);
-  if (!outfit) return [];
-
-  const text = `${outfit.outfitName} ${outfit.styleTags.join(' ')}`;
-  return detectColorsInText(text);
+  return [...getLookFeatures(outfitId).colors];
 }
 
 export function getOutfitFitLevel(outfitId: string): FitLevel {
-  return OUTFIT_FIT_LEVEL[outfitId] ?? 'relaxed';
+  return getLookFeatures(outfitId).fit;
 }
 
 export function outfitConflictsWithPreferences(
@@ -591,8 +646,6 @@ export function outfitConflictsWithPreferences(
 ): boolean {
   const outfit = getOutfit(outfitId);
   if (!outfit) return false;
-
-  const text = `${outfit.outfitName} ${outfit.styleTags.join(' ')}`;
 
   // 明確不喜歡／強烈排斥的色系：最終選款一律硬排除（避免只扣分仍被選中）
   const excludedColors = Array.from(
@@ -634,13 +687,16 @@ export function outfitConflictsWithPreferences(
     return true;
   }
 
-  if (preferences.wantsFormal) {
-    const isCasualTagged = outfit.styleTags.some((tag) =>
-      CASUAL_STYLE_TAGS.some((casual) => tag.includes(casual)),
-    );
-    if (isCasualTagged) {
-      return true;
-    }
+  const features = getLookFeatures(outfitId);
+  if (preferences.avoidsTie && features.tie) return true;
+  if (preferences.dislikesStripe && features.pattern === 'stripe') return true;
+  if (preferences.likedColorFamily === 'light' && features.colorFamily === 'dark') return true;
+  if (preferences.likedColorFamily === 'dark' && features.colorFamily === 'light') return true;
+  if (preferences.dislikedColorFamily && features.colorFamily === preferences.dislikedColorFamily) {
+    return true;
+  }
+  if (preferences.wantsFormal && features.formality === 'low') {
+    return true;
   }
 
   return false;
@@ -651,9 +707,10 @@ function scoreOutfitForPreferences(outfitId: string, preferences: ChatPreference
   if (!outfit) return -999;
 
   let score = 0;
-  const outfitColors = getOutfitColorKeys(outfitId);
-  const fitLevel = getOutfitFitLevel(outfitId);
-  const text = `${outfit.outfitName} ${outfit.styleTags.join(' ')}`;
+  const features = getLookFeatures(outfitId);
+  const outfitColors = features.colors;
+  const fitLevel = features.fit;
+  const text = `${outfit.outfitName} ${features.style.join(' ')}`;
 
   for (const liked of preferences.likedColors) {
     if (outfitColors.includes(liked)) score += 3;
@@ -715,7 +772,7 @@ function scoreOutfitForPreferences(outfitId: string, preferences: ChatPreference
   if (preferences.prefersDressPants && bottomKind === 'dress_pants') {
     score += 5;
   }
-  if (preferences.prefersWidePants && bottomKind === 'wide_pants') {
+  if (preferences.prefersWidePants && bottomKind === 'wide_pants' && !features.cargo) {
     score += 5;
   }
   // 喜歡工裝褲：不在評分池加分（僅記錄庫存沒有）
@@ -733,20 +790,32 @@ function scoreOutfitForPreferences(outfitId: string, preferences: ChatPreference
   }
 
   if (preferences.wantsFormal) {
-    if (outfit.styleTags.some((tag) => FORMAL_STYLE_TAGS.some((formal) => tag.includes(formal)))) {
-      score += 2;
-    }
+    if (features.formality === 'high') score += 3;
+    if (features.formality === 'mid') score += 1;
+    if (features.formality === 'low') score -= 4;
   }
   if (preferences.wantsLessFormal) {
-    const isFormalTagged = outfit.styleTags.some((tag) =>
-      FORMAL_STYLE_TAGS.some((formal) => tag.includes(formal)),
-    );
-    if (!isFormalTagged) score += 2;
-    if (isFormalTagged) score -= 1;
+    if (features.formality === 'low') score += 3;
+    if (features.formality === 'mid') score += 1;
+    if (features.formality === 'high') score -= 2;
   }
 
+  if (preferences.likedColorFamily === 'dark') {
+    if (features.colorFamily === 'dark') score += 4;
+    if (features.colorFamily === 'mixed') score += 1;
+    if (features.colorFamily === 'light') score -= 5;
+  }
+  if (preferences.likedColorFamily === 'light') {
+    if (features.colorFamily === 'light') score += 4;
+    if (features.colorFamily === 'mixed') score += 1;
+    if (features.colorFamily === 'dark') score -= 5;
+  }
+
+  if (preferences.likesStripe && features.pattern === 'stripe') score += 3;
+  if (preferences.avoidsTie && features.tie) score -= 8;
+
   for (const keyword of preferences.matchedStyleKeywords) {
-    if (text.includes(keyword) || outfit.styleTags.some((tag) => tag.includes(keyword))) {
+    if (text.toLowerCase().includes(keyword.toLowerCase()) || features.style.some((tag) => tag.includes(keyword))) {
       score += 1;
     }
   }
@@ -830,6 +899,14 @@ export function formatPreferencesSummary(preferences: ChatPreferences): string {
   if (softOnly.length > 0) {
     parts.push(`較不喜歡的色系：${softOnly.map(colorLabel).join('、')}`);
   }
+  if (preferences.likedColorFamily) {
+    parts.push(`偏好色系家族：${preferences.likedColorFamily === 'dark' ? '深色' : '淺色'}`);
+  }
+  if (preferences.dislikedColorFamily) {
+    parts.push(
+      `較不喜歡色系家族：${preferences.dislikedColorFamily === 'dark' ? '深色' : '淺色'}`,
+    );
+  }
   if (preferences.likedColors.length > 0) {
     parts.push(`偏好的色系：${preferences.likedColors.map(colorLabel).join('、')}`);
   }
@@ -880,6 +957,15 @@ export function formatPreferencesSummary(preferences: ChatPreferences): string {
   }
   if (preferences.matchedStyleKeywords.length > 0) {
     parts.push(`風格關鍵字：${preferences.matchedStyleKeywords.join('、')}`);
+  }
+  if (preferences.avoidsTie) {
+    parts.push('不要領帶');
+  }
+  if (preferences.likesStripe) {
+    parts.push('偏好條紋');
+  }
+  if (preferences.dislikesStripe) {
+    parts.push('不要條紋');
   }
 
   return parts.join('；') || '（尚未明確表達偏好）';
