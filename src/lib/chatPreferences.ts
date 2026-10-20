@@ -690,11 +690,6 @@ export function outfitConflictsWithPreferences(
   const features = getLookFeatures(outfitId);
   if (preferences.avoidsTie && features.tie) return true;
   if (preferences.dislikesStripe && features.pattern === 'stripe') return true;
-  if (preferences.likedColorFamily === 'light' && features.colorFamily === 'dark') return true;
-  if (preferences.likedColorFamily === 'dark' && features.colorFamily === 'light') return true;
-  if (preferences.dislikedColorFamily && features.colorFamily === preferences.dislikedColorFamily) {
-    return true;
-  }
   if (preferences.wantsFormal && features.formality === 'low') {
     return true;
   }
@@ -702,7 +697,7 @@ export function outfitConflictsWithPreferences(
   return false;
 }
 
-function scoreOutfitForPreferences(outfitId: string, preferences: ChatPreferences): number {
+export function scoreOutfitForPreferences(outfitId: string, preferences: ChatPreferences): number {
   const outfit = getOutfit(outfitId);
   if (!outfit) return -999;
 
@@ -800,6 +795,7 @@ function scoreOutfitForPreferences(outfitId: string, preferences: ChatPreference
     if (features.formality === 'high') score -= 2;
   }
 
+  // colorFamily 只影響分數，不把 Look 移出 surprise candidate pool。
   if (preferences.likedColorFamily === 'dark') {
     if (features.colorFamily === 'dark') score += 4;
     if (features.colorFamily === 'mixed') score += 1;
@@ -809,6 +805,14 @@ function scoreOutfitForPreferences(outfitId: string, preferences: ChatPreference
     if (features.colorFamily === 'light') score += 4;
     if (features.colorFamily === 'mixed') score += 1;
     if (features.colorFamily === 'dark') score -= 5;
+  }
+  if (preferences.dislikedColorFamily === 'dark') {
+    if (features.colorFamily === 'dark') score -= 4;
+    if (features.colorFamily === 'mixed') score -= 1;
+  }
+  if (preferences.dislikedColorFamily === 'light') {
+    if (features.colorFamily === 'light') score -= 4;
+    if (features.colorFamily === 'mixed') score -= 1;
   }
 
   if (preferences.likesStripe && features.pattern === 'stripe') score += 3;

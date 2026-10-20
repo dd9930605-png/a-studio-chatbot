@@ -140,9 +140,9 @@ OpenAI 線上模型回覆無法在無金鑰環境窮舉；聊天理解以 produc
 
 ### B-tie-bias · low
 - 測試輸入：4000 empty-preference surprise draws
-- 實際結果：{"M3":405,"F3":435,"F2":477,"M2":450,"F4":463,"M6":425,"M5":442,"M4":448,"F1":455}
+- 實際結果：{"F1":431,"M4":448,"F4":441,"F3":467,"M3":455,"F2":423,"M2":448,"M5":431,"M6":456}
 - 預期結果：分散在候選池
-- 可能原因：max/min=1.18
+- 可能原因：max/min=1.10
 - 檔案／函式：src/lib/chatPreferences.ts pickRandom
 - 建議修法：（audit 輪不改 production）
 
