@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "qa:prelaunch": "npx tsx scripts/qa-prelaunch-audit.ts"
   },
   "dependencies": {
     "@vercel/blob": "^2.4.0",
