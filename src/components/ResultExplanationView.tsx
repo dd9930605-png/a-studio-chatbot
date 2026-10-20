@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { ResultContent } from '@/lib/resultContent';
+import { ResultContent, getTsEvaluationRows } from '@/lib/resultContent';
 
 interface ResultExplanationViewProps {
   content: ResultContent;
@@ -65,12 +65,16 @@ export function ResultExplanationView({
       <section data-testid="ts-block">
         <h3 className="text-lg font-bold text-slate-950">AI 穿搭評估</h3>
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
-          <EvalRow mark="✓" title="推薦亮點" body={content.positiveA} testId="ts-positive-a" />
-          {twoSidedMessage === 'high' ? (
-            <EvalRow mark="△" title="需要注意" body={content.caution} testId="ts-caution" />
-          ) : (
-            <EvalRow mark="✓" title="另一項亮點" body={content.positiveB} testId="ts-positive-b" />
-          )}
+          {getTsEvaluationRows(twoSidedMessage).map((row) => (
+            <EvalRow
+              key={row.testId}
+              mark={row.mark}
+              title={row.title}
+              body={content[row.bodyKey]}
+              testId={row.testId}
+              tone={row.tone}
+            />
+          ))}
         </div>
       </section>
     </div>
@@ -111,24 +115,32 @@ function EvalRow({
   title,
   body,
   testId,
+  tone,
 }: {
   mark: string;
   title: string;
   body: string;
   testId: string;
+  tone: 'positive' | 'caution';
 }) {
+  const caution = tone === 'caution';
   return (
     <div
       data-testid={testId}
-      className="flex h-full min-h-[8.5rem] flex-col rounded-xl border border-slate-200 bg-white p-4"
+      data-ts-tone={tone}
+      className={`flex h-full min-h-[8.5rem] flex-col rounded-xl border p-4 ${
+        caution ? 'border-amber-400 bg-amber-50' : 'border-slate-200 bg-white'
+      }`}
     >
-      <h4 className="text-sm font-bold text-slate-950">
-        <span className="mr-1" aria-hidden>
+      <h4 className={`text-sm font-bold ${caution ? 'text-amber-950' : 'text-slate-950'}`}>
+        <span className={`mr-1 ${caution ? 'text-amber-700' : 'text-emerald-700'}`} aria-hidden>
           {mark}
         </span>
         {title}
       </h4>
-      <p className="mt-2 text-sm leading-relaxed text-slate-800 sm:text-base">{body}</p>
+      <p className={`mt-2 text-sm leading-relaxed sm:text-base ${caution ? 'text-amber-950' : 'text-slate-800'}`}>
+        {body}
+      </p>
     </div>
   );
 }

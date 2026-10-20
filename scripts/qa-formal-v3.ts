@@ -219,7 +219,10 @@ console.log('PASS result modules ignore AN and PRO');
 assert.equal(proSummaryCtaMessage('high').includes('我'), true);
 assert.equal(proSummaryCtaMessage('low').includes('我'), false);
 assert.doesNotMatch(proSummaryCtaMessage('high'), /我現在主動幫你/);
-assert.equal(proSummaryGateMessage('low'), '請先使用『請 AI 整理目前需求』功能確認目前資訊。');
+assert.equal(proSummaryGateMessage('low'), '進入推薦結果前，請先完成目前需求確認。');
+assert.doesNotMatch(proSummaryGateMessage('low'), /我提醒你|我先幫你|😊|🙂/);
+assert.doesNotMatch(proSummaryGateMessage('high'), /我提醒你|我先幫你|😊|🙂/);
+assert.match(proSummaryGateMessage('high'), /查看目前需求整理/);
 console.log('PASS PRO copy differs by AN form only');
 
 const promptHighEx = buildFreeChatSystemPrompt({ condition: getCondition(1)! });

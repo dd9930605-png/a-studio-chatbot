@@ -6,13 +6,9 @@ import { getConditionTheme } from '@/lib/conditionTheme';
 import { isProactiveNoteMessage } from '@/lib/proactiveNotes';
 import { extractChatPreferences } from '@/lib/chatPreferences';
 import { ChatMessage, ParticipantData, extractUserMessages } from '@/lib/dataRecorder';
-import { OverlayModal } from '@/components/OverlayModal';
 import {
   PRO_SUMMARY_CTA_LABEL,
   PRO_SUMMARY_LOW_BUTTON,
-  PRO_SUMMARY_USER_ACTION,
-  buildNeedSummaryFromParticipant,
-  formatNeedSummary,
   proSummaryCtaMessage,
 } from '@/lib/needSummary';
 
@@ -25,6 +21,7 @@ interface ChatInterfaceProps {
   maxChatMs: number;
   elapsedMs: number;
   minUserMessages?: number;
+  onOpenSummary: (initiator: 'ai' | 'user') => void;
 }
 
 interface ChatApiResponse {
@@ -78,12 +75,11 @@ export function ChatInterface({
   maxChatMs,
   elapsedMs,
   minUserMessages = 3,
+  onOpenSummary,
 }: ChatInterfaceProps) {
   const [inputValue, setInputValue] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
-  const [summaryOpen, setSummaryOpen] = useState(false);
-  const [summaryText, setSummaryText] = useState('');
   const theme = getConditionTheme(condition);
   const isHighProactivity = condition.proactivity === 'high';
 
@@ -101,42 +97,15 @@ export function ChatInterface({
     elapsedMs >= maxChatMs && metMessages
       ? '已達 5 分鐘上限，請查看推薦結果。'
       : metTime && metMessages
-        ? '已達基本互動時間與訊息數，現在可查看推薦結果。'
+        ? participantData.proSummaryOpened
+          ? '已達基本互動時間與訊息數，現在可查看推薦結果。'
+          : '已達基本互動時間與訊息數。進入推薦結果前，請先完成目前需求確認。'
         : [
             !metMessages ? `尚需 ${remainingMessages} 則互動訊息` : null,
             !metTime ? `請至少再互動 ${Math.ceil(remainingMinMs / 1000)} 秒` : null,
           ]
             .filter(Boolean)
             .join('；') + '。';
-
-  const openSummary = (initiator: 'ai' | 'user') => {
-    const summary = buildNeedSummaryFromParticipant(participantData);
-    const text = formatNeedSummary(summary);
-    const now = new Date().toISOString();
-    let chatLog = participantData.chatLog;
-    if (
-      initiator === 'user' &&
-      !chatLog.some((message) => message.kind === 'proSummaryUserAction')
-    ) {
-      chatLog = [
-        ...chatLog,
-        createMessage('freeChat', 'system', PRO_SUMMARY_USER_ACTION, 'proSummaryUserAction'),
-      ];
-    }
-    onUpdateData({
-      ...participantData,
-      chatLog,
-      proSummaryOpened: true,
-      proSummaryOpenedAt: participantData.proSummaryOpenedAt ?? now,
-      proSummaryOpenCount: (participantData.proSummaryOpenCount ?? 0) + 1,
-      proSummaryContent: text,
-      proSummaryTriggeredOnce: true,
-      proSummaryInitiator: participantData.proSummaryInitiator || initiator,
-      proSummaryEligibleAt: participantData.proSummaryEligibleAt ?? now,
-    });
-    setSummaryText(text);
-    setSummaryOpen(true);
-  };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -305,7 +274,7 @@ export function ChatInterface({
                 {message.kind === 'proSummaryCta' && (
                   <button
                     type="button"
-                    onClick={() => openSummary('ai')}
+                    onClick={() => onOpenSummary('ai')}
                     className="mt-3 rounded-lg bg-white px-3 py-2 text-sm font-bold text-slate-900 shadow-sm"
                   >
                     {PRO_SUMMARY_CTA_LABEL}
@@ -336,7 +305,7 @@ export function ChatInterface({
             disabled={!summaryUnlocked}
             onClick={() => {
               if (!summaryUnlocked) return;
-              openSummary('user');
+              onOpenSummary('user');
             }}
             className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-800 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
           >
@@ -371,15 +340,6 @@ export function ChatInterface({
         </div>
       </form>
 
-      <OverlayModal open={summaryOpen} title="目前需求整理" onClose={() => setSummaryOpen(false)}>
-        <div data-testid="pro-summary-board" className="space-y-3">
-          {summaryText.split('\n').map((line) => (
-            <p key={line} className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-relaxed text-slate-900 sm:text-base">
-              {line}
-            </p>
-          ))}
-        </div>
-      </OverlayModal>
     </div>
   );
 }

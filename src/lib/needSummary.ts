@@ -304,9 +304,43 @@ export function proSummaryCtaMessage(anthropomorphism: 'high' | 'low'): string {
   return '目前對話資訊已完成整理，可開啟確認。';
 }
 
+/** 網站流程提示：不是 AI 發言，禁止第一人稱／emoji／聊天語氣。 */
 export function proSummaryGateMessage(proactivity: 'high' | 'low'): string {
   if (proactivity === 'low') {
-    return '請先使用『請 AI 整理目前需求』功能確認目前資訊。';
+    return '進入推薦結果前，請先完成目前需求確認。';
   }
-  return '請先開啟對話中的『查看目前需求整理』確認目前資訊。';
+  return '進入推薦結果前，請先開啟對話中的『查看目前需求整理』確認目前資訊。';
+}
+
+export function applyProSummaryOpen(
+  participant: ParticipantData,
+  initiator: 'ai' | 'user',
+): ParticipantData {
+  const summary = buildNeedSummaryFromParticipant(participant);
+  const text = formatNeedSummary(summary);
+  const now = new Date().toISOString();
+  let chatLog = participant.chatLog;
+  if (initiator === 'user' && !chatLog.some((message) => message.kind === 'proSummaryUserAction')) {
+    chatLog = [
+      ...chatLog,
+      {
+        step: 'freeChat',
+        sender: 'system',
+        message: PRO_SUMMARY_USER_ACTION,
+        timestamp: now,
+        kind: 'proSummaryUserAction',
+      },
+    ];
+  }
+  return {
+    ...participant,
+    chatLog,
+    proSummaryOpened: true,
+    proSummaryOpenedAt: participant.proSummaryOpenedAt ?? now,
+    proSummaryOpenCount: (participant.proSummaryOpenCount ?? 0) + 1,
+    proSummaryContent: text,
+    proSummaryTriggeredOnce: true,
+    proSummaryInitiator: participant.proSummaryInitiator || initiator,
+    proSummaryEligibleAt: participant.proSummaryEligibleAt ?? now,
+  };
 }

@@ -309,6 +309,41 @@ export function countSentences(paragraph: string): number {
   return paragraph.split('。').filter((part) => part.trim().length > 0).length;
 }
 
+export type TsEvalRow = {
+  mark: '✓' | '△';
+  title: '推薦亮點' | '需要注意' | '另一項亮點';
+  bodyKey: 'positiveA' | 'positiveB' | 'caution';
+  testId: 'ts-positive-a' | 'ts-positive-b' | 'ts-caution';
+  tone: 'positive' | 'caution';
+};
+
+export function getTsEvaluationRows(twoSidedMessage: 'high' | 'low'): [TsEvalRow, TsEvalRow] {
+  const first: TsEvalRow = {
+    mark: '✓',
+    title: '推薦亮點',
+    bodyKey: 'positiveA',
+    testId: 'ts-positive-a',
+    tone: 'positive',
+  };
+  const second: TsEvalRow =
+    twoSidedMessage === 'high'
+      ? {
+          mark: '△',
+          title: '需要注意',
+          bodyKey: 'caution',
+          testId: 'ts-caution',
+          tone: 'caution',
+        }
+      : {
+          mark: '✓',
+          title: '另一項亮點',
+          bodyKey: 'positiveB',
+          testId: 'ts-positive-b',
+          tone: 'positive',
+        };
+  return [first, second];
+}
+
 export function describeResultModules(
   explainability: 'high' | 'low',
   twoSidedMessage: 'high' | 'low',
@@ -317,8 +352,7 @@ export function describeResultModules(
     explainability === 'high'
       ? ['你的需求', 'AI 判斷重點', '本次推薦']
       : ['色系', '版型', '整體風格', '本次推薦'];
-  const evaluation =
-    twoSidedMessage === 'high' ? ['推薦亮點', '需要注意'] : ['推薦亮點', '另一項亮點'];
+  const evaluation = getTsEvaluationRows(twoSidedMessage).map((row) => row.title);
   return ['AI 穿搭推薦', ...explanation, 'AI 穿搭評估', ...evaluation];
 }
 
