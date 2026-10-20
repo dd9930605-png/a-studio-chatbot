@@ -133,9 +133,9 @@
       "id": "B-tie-bias",
       "section": "B",
       "input": "4000 empty-preference surprise draws",
-      "actual": "{\"M3\":405,\"F3\":435,\"F2\":477,\"M2\":450,\"F4\":463,\"M6\":425,\"M5\":442,\"M4\":448,\"F1\":455}",
+      "actual": "{\"F1\":431,\"M4\":448,\"F4\":441,\"F3\":467,\"M3\":455,\"F2\":423,\"M2\":448,\"M5\":431,\"M6\":456}",
       "expected": "分散在候選池",
-      "cause": "max/min=1.18",
+      "cause": "max/min=1.10",
       "files": "src/lib/chatPreferences.ts pickRandom",
       "severity": "low",
       "suggestion": ""

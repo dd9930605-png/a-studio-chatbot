@@ -384,6 +384,23 @@ function auditMatrix(rows: LookRow[]) {
       suggestion: '深色／淺色納入 colorFamily scoring',
     });
     tick(c, 'FAIL');
+  } else if (
+    outfitConflictsWithPreferences('M2', lightPrefs) ||
+    outfitConflictsWithPreferences('M4', lightPrefs)
+  ) {
+    addFinding({
+      status: 'FAIL',
+      id: 'A-family-hard-exclude',
+      section: 'A',
+      input: '我喜歡淺色 vs M2/M4 dark Looks',
+      actual: 'dark Look 被 colorFamily 硬排除',
+      expected: '喜歡淺色只影響分數，不把 dark Look 移出 candidate pool',
+      cause: 'outfitConflictsWithPreferences 把 family 當 hard constraint',
+      files: 'src/lib/chatPreferences.ts outfitConflictsWithPreferences',
+      severity: 'blocker',
+      suggestion: 'colorFamily 只走 scoring',
+    });
+    tick(c, 'FAIL');
   } else {
     tick(c, 'PASS');
   }
