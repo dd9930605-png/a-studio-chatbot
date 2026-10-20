@@ -1,0 +1,252 @@
+{
+  "counters": [
+    {
+      "name": "A feature matrix",
+      "ran": 18,
+      "pass": 18,
+      "fail": 0,
+      "warn": 0
+    },
+    {
+      "name": "B pool/resolve",
+      "ran": 50,
+      "pass": 50,
+      "fail": 0,
+      "warn": 0
+    },
+    {
+      "name": "B scoring simulation",
+      "ran": 384,
+      "pass": 384,
+      "fail": 0,
+      "warn": 0
+    },
+    {
+      "name": "B tie randomness",
+      "ran": 1,
+      "pass": 1,
+      "fail": 0,
+      "warn": 0
+    },
+    {
+      "name": "B PK tournament",
+      "ran": 4,
+      "pass": 4,
+      "fail": 0,
+      "warn": 0
+    },
+    {
+      "name": "C style terms",
+      "ran": 29,
+      "pass": 26,
+      "fail": 0,
+      "warn": 3
+    },
+    {
+      "name": "C typos",
+      "ran": 14,
+      "pass": 12,
+      "fail": 0,
+      "warn": 2
+    },
+    {
+      "name": "C weak preference",
+      "ran": 16,
+      "pass": 16,
+      "fail": 0,
+      "warn": 0
+    },
+    {
+      "name": "C negation",
+      "ran": 10,
+      "pass": 10,
+      "fail": 0,
+      "warn": 0
+    },
+    {
+      "name": "C preference revision",
+      "ran": 4,
+      "pass": 4,
+      "fail": 0,
+      "warn": 0
+    },
+    {
+      "name": "C multi-constraint",
+      "ran": 2,
+      "pass": 2,
+      "fail": 0,
+      "warn": 0
+    },
+    {
+      "name": "D unavailable catalog",
+      "ran": 25,
+      "pass": 25,
+      "fail": 0,
+      "warn": 0
+    },
+    {
+      "name": "E off-topic boundary",
+      "ran": 20,
+      "pass": 20,
+      "fail": 0,
+      "warn": 0
+    },
+    {
+      "name": "F known-info reask",
+      "ran": 2,
+      "pass": 2,
+      "fail": 0,
+      "warn": 0
+    },
+    {
+      "name": "G AN×PRO orthogonality",
+      "ran": 9,
+      "pass": 9,
+      "fail": 0,
+      "warn": 0
+    },
+    {
+      "name": "H EX evidence mismatch",
+      "ran": 60,
+      "pass": 60,
+      "fail": 0,
+      "warn": 0
+    },
+    {
+      "name": "I TS copy",
+      "ran": 48,
+      "pass": 48,
+      "fail": 0,
+      "warn": 0
+    },
+    {
+      "name": "J process + prototype artifacts",
+      "ran": 7,
+      "pass": 7,
+      "fail": 0,
+      "warn": 0
+    }
+  ],
+  "findings": [
+    {
+      "status": "PASS",
+      "id": "B-tie-bias",
+      "section": "B",
+      "input": "4000 empty-preference surprise draws",
+      "actual": "{\"M3\":405,\"F3\":435,\"F2\":477,\"M2\":450,\"F4\":463,\"M6\":425,\"M5\":442,\"M4\":448,\"F1\":455}",
+      "expected": "分散在候選池",
+      "cause": "max/min=1.18",
+      "files": "src/lib/chatPreferences.ts pickRandom",
+      "severity": "low",
+      "suggestion": ""
+    },
+    {
+      "status": "WARNING",
+      "id": "C-style-unknown-dopamine dressing",
+      "section": "C",
+      "input": "dopamine dressing",
+      "actual": "{\"off\":false,\"relevant\":false,\"prefs\":{\"likes\":[],\"styles\":[]},\"fallback\":\"了解～你提到「dopamine dressing」，我記住了 😊\"}",
+      "expected": "至少當穿搭風格；意思不確定時應追問 clarification，而不是當離題或假裝定義",
+      "cause": "SHORT_STYLE_TERMS 沒有這個詞。正式自由聊天不走 validateChatInput，所以 API 不會擋；但也沒有 clarification。",
+      "files": "src/lib/aiResponses.ts SHORT_STYLE_TERMS, generateFreeChatFallbackReply",
+      "severity": "medium",
+      "suggestion": "未知風格名：回「這比較像穿搭風格，你是指版型、顏色還是正式度？」不要編造定義"
+    },
+    {
+      "status": "WARNING",
+      "id": "C-style-unknown-gorpcore",
+      "section": "C",
+      "input": "gorpcore",
+      "actual": "{\"off\":false,\"relevant\":false,\"prefs\":{\"likes\":[],\"styles\":[]},\"fallback\":\"了解～你提到「gorpcore」，我記住了 😊\"}",
+      "expected": "至少當穿搭風格；意思不確定時應追問 clarification，而不是當離題或假裝定義",
+      "cause": "SHORT_STYLE_TERMS 沒有這個詞。正式自由聊天不走 validateChatInput，所以 API 不會擋；但也沒有 clarification。",
+      "files": "src/lib/aiResponses.ts SHORT_STYLE_TERMS, generateFreeChatFallbackReply",
+      "severity": "medium",
+      "suggestion": "未知風格名：回「這比較像穿搭風格，你是指版型、顏色還是正式度？」不要編造定義"
+    },
+    {
+      "status": "WARNING",
+      "id": "C-style-unknown-normcore",
+      "section": "C",
+      "input": "normcore",
+      "actual": "{\"off\":false,\"relevant\":false,\"prefs\":{\"likes\":[],\"styles\":[]},\"fallback\":\"了解～你提到「normcore」，我記住了 😊\"}",
+      "expected": "至少當穿搭風格；意思不確定時應追問 clarification，而不是當離題或假裝定義",
+      "cause": "SHORT_STYLE_TERMS 沒有這個詞。正式自由聊天不走 validateChatInput，所以 API 不會擋；但也沒有 clarification。",
+      "files": "src/lib/aiResponses.ts SHORT_STYLE_TERMS, generateFreeChatFallbackReply",
+      "severity": "medium",
+      "suggestion": "未知風格名：回「這比較像穿搭風格，你是指版型、顏色還是正式度？」不要編造定義"
+    },
+    {
+      "status": "WARNING",
+      "id": "C-typo-unclear-我喜歡簡要",
+      "section": "C",
+      "input": "我喜歡簡要 (intent 簡約錯字)",
+      "actual": "{\"likes\":[],\"styles\":[],\"needs\":{\"formality\":null,\"impression\":null,\"color\":null},\"prefsFlag\":false}",
+      "expected": "意思不一定唯一時應 clarification，不要亂配",
+      "cause": "沒有對應詞就整句當一般文字記住",
+      "files": "src/lib/chatPreferences.ts",
+      "severity": "medium",
+      "suggestion": "近音（韓式/簡要）不要自動映射；可問是不是韓系/簡約"
+    },
+    {
+      "status": "WARNING",
+      "id": "C-typo-unclear-我喜歡韓式",
+      "section": "C",
+      "input": "我喜歡韓式 (intent 韓系近音)",
+      "actual": "{\"likes\":[],\"styles\":[],\"needs\":{\"formality\":null,\"impression\":null,\"color\":null},\"prefsFlag\":false}",
+      "expected": "意思不一定唯一時應 clarification，不要亂配",
+      "cause": "沒有對應詞就整句當一般文字記住",
+      "files": "src/lib/chatPreferences.ts",
+      "severity": "medium",
+      "suggestion": "近音（韓式/簡要）不要自動映射；可問是不是韓系/簡約"
+    },
+    {
+      "status": "PASS",
+      "id": "J-gate-3min-3msg",
+      "section": "J",
+      "input": "ChatPageContent",
+      "actual": "3 min + 3 messages",
+      "expected": "不變",
+      "cause": "",
+      "files": "src/app/chat/ChatPageContent.tsx",
+      "severity": "low",
+      "suggestion": ""
+    },
+    {
+      "status": "PASS",
+      "id": "J-summary-gate",
+      "section": "J",
+      "input": "未開 summary 不能進結果",
+      "actual": "handleViewRecommendation 檢查 proSummaryOpened",
+      "expected": "阻擋",
+      "cause": "",
+      "files": "src/app/chat/ChatPageContent.tsx",
+      "severity": "low",
+      "suggestion": ""
+    },
+    {
+      "status": "PASS",
+      "id": "J-pro-once",
+      "section": "J",
+      "input": "PRO High CTA",
+      "actual": "triggeredOnce 後不再插入",
+      "expected": "第 2 則只發生一次",
+      "cause": "",
+      "files": "src/components/ChatInterface.tsx",
+      "severity": "low",
+      "suggestion": ""
+    },
+    {
+      "status": "PASS",
+      "id": "J-low-lock",
+      "section": "J",
+      "input": "PRO Low 按鈕",
+      "actual": "未解鎖 disabled",
+      "expected": "第 2 則前不能開",
+      "cause": "",
+      "files": "src/components/ChatInterface.tsx",
+      "severity": "low",
+      "suggestion": ""
+    }
+  ]
+}

@@ -1,9 +1,25 @@
+import { getLookFeatures } from '@/data/lookFeatures';
 import { LOOK_RESULT_CONTENT, LookResultCopy, getLookResultCopy } from '@/data/lookResultContent';
 import { ExEvidenceItem } from '@/lib/dataRecorder';
+import { extractChatPreferences } from '@/lib/chatPreferences';
 import { getLookLabel, getLookNumberFromOutfitId } from '@/lib/looks';
-import { NeedField, NeedSummary, buildNeedSummary } from '@/lib/needSummary';
+import {
+  NEED_MISSING,
+  NeedField,
+  NeedSummary,
+  buildNeedSummary,
+  extractExplicitChatNeeds,
+} from '@/lib/needSummary';
 import { Outfit } from '@/lib/outfits';
-import { QuickColor, QuickFormality, QuickImpression } from '@/lib/quickPreferences';
+import { clauseColorTokens } from '@/lib/preferenceLanguage';
+import {
+  QuickColor,
+  QuickFormality,
+  QuickImpression,
+  quickColorLabel,
+  quickFormalityLabel,
+  quickImpressionLabel,
+} from '@/lib/quickPreferences';
 
 const SCENARIO_NEED_1 = '面試需要整潔合宜';
 const SCENARIO_NEED_2 = '正式程度保持適中';
@@ -69,23 +85,96 @@ function scenarioField(value: string): NeedField {
   return { label: '情境', value, source: 'none', substantive: false };
 }
 
-function chooseNeeds(summary: NeedSummary): [NeedField, NeedField] {
-  const ranked = [summary.formality, summary.impression, summary.color]
-    .filter((field) => field.substantive)
-    .sort((a, b) => {
-      const rank = (source: NeedField['source']) => (source === 'chat' ? 0 : 1);
-      return rank(a.source) - rank(b.source);
-    });
+export function isNeedCompatibleWithLook(field: NeedField, outfitId: string): boolean {
+  const features = getLookFeatures(outfitId);
+  const text = field.value;
 
-  const first = ranked[0] ?? scenarioField(SCENARIO_NEED_1);
-  const second = ranked[1] ?? scenarioField(ranked[0] ? SCENARIO_NEED_2 : SCENARIO_NEED_2);
+  if (/淺色/.test(text) && features.colorFamily === 'dark') return false;
+  if (/深色/.test(text) && features.colorFamily === 'light') return false;
+  if (text === '偏正式' && features.formality === 'low') return false;
+  if (text === '不要太正式' && features.formality === 'high') return false;
+  if (text === '專業穩重' && features.formality === 'low') return false;
+  if (/不要領帶/.test(text) && features.tie) return false;
+
+  const tokens = clauseColorTokens(text);
+  if (
+    tokens.length > 0 &&
+    /喜歡|希望|想要|選擇|偏好/.test(text) &&
+    !/不喜|不要|不想/.test(text)
+  ) {
+    if (!tokens.some((token) => features.colors.includes(token))) return false;
+  }
+
+  return true;
+}
+
+function dimensionOf(field: NeedField): 'formality' | 'impression' | 'color' | 'other' {
+  if (field.label === '正式程度') return 'formality';
+  if (field.label === '希望呈現的感覺') return 'impression';
+  if (field.label === '色系偏好') return 'color';
+  return 'other';
+}
+
+function makeField(
+  label: string,
+  value: string,
+  source: NeedField['source'],
+): NeedField {
+  return { label, value, source, substantive: true };
+}
+
+function chooseNeeds(summary: NeedSummary, outfitId: string, userMessages: string[]): [NeedField, NeedField] {
+  const chat = extractExplicitChatNeeds(userMessages);
+  const preferences = extractChatPreferences(userMessages);
+  const candidates: NeedField[] = [];
+
+  if (chat.formality) {
+    candidates.push(makeField('正式程度', quickFormalityLabel(chat.formality), 'chat'));
+  }
+  if (chat.impression) {
+    candidates.push(makeField('希望呈現的感覺', quickImpressionLabel(chat.impression), 'chat'));
+  }
+  if (chat.color && chat.color !== 'no_clear') {
+    candidates.push(makeField('色系偏好', quickColorLabel(chat.color), 'chat'));
+  }
+
+  for (const field of [summary.formality, summary.impression, summary.color]) {
+    if (field.source === 'quick_preference' && field.substantive) {
+      candidates.push(field);
+    }
+  }
+
+  if (preferences.avoidsTie && !getLookFeatures(outfitId).tie) {
+    candidates.push(makeField('其他已提及需求', '不要領帶', 'chat'));
+  }
+  if (preferences.likesStripe && getLookFeatures(outfitId).pattern === 'stripe') {
+    candidates.push(makeField('其他已提及需求', '條紋', 'chat'));
+  }
+  if (summary.other.substantive && summary.other.value !== NEED_MISSING) {
+    const otherText = summary.other.value;
+    if (!/綠色|紅色|紫色|粉色|黃色|橘色/.test(otherText)) {
+      candidates.push(summary.other);
+    }
+  }
+
+  const used = new Set<string>();
+  const ranked: NeedField[] = [];
+  for (const field of candidates) {
+    if (!isNeedCompatibleWithLook(field, outfitId)) continue;
+    const dim = dimensionOf(field);
+    if (dim !== 'other' && used.has(dim)) continue;
+    if (dim !== 'other') used.add(dim);
+    ranked.push(field);
+    if (ranked.length >= 2) break;
+  }
+
   if (!ranked[0]) {
     return [scenarioField(SCENARIO_NEED_1), scenarioField(SCENARIO_NEED_2)];
   }
   if (!ranked[1]) {
-    return [first, scenarioField(SCENARIO_NEED_2)];
+    return [ranked[0], scenarioField(SCENARIO_NEED_2)];
   }
-  return [first, second];
+  return [ranked[0], ranked[1]];
 }
 
 function evidenceOf(field: NeedField): ExEvidenceItem {
@@ -103,7 +192,7 @@ export function buildResultContent(input: {
   userMessages: string[];
 }): ResultContent {
   const summary = buildNeedSummary(input);
-  const [need1, need2] = chooseNeeds(summary);
+  const [need1, need2] = chooseNeeds(summary, input.outfit.outfitId, input.userMessages);
   const copy = getLookResultCopy(input.outfit.outfitId) ?? {
     ...FALLBACK_COPY,
     outfitId: input.outfit.outfitId,

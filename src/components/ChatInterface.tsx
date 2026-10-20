@@ -10,6 +10,7 @@ import { OverlayModal } from '@/components/OverlayModal';
 import {
   PRO_SUMMARY_CTA_LABEL,
   PRO_SUMMARY_LOW_BUTTON,
+  PRO_SUMMARY_USER_ACTION,
   buildNeedSummaryFromParticipant,
   formatNeedSummary,
   proSummaryCtaMessage,
@@ -112,8 +113,19 @@ export function ChatInterface({
     const summary = buildNeedSummaryFromParticipant(participantData);
     const text = formatNeedSummary(summary);
     const now = new Date().toISOString();
+    let chatLog = participantData.chatLog;
+    if (
+      initiator === 'user' &&
+      !chatLog.some((message) => message.kind === 'proSummaryUserAction')
+    ) {
+      chatLog = [
+        ...chatLog,
+        createMessage('freeChat', 'system', PRO_SUMMARY_USER_ACTION, 'proSummaryUserAction'),
+      ];
+    }
     onUpdateData({
       ...participantData,
+      chatLog,
       proSummaryOpened: true,
       proSummaryOpenedAt: participantData.proSummaryOpenedAt ?? now,
       proSummaryOpenCount: (participantData.proSummaryOpenCount ?? 0) + 1,
@@ -147,7 +159,9 @@ export function ChatInterface({
           step: 'freeChat',
           question: 'free_chat',
           userInput: answer,
-          conversationHistory: participantData.chatLog.slice(-12),
+          conversationHistory: participantData.chatLog
+            .filter((message) => message.sender === 'user' || message.sender === 'bot')
+            .slice(-12),
           canRevealFinalRecommendation: false,
           experimentContext: {
             selectedOutfitCategory: participantData.selectedOutfitCategory as 'male' | 'female',
@@ -266,6 +280,17 @@ export function ChatInterface({
         {participantData.chatLog
           .filter((message) => !isProactiveNoteMessage(message.message))
           .map((message, index) => (
+            message.sender === 'system' || message.kind === 'proSummaryUserAction' ? (
+              <div
+                key={`${message.timestamp}-${index}`}
+                className="flex justify-center"
+                data-testid="pro-summary-user-action"
+              >
+                <div className="max-w-[92%] rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-center text-xs text-slate-700 sm:text-sm">
+                  {message.message}
+                </div>
+              </div>
+            ) : (
             <div
               key={`${message.timestamp}-${index}`}
               className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
@@ -288,6 +313,7 @@ export function ChatInterface({
                 )}
               </div>
             </div>
+            )
           ))}
 
         <div className="flex justify-start">

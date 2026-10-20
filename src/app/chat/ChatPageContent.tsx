@@ -1,14 +1,13 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { BotHeader } from '@/components/BotHeader';
 import { ChatInterface } from '@/components/ChatInterface';
 import { QuickPreferenceStep } from '@/components/QuickPreferenceStep';
 import { RecommendationCard } from '@/components/RecommendationCard';
 import {
   ParticipantData,
-  ResultLayoutVersion,
   clearParticipantDraft,
   extractUserMessages,
   generateCompletionCode,
@@ -28,7 +27,6 @@ import { isExternalSurveyMode, resolveExternalSurveyUrl } from '@/lib/surveyMode
 import { QuickPreferences, isQuickPreferencesComplete } from '@/lib/quickPreferences';
 import { proSummaryGateMessage } from '@/lib/needSummary';
 import { buildResultContent, buildResultParagraph } from '@/lib/resultContent';
-import { isResultLayoutSwitchEnabled, resolveResultLayout } from '@/lib/resultLayout';
 
 type Step = 'quick' | 'greeting' | 'chat' | 'recommendation';
 
@@ -39,13 +37,9 @@ const MIN_USER_MESSAGES = 3;
 
 export default function ChatPageContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [participantData, setParticipantData] = useState<ParticipantData | null>(null);
   const [condition, setCondition] = useState<ReturnType<typeof getCondition>>(undefined);
   const [currentStep, setCurrentStep] = useState<Step>('quick');
-  const [resultLayout, setResultLayout] = useState<ResultLayoutVersion>(() =>
-    resolveResultLayout(searchParams.get('resultLayout')),
-  );
   const [chatStartedAt, setChatStartedAt] = useState<number | null>(null);
   const [elapsedMs, setElapsedMs] = useState(0);
   const [timingNotice, setTimingNotice] = useState('');
@@ -258,7 +252,7 @@ export default function ChatPageContent() {
         positiveAId: resultContent.positiveAId,
         positiveBId: resultContent.positiveBId,
         cautionId: resultContent.cautionId,
-        resultLayoutVersion: resultLayout,
+        resultLayoutVersion: 'card',
       };
     }
 
@@ -358,12 +352,10 @@ export default function ChatPageContent() {
     setCurrentStep('greeting');
   };
 
-  const switchResultLayout = (next: ResultLayoutVersion) => {
-    if (!isResultLayoutSwitchEnabled()) return;
-    setResultLayout(next);
-    const url = new URL(window.location.href);
-    url.searchParams.set('resultLayout', next);
-    window.history.replaceState(null, '', `${url.pathname}${url.search}`);
+  const handleDirectChecksComplete = (next: ParticipantData) => {
+    setParticipantData(next);
+    saveParticipantDraft(next);
+    void saveParticipantData(next);
   };
 
   const missingHints: string[] = [];
@@ -482,21 +474,6 @@ export default function ChatPageContent() {
 
         {currentStep === 'recommendation' && displayOutfit && (
           <div className="space-y-3">
-            {isResultLayoutSwitchEnabled() && (
-              <div className="flex flex-wrap items-center justify-end gap-2 text-xs text-slate-500" data-testid="result-layout-switch">
-                <span>版面預覽（測試用，正式實驗不會顯示）</span>
-                <button type="button" onClick={() => switchResultLayout('card')} className="rounded border border-slate-300 px-2 py-1">
-                  卡片
-                </button>
-                <button
-                  type="button"
-                  onClick={() => switchResultLayout('paragraph')}
-                  className="rounded border border-slate-300 px-2 py-1"
-                >
-                  段落
-                </button>
-              </div>
-            )}
             <RecommendationCard
               outfit={displayOutfit}
               condition={condition}
@@ -505,7 +482,7 @@ export default function ChatPageContent() {
               chatLog={participantData.chatLog}
               onSurveyClick={handleSurveyClick}
               onViewChatLog={handleViewChatLog}
-              resultLayout={resultLayout}
+              onDirectChecksComplete={handleDirectChecksComplete}
             />
           </div>
         )}

@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "qa:prelaunch": "npx tsx scripts/qa-prelaunch-audit.ts",
+    "qa:formal-v3": "npx tsx scripts/qa-formal-v3.ts",
+    "qa:formal-v2-followup": "npx tsx scripts/qa-formal-v2-followup.ts"
   },
   "dependencies": {
     "@vercel/blob": "^2.4.0",
