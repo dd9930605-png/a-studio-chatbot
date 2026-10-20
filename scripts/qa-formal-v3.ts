@@ -28,8 +28,11 @@ import { generateFreeChatFallbackReply } from '../src/lib/aiResponses';
 import {
   emptyChatPreferences,
   extractChatPreferences,
+  outfitConflictsWithPreferences,
+  scoreOutfitForPreferences,
   selectSurpriseOutfitBPlus,
 } from '../src/lib/chatPreferences';
+import { getLookFeatures } from '../src/data/lookFeatures';
 
 function chars(text: string): number {
   return Array.from(text).length;
@@ -260,6 +263,63 @@ const pickedAgain = selectSurpriseOutfitBPlus({
 assert.ok(surprise.surpriseCandidateOutfits.includes(pickedAgain.finalOutfit));
 assert.notEqual(pickedAgain.finalOutfit, 'M1');
 console.log('PASS surprise selection stays on chat preferences and ignores quick-question fields');
+
+const lightFamily = extractChatPreferences(['我喜歡淺色']);
+const darkFamily = extractChatPreferences(['我喜歡深色']);
+assert.equal(lightFamily.likedColorFamily, 'light');
+assert.equal(darkFamily.likedColorFamily, 'dark');
+for (const outfitId of ['M2', 'M4', 'F2', 'F4', 'F1', 'F6', 'M1', 'M3']) {
+  assert.equal(
+    outfitConflictsWithPreferences(outfitId, lightFamily),
+    false,
+    `${outfitId} must stay in the light-family candidate pool`,
+  );
+  assert.equal(
+    outfitConflictsWithPreferences(outfitId, darkFamily),
+    false,
+    `${outfitId} must stay in the dark-family candidate pool`,
+  );
+}
+assert.ok(
+  scoreOutfitForPreferences('F1', lightFamily) > scoreOutfitForPreferences('M2', lightFamily),
+);
+assert.ok(
+  scoreOutfitForPreferences('M2', darkFamily) > scoreOutfitForPreferences('F1', darkFamily),
+);
+assert.equal(scoreOutfitForPreferences('F1', lightFamily) - scoreOutfitForPreferences('M1', lightFamily), 3);
+assert.equal(getLookFeatures('F1').colorFamily, 'light');
+assert.equal(getLookFeatures('M2').colorFamily, 'dark');
+assert.equal(getLookFeatures('M1').colorFamily, 'mixed');
+
+for (const category of ['male', 'female'] as const) {
+  const pools = getOutfitPools(category);
+  for (const prediction of pools.allowedOutfits) {
+    const resolved = resolveFinalOutfit({
+      surpriseMode: 'surprise',
+      expectedOutfitBeforeAI: prediction,
+      allowedOutfits: pools.allowedOutfits,
+      blockedOutfits: pools.blockedOutfits,
+    });
+    assert.ok(resolved.surpriseCandidateOutfits.length > 0, `${category} ${prediction} empty pool`);
+    assert.equal(resolved.surpriseCandidateOutfits.includes(prediction), false);
+    assert.ok(resolved.surpriseCandidateOutfits.every((id) => pools.allowedOutfits.includes(id)));
+    const scored = selectSurpriseOutfitBPlus({
+      expectedOutfitBeforeAI: prediction,
+      candidates: resolved.surpriseCandidateOutfits,
+      preferences: lightFamily,
+    });
+    assert.notEqual(scored.finalOutfit, prediction);
+    assert.ok(resolved.surpriseCandidateOutfits.includes(scored.finalOutfit));
+    const none = resolveFinalOutfit({
+      surpriseMode: 'no_surprise',
+      expectedOutfitBeforeAI: prediction,
+      allowedOutfits: pools.allowedOutfits,
+      blockedOutfits: pools.blockedOutfits,
+    });
+    assert.equal(none.finalRecommendedOutfit, prediction);
+  }
+}
+console.log('PASS colorFamily scores without shrinking the surprise candidate pool');
 
 assert.equal(isResultLayoutSwitchEnabled(), false);
 assert.equal(resolveResultLayout('paragraph'), 'card');
