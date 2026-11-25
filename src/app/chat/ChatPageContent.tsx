@@ -27,11 +27,7 @@ import {
 } from '@/lib/chatPreferences';
 import { isExternalSurveyMode, resolveExternalSurveyUrl } from '@/lib/surveyMode';
 import { QuickPreferences, isQuickPreferencesComplete } from '@/lib/quickPreferences';
-import {
-  PRO_SUMMARY_LOW_BUTTON,
-  applyProSummaryOpen,
-  proSummaryGateMessage,
-} from '@/lib/needSummary';
+import { applyProSummaryOpen, proSummaryGateMessage } from '@/lib/needSummary';
 import { buildResultContent, buildResultParagraph } from '@/lib/resultContent';
 
 type Step = 'quick' | 'greeting' | 'chat' | 'recommendation';
@@ -53,6 +49,7 @@ export default function ChatPageContent() {
   const [maxDialogDismissed, setMaxDialogDismissed] = useState(false);
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [summaryText, setSummaryText] = useState('');
+  const [summaryGateAttempts, setSummaryGateAttempts] = useState(0);
   const summaryGateRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -170,6 +167,7 @@ export default function ChatPageContent() {
 
     if (!participantData.proSummaryOpened) {
       setTimingNotice(proSummaryGateMessage(condition.proactivity));
+      setSummaryGateAttempts((count) => count + 1);
       summaryGateRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
@@ -380,6 +378,10 @@ export default function ChatPageContent() {
     saveParticipantDraft(updated);
     setSummaryText(updated.proSummaryContent);
     setSummaryOpen(true);
+    setSummaryGateAttempts(0);
+    setTimingNotice((current) =>
+      current === proSummaryGateMessage(condition.proactivity) ? '' : current,
+    );
   };
 
   const missingHints: string[] = [];
@@ -438,6 +440,14 @@ export default function ChatPageContent() {
                 saveParticipantDraft(data);
               }}
               onOpenSummary={handleOpenSummary}
+              summaryGateNotice={
+                condition.proactivity === 'low' &&
+                summaryGateAttempts > 0 &&
+                !participantData.proSummaryOpened
+                  ? proSummaryGateMessage('low')
+                  : ''
+              }
+              summaryGateAttempts={summaryGateAttempts}
               chatLocked={chatLocked}
               minChatMs={MIN_CHAT_MS}
               maxChatMs={MAX_CHAT_MS}
@@ -468,27 +478,20 @@ export default function ChatPageContent() {
                   則訊息才能查看推薦。
                 </p>
               )}
-              {canViewRecommendation && !participantData.proSummaryOpened && (
-                <div
-                  ref={summaryGateRef}
-                  data-testid="pro-summary-gate"
-                  className="mt-3 rounded-lg border border-slate-300 bg-slate-50 px-4 py-3"
-                >
-                  <p className="text-sm font-medium leading-relaxed text-slate-800">
-                    {proSummaryGateMessage(condition.proactivity)}
-                  </p>
-                  {condition.proactivity === 'low' && (
-                    <button
-                      type="button"
-                      data-testid="pro-summary-gate-button"
-                      onClick={() => handleOpenSummary('user')}
-                      className="mt-3 w-full rounded-lg border border-slate-400 bg-white px-4 py-3 text-sm font-bold text-slate-900"
-                    >
-                      {PRO_SUMMARY_LOW_BUTTON}
-                    </button>
-                  )}
-                </div>
-              )}
+              {/* 低主動性不在這裡提示或放按鈕：入口只有聊天區下方那一顆，由使用者自己發起。 */}
+              {condition.proactivity === 'high' &&
+                canViewRecommendation &&
+                !participantData.proSummaryOpened && (
+                  <div
+                    ref={summaryGateRef}
+                    data-testid="pro-summary-gate"
+                    className="mt-3 rounded-lg border border-slate-300 bg-slate-50 px-4 py-3"
+                  >
+                    <p className="text-sm font-medium leading-relaxed text-slate-800">
+                      {proSummaryGateMessage('high')}
+                    </p>
+                  </div>
+                )}
               <button
                 type="button"
                 onClick={handleViewRecommendation}
@@ -506,7 +509,9 @@ export default function ChatPageContent() {
                   <p className="mt-2 text-sm leading-relaxed text-gray-700">
                     {participantData.proSummaryOpened
                       ? '已達 5 分鐘互動上限。目前需求已確認，請進入推薦結果頁面。'
-                      : proSummaryGateMessage(condition.proactivity)}
+                      : condition.proactivity === 'low'
+                        ? '已達 5 分鐘互動上限，請查看推薦結果。'
+                        : proSummaryGateMessage('high')}
                   </p>
                   {participantData.proSummaryOpened ? (
                     <button
@@ -519,11 +524,15 @@ export default function ChatPageContent() {
                   ) : condition.proactivity === 'low' ? (
                     <button
                       type="button"
-                      data-testid="pro-summary-max-gate-button"
-                      onClick={() => handleOpenSummary('user')}
-                      className="mt-4 w-full rounded-lg border border-slate-400 bg-white px-4 py-3 font-bold text-slate-900"
+                      data-testid="max-time-view-recommendation"
+                      onClick={() => {
+                        setShowMaxTimeDialog(false);
+                        setMaxDialogDismissed(true);
+                        handleViewRecommendation();
+                      }}
+                      className="mt-4 w-full rounded-lg bg-blue-600 px-4 py-3 font-bold text-white"
                     >
-                      {PRO_SUMMARY_LOW_BUTTON}
+                      前往查看推薦結果
                     </button>
                   ) : (
                     <button

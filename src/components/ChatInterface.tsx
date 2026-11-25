@@ -23,6 +23,10 @@ interface ChatInterfaceProps {
   elapsedMs: number;
   minUserMessages?: number;
   onOpenSummary: (initiator: 'ai' | 'user') => void;
+  /** 低主動性使用者想進結果頁但尚未確認需求時，顯示在唯一入口旁的網站提示。 */
+  summaryGateNotice?: string;
+  /** 每次被擋下就加一，用來把入口捲回畫面中。 */
+  summaryGateAttempts?: number;
 }
 
 interface ChatApiResponse {
@@ -77,12 +81,15 @@ export function ChatInterface({
   elapsedMs,
   minUserMessages = 3,
   onOpenSummary,
+  summaryGateNotice = '',
+  summaryGateAttempts = 0,
 }: ChatInterfaceProps) {
   const [inputValue, setInputValue] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isResponding, setIsResponding] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const respondingTimeoutRef = useRef<number | null>(null);
+  const summaryEntryRef = useRef<HTMLDivElement>(null);
   const theme = getConditionTheme(condition);
   const botShortName = getConditionShortName(condition);
   const isHighProactivity = condition.proactivity === 'high';
@@ -95,6 +102,12 @@ export function ChatInterface({
     },
     [],
   );
+
+  useEffect(() => {
+    if (summaryGateAttempts > 0) {
+      summaryEntryRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [summaryGateAttempts]);
 
   const userMessageCount =
     participantData.userMessageCount || extractUserMessages(participantData).length;
@@ -112,7 +125,9 @@ export function ChatInterface({
       : metTime && metMessages
         ? participantData.proSummaryOpened
           ? '已達基本互動時間與訊息數，現在可查看推薦結果。'
-          : '已達基本互動時間與訊息數。進入推薦結果前，請先完成目前需求確認。'
+          : isHighProactivity
+            ? '已達基本互動時間與訊息數。進入推薦結果前，請先完成目前需求確認。'
+            : '已達基本互動時間與訊息數。'
         : [
             !metMessages ? `尚需 ${remainingMessages} 則互動訊息` : null,
             !metTime ? `請至少再互動 ${Math.ceil(remainingMinMs / 1000)} 秒` : null,
@@ -344,7 +359,15 @@ export function ChatInterface({
       </div>
 
       {!isHighProactivity && (
-        <div className="px-4 pb-2">
+        <div ref={summaryEntryRef} className="px-4 pb-2">
+          {summaryGateNotice && (
+            <p
+              data-testid="pro-summary-low-gate-notice"
+              className="mb-2 rounded-lg border border-slate-300 bg-slate-50 px-4 py-3 text-sm font-medium leading-relaxed text-slate-800"
+            >
+              {summaryGateNotice}
+            </p>
+          )}
           <button
             type="button"
             data-testid="pro-summary-low-button"
@@ -353,7 +376,9 @@ export function ChatInterface({
               if (!summaryUnlocked) return;
               onOpenSummary('user');
             }}
-            className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-800 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+            className={`w-full rounded-lg border bg-white px-4 py-3 text-sm font-bold text-slate-800 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 ${
+              summaryGateNotice ? 'border-slate-700 ring-2 ring-slate-400' : 'border-slate-300'
+            }`}
           >
             {PRO_SUMMARY_LOW_BUTTON}
           </button>

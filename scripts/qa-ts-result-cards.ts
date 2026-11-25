@@ -201,14 +201,17 @@ assert.match(resultView, /sm:hidden/);
 console.log('PASS H. mobile/desktop share the same TS rows; only arrow/grid layout changes');
 
 assert.match(chatPage, /data-testid="pro-summary-gate"/);
-assert.match(chatPage, /data-testid="pro-summary-gate-button"/);
-assert.match(chatPage, /data-testid="pro-summary-max-gate-button"/);
+assert.doesNotMatch(chatPage, /data-testid="pro-summary-gate-button"/);
+assert.doesNotMatch(chatPage, /data-testid="pro-summary-max-gate-button"/);
+assert.doesNotMatch(chatPage, /PRO_SUMMARY_LOW_BUTTON/);
+assert.match(chatPage, /if \(!participantData\.proSummaryOpened\) \{/);
 assert.match(chatPage, /maxDialogDismissed/);
-assert.match(chatIf, /data-testid="pro-summary-low-button"/);
+assert.equal(chatIf.match(/data-testid="pro-summary-low-button"/g)?.length, 1);
+assert.match(chatIf, /data-testid="pro-summary-low-gate-notice"/);
 assert.match(chatIf, /userMessageCount >= 2/);
 assert.match(chatIf, /proSummaryCtaMessage/);
 assert.match(chatIf, /!isHighProactivity/);
-console.log('PASS PRO Low gate is website chrome with in-place 整理 button');
+console.log('PASS PRO Low has one 整理 entry; the gate stays and only speaks after a blocked attempt');
 
 const gateFn = fs.readFileSync('src/lib/needSummary.ts', 'utf8');
 assert.match(gateFn, /進入推薦結果前，請先完成目前需求確認。/);
