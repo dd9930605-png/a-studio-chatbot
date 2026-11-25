@@ -94,7 +94,7 @@ function ConversationRecapThread({
 
   return (
     <div className={`${theme.chatContainerClass} ${compact ? 'max-h-[28rem] overflow-y-auto' : ''}`}>
-      <div className={`flex items-center gap-3 border-b px-4 py-3 ${theme.isPersona ? 'border-rose-100' : 'border-slate-200'}`}>
+      <div className={`flex items-center gap-3 border-b px-4 py-3 ${theme.isPersona ? 'border-rose-100' : 'border-neutral-200'}`}>
         <img
           src={avatarSrc}
           alt={`${displayName} avatar`}
@@ -105,10 +105,10 @@ function ConversationRecapThread({
           className={`${theme.avatarClass} h-10 w-10`}
         />
         <div>
-          <p className={`text-sm font-bold ${theme.isPersona ? 'text-rose-950' : 'font-mono text-slate-900'}`}>
+          <p className={`text-sm font-bold ${theme.isPersona ? 'text-rose-950' : 'tracking-wide text-neutral-900'}`}>
             {displayName}
           </p>
-          <p className={`text-xs ${theme.isPersona ? 'text-rose-600' : 'font-mono text-slate-500'}`}>
+          <p className={`text-xs ${theme.isPersona ? 'text-rose-600' : 'text-neutral-500'}`}>
             {theme.headerSubtitle}
           </p>
         </div>

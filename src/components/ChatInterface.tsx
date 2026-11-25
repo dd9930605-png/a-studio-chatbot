@@ -1,11 +1,14 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Condition } from '@/lib/conditions';
-import { getConditionTheme } from '@/lib/conditionTheme';
+import { EmmaPresence, EmmaPresenceState } from '@/components/EmmaPresence';
+import { BRAND_LOGO_URL, getConditionShortName, getConditionTheme } from '@/lib/conditionTheme';
 import { isProactiveNoteMessage } from '@/lib/proactiveNotes';
 import { extractChatPreferences } from '@/lib/chatPreferences';
 import { ChatMessage, ParticipantData, extractUserMessages } from '@/lib/dataRecorder';
+import type { CatalogCorrectionRule } from '@/lib/catalogBoundaries';
+import type { ReplySource } from '@/lib/replySource';
 import {
   PRO_SUMMARY_CTA_LABEL,
   PRO_SUMMARY_LOW_BUTTON,
@@ -22,12 +25,20 @@ interface ChatInterfaceProps {
   elapsedMs: number;
   minUserMessages?: number;
   onOpenSummary: (initiator: 'ai' | 'user') => void;
+  /** 低主動性使用者想進結果頁但尚未確認需求時，顯示在唯一入口旁的網站提示。 */
+  summaryGateNotice?: string;
+  /** 每次被擋下就加一，用來把入口捲回畫面中。 */
+  summaryGateAttempts?: number;
 }
 
 interface ChatApiResponse {
   relevant: boolean;
   reply: string;
   source: 'openai' | 'fallback';
+  replySource?: ReplySource;
+  catalogCorrectionRule?: CatalogCorrectionRule;
+  replacedReply?: string;
+  replacedReplySource?: ReplySource;
 }
 
 function createMessage(
@@ -76,12 +87,33 @@ export function ChatInterface({
   elapsedMs,
   minUserMessages = 3,
   onOpenSummary,
+  summaryGateNotice = '',
+  summaryGateAttempts = 0,
 }: ChatInterfaceProps) {
   const [inputValue, setInputValue] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isResponding, setIsResponding] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  const respondingTimeoutRef = useRef<number | null>(null);
+  const summaryEntryRef = useRef<HTMLDivElement>(null);
   const theme = getConditionTheme(condition);
+  const botShortName = getConditionShortName(condition);
   const isHighProactivity = condition.proactivity === 'high';
+
+  useEffect(
+    () => () => {
+      if (respondingTimeoutRef.current !== null) {
+        window.clearTimeout(respondingTimeoutRef.current);
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (summaryGateAttempts > 0) {
+      summaryEntryRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [summaryGateAttempts]);
 
   const userMessageCount =
     participantData.userMessageCount || extractUserMessages(participantData).length;
@@ -99,7 +131,9 @@ export function ChatInterface({
       : metTime && metMessages
         ? participantData.proSummaryOpened
           ? '已達基本互動時間與訊息數，現在可查看推薦結果。'
-          : '已達基本互動時間與訊息數。進入推薦結果前，請先完成目前需求確認。'
+          : isHighProactivity
+            ? '已達基本互動時間與訊息數。進入推薦結果前，請先完成目前需求確認。'
+            : '已達基本互動時間與訊息數。'
         : [
             !metMessages ? `尚需 ${remainingMessages} 則互動訊息` : null,
             !metTime ? `請至少再互動 ${Math.ceil(remainingMinMs / 1000)} 秒` : null,
@@ -113,6 +147,11 @@ export function ChatInterface({
     const answer = inputValue.trim();
     if (!answer || isSubmitting || chatLocked) return;
 
+    if (respondingTimeoutRef.current !== null) {
+      window.clearTimeout(respondingTimeoutRef.current);
+      respondingTimeoutRef.current = null;
+    }
+    setIsResponding(false);
     setIsSubmitting(true);
     setSubmitError('');
 
@@ -158,7 +197,15 @@ export function ChatInterface({
       }
 
       const result = (await response.json()) as ChatApiResponse;
-      const botMessage = createMessage('freeChat', 'bot', result.reply);
+      const botMessage: ChatMessage = {
+        ...createMessage('freeChat', 'bot', result.reply),
+        replySource: result.replySource ?? 'unknown',
+        ...(result.replySource === 'catalog_correction' && {
+          catalogCorrectionRule: result.catalogCorrectionRule,
+          replacedReply: result.replacedReply,
+          replacedReplySource: result.replacedReplySource,
+        }),
+      };
       const additions = [userMessage, botMessage];
       const nextUserMessageCount =
         [...participantData.chatLog, userMessage].filter((message) => message.sender === 'user').length;
@@ -166,14 +213,15 @@ export function ChatInterface({
       let proPatch: Partial<ParticipantData> = {};
 
       if (isHighProactivity && nextUserMessageCount >= 2 && !participantData.proSummaryTriggeredOnce) {
-        additions.push(
-          createMessage(
+        additions.push({
+          ...createMessage(
             'freeChat',
             'bot',
             proSummaryCtaMessage(condition.anthropomorphism),
             'proSummaryCta',
           ),
-        );
+          replySource: 'program_fixed',
+        });
         proPatch = {
           proSummaryTriggeredOnce: true,
           proSummaryInitiator: 'ai',
@@ -198,6 +246,11 @@ export function ChatInterface({
 
       onUpdateData(updatedData);
       setInputValue('');
+      setIsResponding(true);
+      respondingTimeoutRef.current = window.setTimeout(() => {
+        setIsResponding(false);
+        respondingTimeoutRef.current = null;
+      }, 1500);
     } catch {
       setSubmitError('送出失敗，請稍後再試。');
     } finally {
@@ -206,11 +259,21 @@ export function ChatInterface({
   };
 
   const submitButtonClass = theme.isPersona
-    ? 'rounded-xl bg-rose-500 px-6 py-3 font-bold text-white transition hover:bg-rose-600 disabled:cursor-not-allowed disabled:opacity-50'
-    : 'rounded-md bg-slate-700 px-6 py-3 font-mono font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50';
+    ? 'shrink-0 whitespace-nowrap rounded-xl bg-rose-500 px-6 py-3 font-bold text-white transition hover:bg-rose-600 disabled:cursor-not-allowed disabled:opacity-50'
+    : 'shrink-0 whitespace-nowrap rounded-xl bg-neutral-900 px-6 py-3 font-bold text-white transition hover:bg-neutral-700 disabled:cursor-not-allowed disabled:opacity-50';
+  const emmaState: EmmaPresenceState = isSubmitting
+    ? 'thinking'
+    : inputValue.trim().length > 0
+      ? 'listening'
+      : isResponding
+        ? 'responding'
+        : 'idle';
 
   return (
     <div className={`flex flex-col ${theme.chatContainerClass}`}>
+      <div className={theme.isPersona ? 'grid min-w-0 lg:grid-cols-[minmax(17rem,36%)_1fr]' : 'min-w-0'}>
+        {theme.isPersona && <EmmaPresence state={emmaState} />}
+        <div className="flex min-w-0 flex-col">
       <div
         className={`mx-4 mt-4 rounded-lg border px-3 py-2 text-sm ${
           metTime && metMessages
@@ -262,15 +325,21 @@ export function ChatInterface({
             ) : (
             <div
               key={`${message.timestamp}-${index}`}
-              className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+              className={`flex gap-2 ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
             >
+              {message.sender === 'bot' && !theme.isPersona && (
+                <img src={BRAND_LOGO_URL} alt="" className={`${theme.avatarClass} mt-1 h-7 w-7`} />
+              )}
               <div
                 className={`max-w-[85%] px-4 py-3 ${
                   message.sender === 'user' ? theme.chatUserBubbleClass : getBotBubbleClass(message.message, theme)
                 }`}
                 data-testid={message.kind === 'proSummaryCta' ? 'pro-summary-cta' : undefined}
               >
-                <p>{message.message}</p>
+                {message.sender === 'bot' && (
+                  <p className="mb-1 text-xs font-semibold opacity-70">{botShortName}</p>
+                )}
+                <p className="whitespace-pre-line">{message.message}</p>
                 {message.kind === 'proSummaryCta' && (
                   <button
                     type="button"
@@ -285,20 +354,35 @@ export function ChatInterface({
             )
           ))}
 
-        <div className="flex justify-start">
+        <div className="flex justify-start gap-2">
+          {!theme.isPersona && (
+            <img src={BRAND_LOGO_URL} alt="" className={`${theme.avatarClass} mt-1 h-7 w-7`} />
+          )}
           <div className={`max-w-[85%] px-4 py-3 ${theme.chatBotBubbleClass}`}>
             <p className="font-semibold">
-              請自由描述你的面試穿搭需求（風格、正式度、顏色、身形修飾、擔心點都可以）。
+              {theme.isPersona
+                ? '請自由描述你的面試穿搭需求（風格、正式度、顏色、身形修飾、擔心點都可以）。'
+                : '請自由描述面試穿搭需求（風格、正式度、顏色、身形修飾、擔心點都可以）。'}
             </p>
-            <p className={`mt-2 text-xs ${theme.isPersona ? 'text-rose-700' : 'font-mono text-slate-600'}`}>
-              你可以像用 ChatGPT 一樣自由提問，我會根據你的需求持續回應。
+            <p className={`mt-2 text-xs ${theme.isPersona ? 'text-rose-700' : 'text-neutral-600'}`}>
+              {theme.isPersona
+                ? '你可以像用 ChatGPT 一樣自由提問，我會根據你的需求持續回應。'
+                : '可像使用 ChatGPT 一樣自由提問，A.STUDIO AI 會根據需求持續回應。'}
             </p>
           </div>
         </div>
       </div>
 
       {!isHighProactivity && (
-        <div className="px-4 pb-2">
+        <div ref={summaryEntryRef} className="px-4 pb-2">
+          {summaryGateNotice && (
+            <p
+              data-testid="pro-summary-low-gate-notice"
+              className="mb-2 rounded-lg border border-slate-300 bg-slate-50 px-4 py-3 text-sm font-medium leading-relaxed text-slate-800"
+            >
+              {summaryGateNotice}
+            </p>
+          )}
           <button
             type="button"
             data-testid="pro-summary-low-button"
@@ -307,7 +391,9 @@ export function ChatInterface({
               if (!summaryUnlocked) return;
               onOpenSummary('user');
             }}
-            className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-800 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+            className={`w-full rounded-lg border bg-white px-4 py-3 text-sm font-bold text-slate-800 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 ${
+              summaryGateNotice ? 'border-slate-700 ring-2 ring-slate-400' : 'border-slate-300'
+            }`}
           >
             {PRO_SUMMARY_LOW_BUTTON}
           </button>
@@ -316,7 +402,7 @@ export function ChatInterface({
 
       <form
         onSubmit={handleSubmit}
-        className={`border-t p-4 ${theme.isPersona ? 'border-rose-100' : 'border-slate-300'}`}
+        className={`border-t p-4 ${theme.isPersona ? 'border-rose-100' : 'border-neutral-200'}`}
       >
         {submitError && <p className="mb-3 rounded-lg bg-red-50 p-3 text-sm text-red-600">{submitError}</p>}
         <div className="flex gap-3">
@@ -325,13 +411,19 @@ export function ChatInterface({
             value={inputValue}
             onChange={(event) => setInputValue(event.target.value)}
             disabled={isSubmitting || chatLocked}
-            className={`flex-1 border px-4 py-3 focus:outline-none disabled:bg-gray-100 ${
+            className={`min-w-0 flex-1 border px-4 py-3 focus:outline-none disabled:bg-gray-100 ${
               theme.isPersona
                 ? 'rounded-xl border-rose-200 focus:border-rose-400'
-                : 'rounded-md border-slate-300 font-mono focus:border-slate-500'
+                : 'rounded-xl border-neutral-300 focus:border-neutral-500'
             }`}
             placeholder={
-              chatLocked ? '已達聊天上限，請查看推薦結果' : isSubmitting ? 'AI 正在思考回覆...' : '請輸入你的回答...'
+              chatLocked
+                ? '已達聊天上限，請查看推薦結果'
+                : isSubmitting
+                  ? theme.isPersona
+                    ? 'Emma 正在思考回覆...'
+                    : '回覆產生中...'
+                  : '請輸入你的回答...'
             }
           />
           <button type="submit" disabled={!inputValue.trim() || isSubmitting || chatLocked} className={submitButtonClass}>
@@ -340,6 +432,8 @@ export function ChatInterface({
         </div>
       </form>
 
+        </div>
+      </div>
     </div>
   );
 }

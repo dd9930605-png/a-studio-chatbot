@@ -1,6 +1,8 @@
 import { OutfitCategory, SurpriseMode } from '@/lib/outfits';
 import type { PkRoundRecord } from '@/lib/outfitPk';
 import type { QuickColor, QuickFormality, QuickImpression } from '@/lib/quickPreferences';
+import type { CatalogCorrectionRule } from '@/lib/catalogBoundaries';
+import type { ReplySource } from '@/lib/replySource';
 
 /** EX High「你的需求」證據來源 */
 export type ExEvidenceSource = 'chat' | 'quick_preference' | 'scenario';
@@ -22,6 +24,12 @@ export interface ChatMessage {
   timestamp: string;
   /** proSummaryCta：High 由 AI 主動附上；proSummaryUserAction：Low 使用者點選紀錄 */
   kind?: 'text' | 'proSummaryCta' | 'proSummaryUserAction';
+  /** AI 訊息的來源；受試者看不到，只供資料品質檢查。舊資料沒有此欄位。 */
+  replySource?: ReplySource;
+  /** 庫存更正時：觸發的規則，以及被固定更正句換掉的原回覆與其來源。 */
+  catalogCorrectionRule?: CatalogCorrectionRule;
+  replacedReply?: string;
+  replacedReplySource?: ReplySource;
 }
 
 export type { PkRoundRecord };

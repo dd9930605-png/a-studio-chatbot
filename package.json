@@ -10,7 +10,9 @@
     "qa:prelaunch": "npx tsx scripts/qa-prelaunch-audit.ts",
     "qa:formal-v3": "npx tsx scripts/qa-formal-v3.ts",
     "qa:formal-v2-followup": "npx tsx scripts/qa-formal-v2-followup.ts",
-    "qa:ts-cards": "npx tsx scripts/qa-ts-result-cards.ts"
+    "qa:ts-cards": "npx tsx scripts/qa-ts-result-cards.ts",
+    "qa:an-low": "npx tsx scripts/qa-an-low-language.ts",
+    "qa:reply-source": "npx tsx scripts/qa-reply-source.ts"
   },
   "dependencies": {
     "@vercel/blob": "^2.4.0",

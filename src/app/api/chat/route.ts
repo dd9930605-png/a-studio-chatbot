@@ -4,7 +4,13 @@ import { buildChatSystemPrompt, buildFreeChatSystemPrompt } from '@/lib/botPromp
 import { ResponseStep, generateFreeChatFallbackReply } from '@/lib/aiResponses';
 import { Condition } from '@/lib/conditions';
 import { ExperimentChatContext, buildExperimentKnowledgeBlock } from '@/lib/experimentKnowledge';
-import { correctFalseUnavailableCatalogClaims, CATALOG_COLOR_SUMMARY } from '@/lib/catalogBoundaries';
+import {
+  CatalogCorrectionRule,
+  catalogColorListReply,
+  catalogCorrectionReply,
+  detectFalseUnavailableCatalogClaim,
+} from '@/lib/catalogBoundaries';
+import { ReplySource } from '@/lib/replySource';
 import {
   generateAcknowledgment,
   getDeterministicAcknowledgment,
@@ -39,6 +45,12 @@ interface ChatResponseBody {
   relevant: boolean;
   reply: string;
   source: 'openai' | 'fallback';
+  /** 受試者實際看到的這則回覆來自哪裡；只供資料紀錄。 */
+  replySource: ReplySource;
+  /** 庫存更正時：觸發的規則，以及被換掉的原回覆與其來源。 */
+  catalogCorrectionRule?: CatalogCorrectionRule;
+  replacedReply?: string;
+  replacedReplySource?: ReplySource;
 }
 
 function parseModelJson(content: string): { relevant: boolean; reply: string } | null {
@@ -62,6 +74,7 @@ function buildGuidedFallbackResponse(
   step: ResponseStep,
   userInput: string,
   condition: ChatRequestBody['condition'],
+  replySource: ReplySource,
 ): ChatResponseBody {
   const validation = validateChatInput(step, userInput, condition as Condition);
   if (!validation.valid) {
@@ -69,6 +82,7 @@ function buildGuidedFallbackResponse(
       relevant: false,
       reply: validation.rejectionMessage ?? '請輸入與面試穿搭相關的回答。',
       source: 'fallback',
+      replySource,
     };
   }
 
@@ -76,6 +90,7 @@ function buildGuidedFallbackResponse(
     relevant: true,
     reply: generateAcknowledgment(step, userInput, condition as Condition),
     source: 'fallback',
+    replySource,
   };
 }
 
@@ -90,31 +105,47 @@ async function handleFreeChat(
     ? buildExperimentKnowledgeBlock(experimentContext, condition)
     : '';
 
-  const withCatalogGuard = (reply: string, source: 'openai' | 'fallback'): ChatResponseBody => ({
-    relevant: true,
-    reply: correctFalseUnavailableCatalogClaims(reply, trimmedInput),
-    source,
-  });
+  const withCatalogGuard = (reply: string, replySource: ReplySource): ChatResponseBody => {
+    const source = replySource === 'gpt' ? 'openai' : 'fallback';
+    const rule = detectFalseUnavailableCatalogClaim(reply, trimmedInput);
+    if (!rule) {
+      return { relevant: true, reply, source, replySource };
+    }
+    return {
+      relevant: true,
+      reply: catalogCorrectionReply(rule, condition.anthropomorphism),
+      source,
+      replySource: 'catalog_correction',
+      catalogCorrectionRule: rule,
+      replacedReply: reply,
+      replacedReplySource: replySource,
+    };
+  };
 
-  // 詢問現有色系：直接回完整清單，避免模型漏列深棕／棕色
-  if (/還有什麼.*色|有哪些.*色|什麼.*顏色|商品顏色|現有.*色系|顏色有哪些/.test(trimmedInput)) {
-    return withCatalogGuard(
-      `目前網站這 12 套面試穿搭的色系包含：${CATALOG_COLOR_SUMMARY}。`,
-      'fallback',
-    );
-  }
-
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
-    return withCatalogGuard(
+  const backupReply = (replySource: ReplySource): ChatResponseBody =>
+    withCatalogGuard(
       generateFreeChatFallbackReply(
         trimmedInput,
         condition as Condition,
         experimentContext,
         conversationHistory,
       ),
-      'fallback',
+      replySource,
     );
+
+  // 詢問現有色系：直接回完整清單，避免模型漏列深棕／棕色
+  if (/還有什麼.*色|有哪些.*色|什麼.*顏色|商品顏色|現有.*色系|顏色有哪些/.test(trimmedInput)) {
+    return {
+      relevant: true,
+      reply: catalogColorListReply(condition.anthropomorphism),
+      source: 'fallback',
+      replySource: 'color_shortcut',
+    };
+  }
+
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    return backupReply('missing_api_key');
   }
 
   try {
@@ -148,29 +179,13 @@ async function handleFreeChat(
     const parsed = parseModelJson(content);
 
     if (!parsed) {
-      return withCatalogGuard(
-        generateFreeChatFallbackReply(
-          trimmedInput,
-          condition as Condition,
-          experimentContext,
-          conversationHistory,
-        ),
-        'fallback',
-      );
+      return backupReply('parse_error');
     }
 
-    return withCatalogGuard(parsed.reply, 'openai');
+    return withCatalogGuard(parsed.reply, 'gpt');
   } catch (error) {
     console.error('OpenAI free chat API failed:', error);
-    return withCatalogGuard(
-      generateFreeChatFallbackReply(
-        trimmedInput,
-        condition as Condition,
-        experimentContext,
-        conversationHistory,
-      ),
-      'fallback',
-    );
+    return backupReply('api_error');
   }
 }
 
@@ -204,7 +219,7 @@ export async function POST(request: NextRequest) {
   }
 
   if (isClearlyOffTopic(trimmedInput)) {
-    const fallback = buildGuidedFallbackResponse(step, trimmedInput, condition);
+    const fallback = buildGuidedFallbackResponse(step, trimmedInput, condition, 'program_fixed');
     return NextResponse.json(fallback satisfies ChatResponseBody);
   }
 
@@ -214,12 +229,13 @@ export async function POST(request: NextRequest) {
       relevant: true,
       reply: deterministic,
       source: 'fallback',
+      replySource: 'program_fixed',
     } satisfies ChatResponseBody);
   }
 
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
-    const fallback = buildGuidedFallbackResponse(step, trimmedInput, condition);
+    const fallback = buildGuidedFallbackResponse(step, trimmedInput, condition, 'missing_api_key');
     return NextResponse.json(fallback satisfies ChatResponseBody);
   }
 
@@ -254,7 +270,7 @@ export async function POST(request: NextRequest) {
     const parsed = parseModelJson(content);
 
     if (!parsed) {
-      const fallback = buildGuidedFallbackResponse(step, trimmedInput, condition);
+      const fallback = buildGuidedFallbackResponse(step, trimmedInput, condition, 'parse_error');
       return NextResponse.json(fallback satisfies ChatResponseBody);
     }
 
@@ -263,6 +279,7 @@ export async function POST(request: NextRequest) {
         relevant: true,
         reply: generateAcknowledgment(step, trimmedInput, condition as Condition),
         source: 'fallback',
+        replySource: 'program_fixed',
       } satisfies ChatResponseBody);
     }
 
@@ -276,6 +293,7 @@ export async function POST(request: NextRequest) {
         relevant: true,
         reply: deterministicAfterAi,
         source: 'fallback',
+        replySource: 'program_fixed',
       } satisfies ChatResponseBody);
     }
 
@@ -283,10 +301,11 @@ export async function POST(request: NextRequest) {
       relevant: parsed.relevant,
       reply: parsed.reply,
       source: 'openai',
+      replySource: 'gpt',
     } satisfies ChatResponseBody);
   } catch (error) {
     console.error('OpenAI chat API failed:', error);
-    const fallback = buildGuidedFallbackResponse(step, trimmedInput, condition);
+    const fallback = buildGuidedFallbackResponse(step, trimmedInput, condition, 'api_error');
     return NextResponse.json(fallback satisfies ChatResponseBody);
   }
 }

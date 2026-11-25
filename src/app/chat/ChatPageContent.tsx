@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { BotHeader } from '@/components/BotHeader';
 import { ChatInterface } from '@/components/ChatInterface';
+import { EmmaPresence } from '@/components/EmmaPresence';
 import { OverlayModal } from '@/components/OverlayModal';
 import { QuickPreferenceStep } from '@/components/QuickPreferenceStep';
 import { RecommendationCard } from '@/components/RecommendationCard';
@@ -26,11 +27,7 @@ import {
 } from '@/lib/chatPreferences';
 import { isExternalSurveyMode, resolveExternalSurveyUrl } from '@/lib/surveyMode';
 import { QuickPreferences, isQuickPreferencesComplete } from '@/lib/quickPreferences';
-import {
-  PRO_SUMMARY_LOW_BUTTON,
-  applyProSummaryOpen,
-  proSummaryGateMessage,
-} from '@/lib/needSummary';
+import { applyProSummaryOpen, proSummaryGateMessage } from '@/lib/needSummary';
 import { buildResultContent, buildResultParagraph } from '@/lib/resultContent';
 
 type Step = 'quick' | 'greeting' | 'chat' | 'recommendation';
@@ -52,6 +49,7 @@ export default function ChatPageContent() {
   const [maxDialogDismissed, setMaxDialogDismissed] = useState(false);
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [summaryText, setSummaryText] = useState('');
+  const [summaryGateAttempts, setSummaryGateAttempts] = useState(0);
   const summaryGateRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -169,6 +167,7 @@ export default function ChatPageContent() {
 
     if (!participantData.proSummaryOpened) {
       setTimingNotice(proSummaryGateMessage(condition.proactivity));
+      setSummaryGateAttempts((count) => count + 1);
       summaryGateRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
@@ -379,6 +378,10 @@ export default function ChatPageContent() {
     saveParticipantDraft(updated);
     setSummaryText(updated.proSummaryContent);
     setSummaryOpen(true);
+    setSummaryGateAttempts(0);
+    setTimingNotice((current) =>
+      current === proSummaryGateMessage(condition.proactivity) ? '' : current,
+    );
   };
 
   const missingHints: string[] = [];
@@ -396,7 +399,23 @@ export default function ChatPageContent() {
 
         {currentStep === 'greeting' && (
           <div className="space-y-6 py-8">
-            <BotHeader condition={condition} greeting={condition.greetingText} />
+            {condition.anthropomorphism === 'high' ? (
+              <div
+                data-testid="emma-greeting"
+                className="grid overflow-hidden rounded-2xl border border-rose-100 bg-white shadow-lg lg:grid-cols-[minmax(17rem,36%)_1fr]"
+              >
+                <EmmaPresence state="idle" />
+                <div className="flex flex-col justify-center p-6 sm:p-10">
+                  <p className="text-xs font-semibold text-rose-600">你的專屬穿搭顧問</p>
+                  <h1 className="mt-1 text-2xl font-bold text-rose-950">穿搭顧問 Emma</h1>
+                  <p className="mt-4 break-words text-base leading-relaxed text-rose-900 sm:text-lg">
+                    {condition.greetingText}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <BotHeader condition={condition} greeting={condition.greetingText} />
+            )}
             <div className="rounded-xl border border-dashed border-gray-300 bg-white/80 p-6 text-center text-sm text-gray-600">
               正在為你準備對話…請先確認上方的 AI 顧問類型
             </div>
@@ -405,7 +424,9 @@ export default function ChatPageContent() {
 
         {currentStep === 'chat' && (
           <div className="space-y-4">
-            <BotHeader condition={condition} variant="compact" />
+            {condition.anthropomorphism === 'low' && (
+              <BotHeader condition={condition} variant="compact" />
+            )}
             {timingNotice && (
               <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
                 {timingNotice}
@@ -419,6 +440,14 @@ export default function ChatPageContent() {
                 saveParticipantDraft(data);
               }}
               onOpenSummary={handleOpenSummary}
+              summaryGateNotice={
+                condition.proactivity === 'low' &&
+                summaryGateAttempts > 0 &&
+                !participantData.proSummaryOpened
+                  ? proSummaryGateMessage('low')
+                  : ''
+              }
+              summaryGateAttempts={summaryGateAttempts}
               chatLocked={chatLocked}
               minChatMs={MIN_CHAT_MS}
               maxChatMs={MAX_CHAT_MS}
@@ -449,27 +478,20 @@ export default function ChatPageContent() {
                   則訊息才能查看推薦。
                 </p>
               )}
-              {canViewRecommendation && !participantData.proSummaryOpened && (
-                <div
-                  ref={summaryGateRef}
-                  data-testid="pro-summary-gate"
-                  className="mt-3 rounded-lg border border-slate-300 bg-slate-50 px-4 py-3"
-                >
-                  <p className="text-sm font-medium leading-relaxed text-slate-800">
-                    {proSummaryGateMessage(condition.proactivity)}
-                  </p>
-                  {condition.proactivity === 'low' && (
-                    <button
-                      type="button"
-                      data-testid="pro-summary-gate-button"
-                      onClick={() => handleOpenSummary('user')}
-                      className="mt-3 w-full rounded-lg border border-slate-400 bg-white px-4 py-3 text-sm font-bold text-slate-900"
-                    >
-                      {PRO_SUMMARY_LOW_BUTTON}
-                    </button>
-                  )}
-                </div>
-              )}
+              {/* 低主動性不在這裡提示或放按鈕：入口只有聊天區下方那一顆，由使用者自己發起。 */}
+              {condition.proactivity === 'high' &&
+                canViewRecommendation &&
+                !participantData.proSummaryOpened && (
+                  <div
+                    ref={summaryGateRef}
+                    data-testid="pro-summary-gate"
+                    className="mt-3 rounded-lg border border-slate-300 bg-slate-50 px-4 py-3"
+                  >
+                    <p className="text-sm font-medium leading-relaxed text-slate-800">
+                      {proSummaryGateMessage('high')}
+                    </p>
+                  </div>
+                )}
               <button
                 type="button"
                 onClick={handleViewRecommendation}
@@ -487,7 +509,9 @@ export default function ChatPageContent() {
                   <p className="mt-2 text-sm leading-relaxed text-gray-700">
                     {participantData.proSummaryOpened
                       ? '已達 5 分鐘互動上限。目前需求已確認，請進入推薦結果頁面。'
-                      : proSummaryGateMessage(condition.proactivity)}
+                      : condition.proactivity === 'low'
+                        ? '已達 5 分鐘互動上限，請查看推薦結果。'
+                        : proSummaryGateMessage('high')}
                   </p>
                   {participantData.proSummaryOpened ? (
                     <button
@@ -500,11 +524,15 @@ export default function ChatPageContent() {
                   ) : condition.proactivity === 'low' ? (
                     <button
                       type="button"
-                      data-testid="pro-summary-max-gate-button"
-                      onClick={() => handleOpenSummary('user')}
-                      className="mt-4 w-full rounded-lg border border-slate-400 bg-white px-4 py-3 font-bold text-slate-900"
+                      data-testid="max-time-view-recommendation"
+                      onClick={() => {
+                        setShowMaxTimeDialog(false);
+                        setMaxDialogDismissed(true);
+                        handleViewRecommendation();
+                      }}
+                      className="mt-4 w-full rounded-lg bg-blue-600 px-4 py-3 font-bold text-white"
                     >
-                      {PRO_SUMMARY_LOW_BUTTON}
+                      前往查看推薦結果
                     </button>
                   ) : (
                     <button
