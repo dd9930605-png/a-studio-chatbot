@@ -303,52 +303,206 @@ export function messageMentionsUnavailableStyle(message: string): boolean {
   return UNAVAILABLE_STYLE_TERMS.some((term) => message.includes(term));
 }
 
+export type CatalogCorrectionRule = 'brown' | 'skirt' | 'light' | 'dark';
+
+type AnthropomorphismLevel = 'high' | 'low';
+
 /**
- * 修正模型誤說「沒有棕色／沒有裙子」等庫存其實有的項目。
- * 若回覆含此類錯誤，改為簡短正確回應。
+ * 使用者詢問現有色系時的固定回覆。高低擬人化列出相同的色系，只有措辭不同。
  */
-export function correctFalseUnavailableCatalogClaims(
+export function catalogColorListReply(anthropomorphism: AnthropomorphismLevel): string {
+  if (anthropomorphism === 'high') {
+    return `目前我們網站這 12 套面試穿搭有這些色系喔：${CATALOG_COLOR_SUMMARY}。`;
+  }
+  return `網站現有 12 套面試穿搭的色系：${CATALOG_COLOR_SUMMARY}。`;
+}
+
+/**
+ * 庫存更正的固定回覆。同一條規則的高低擬人化版本資訊相同（有哪些商品、記下偏好、是否追問），只有措辭不同。
+ */
+const CATALOG_CORRECTION_REPLIES: Record<
+  CatalogCorrectionRule,
+  Record<AnthropomorphismLevel, string>
+> = {
+  brown: {
+    high: '我們網站有咖啡色、深棕、棕色的單品喔，可以往這個色系聊面試穿搭。你對棕色／咖啡色的偏好我記下來了～你比較希望整體偏穩重，還是再柔和一點呢？',
+    low: '本網站有咖啡色、深棕、棕色等單品，可從此色系討論面試穿搭。已納入條件：棕色／咖啡色偏好。請選擇整體印象：偏穩重或較柔和。',
+  },
+  skirt: {
+    high: '我們網站有及膝裙的面試搭配喔，可以當作裙裝方案。你想穿裙子的偏好我記下來了～你比較希望給人專業俐落，還是柔和親和的印象呢？',
+    low: '本網站有及膝裙的面試搭配，可作為裙裝方案。已納入條件：裙裝偏好。請選擇希望呈現的印象：專業俐落或柔和親和。',
+  },
+  light: {
+    high: '我們網站有淺色系的單品喔，像是白色、米白、淺藍，可以往這個色系聊面試穿搭。你對淺色的偏好我記下來了～',
+    low: '本網站有淺色系單品（例如白色、米白、淺藍），可從此色系討論面試穿搭。已納入條件：淺色偏好。',
+  },
+  dark: {
+    high: '我們網站有深色系的單品喔，像是黑色、深灰、深藍、深棕，可以往這個色系聊面試穿搭。你對深色的偏好我記下來了～',
+    low: '本網站有深色系單品（例如黑色、深灰、深藍、深棕），可從此色系討論面試穿搭。已納入條件：深色偏好。',
+  },
+};
+
+export function catalogCorrectionReply(
+  rule: CatalogCorrectionRule,
+  anthropomorphism: AnthropomorphismLevel,
+): string {
+  return CATALOG_CORRECTION_REPLIES[rule][anthropomorphism];
+}
+
+const DENIAL =
+  '(?:沒有|沒賣|沒在賣|並無|尚無|暫無|查無|目前無|網站無|無庫存|無現貨|沒提供|不提供|未提供|無法提供|沒販售|不販售|未販售|不包含|不包括|找不到)';
+/** 「沒有」與品項之間允許出現的字，例如「沒有提供任何棕色」。 */
+const DENIAL_LEAD = '(?:提供|販售|賣|任何|這類|這種|這個|(?:你|您)(?:說|要|想要|提到|想找|想穿)的)';
+/** 品項之後、子句結束之前允許出現的字，例如「沒有深色系的單品喔」。 */
+const ITEM_TAIL =
+  '(?:色系|系|的|單品|商品|衣服|服裝|服飾|款式|款|穿搭|搭配|選項|選擇|方案|可以選|可選|這個顏色|這種顏色|類型|喔|哦|噢|呢|唷|耶|了|啦|囉|～|~|\\s)';
+const LIST_SEPARATOR = '(?:、|或是|或者|或|和|與|及|跟|／|/)';
+/** 並列在同一個「沒有」之下的其他顏色或單品，例如「沒有紅色、棕色」。 */
+const LIST_ITEM = '[^，,。、或和與及跟／/！!？?；;：:\\s]{0,5}(?:色系|色|棕|裙子|裙裝|裙|褲)';
+/** 品項與「沒有」之間允許出現的字，例如「棕色的單品本網站目前沒有」。 */
+const SUBJECT_TAIL =
+  '(?:色系|系|的話|的部分|這部分|方面|的|單品|商品|衣服|服裝|款式|穿搭|搭配|選項|方案|這個顏色|這類)';
+const SITE_FILLER =
+  '(?:目前|現在|暫時|本網站|這個網站|網站|我們|這裡|這邊|A\\.STUDIO|庫存|商品池|上|裡|中|是|並|都|真的|恐怕|可能|還|就|則|確實|\\s)';
+/** 「沒有」之後、子句結束之前允許出現的字；出現其他受詞就代表否定的是別的東西。 */
+const DENIAL_TAIL =
+  '(?:提供|販售|賣|庫存|現貨|貨|商品|單品|款式|選項|這類|相關|可以選|可選|喔|哦|噢|呢|唷|耶|了|啦|囉|～|~|的|\\s)';
+const TOPIC_LEAD = '(?:關於|至於|說到|如果是|若是)?(?:(?:你|您)(?:說|要|想要|提到|想找|想穿)的)?';
+
+/** 這些字出現在「沒有」之前，代表不是在陳述網站沒有該商品（否定的否定、假設、疑問）。 */
+const NOT_A_CLAIM = /不是|並非|不代表|不會|如果|假如|假設|要是|即使|就算|萬一|是否|是不是|有沒有|會不會|擔心|以為|若/;
+/** 「告訴你」「幫你」裡的「你」是受詞，不代表句子在說使用者自己。 */
+const USER_AS_OBJECT = /(?:告訴|跟|和|給|提醒|通知|幫|為|替|讓|回覆)(?:你|您)/g;
+const USER_AS_SUBJECT = /(?:你|您)(?!(?:說|要|想要|提到|想找|想穿)的)/;
+const SITE_AS_SUBJECT = /網站|我們|這裡|這邊|庫存|A\.STUDIO|商品/;
+/** 色系規則：句子主題是某個單品時（「領帶目前沒有深色的」），否定的是該單品的顏色，不是整個色系。 */
+const SPECIFIC_GARMENT = /領帶|襯衫|上衣|外套|外搭|西裝|背心|針織|毛衣|T恤|褲|裙|鞋|包|配件|飾品/;
+const CLAUSE_DELIMITER = /([，,。！!？?；;：:\n]+|但是|不過|可是|然而|而且|所以|因此)/;
+/** 網站沒有的裙型；先遮掉，避免「沒有迷你裙」被當成否定裙子。 */
+const UNAVAILABLE_SKIRT_TYPES = /迷你裙子?|長裙子?|短裙子?|百褶裙子?|拖地裙子?/g;
+
+interface CatalogClaimRule {
+  rule: CatalogCorrectionRule;
+  userTerm: RegExp;
+  replyTerm: string;
+}
+
+const CATALOG_CLAIM_RULES: CatalogClaimRule[] = [
+  { rule: 'brown', userTerm: /棕色|咖啡色|深棕|咖啡/, replyTerm: '(?:棕色|咖啡色|深棕)' },
+  { rule: 'skirt', userTerm: /裙/, replyTerm: '(?:及膝裙|裙子|裙裝)' },
+  { rule: 'light', userTerm: /淺色/, replyTerm: '淺色' },
+  { rule: 'dark', userTerm: /深色/, replyTerm: '深色' },
+];
+
+interface ClaimMatchers {
+  /** 「沒有…棕色…」直到子句結束 */
+  forward: RegExp;
+  /** 「棕色…沒有」直到子句結束 */
+  reverse: RegExp;
+  /** 整個子句只有品項，下一個子句才說沒有：「棕色的話，目前沒有」 */
+  topicOnly: RegExp;
+}
+
+const BARE_DENIAL = new RegExp(`^${SITE_FILLER}*${DENIAL}${DENIAL_TAIL}*$`);
+
+function buildClaimMatchers(term: string): ClaimMatchers {
+  return {
+    forward: new RegExp(
+      `${DENIAL}${DENIAL_LEAD}*(?:${LIST_ITEM}${LIST_SEPARATOR})*${term}(?:色系|系)?(?:${LIST_SEPARATOR}${LIST_ITEM})*${ITEM_TAIL}*(?:等${ITEM_TAIL}*)?$`,
+    ),
+    reverse: new RegExp(`${term}${SUBJECT_TAIL}*${SITE_FILLER}*${DENIAL}${DENIAL_TAIL}*$`),
+    topicOnly: new RegExp(`^${TOPIC_LEAD}${term}${SUBJECT_TAIL}*$`),
+  };
+}
+
+const CLAIM_MATCHERS = Object.fromEntries(
+  CATALOG_CLAIM_RULES.map(({ rule, replyTerm }) => [rule, buildClaimMatchers(replyTerm)]),
+) as Record<CatalogCorrectionRule, ClaimMatchers>;
+
+function isStatementAboutSite(prefix: string, rule: CatalogCorrectionRule): boolean {
+  if (NOT_A_CLAIM.test(prefix)) return false;
+  if (
+    USER_AS_SUBJECT.test(prefix.replace(USER_AS_OBJECT, '')) &&
+    !SITE_AS_SUBJECT.test(prefix)
+  ) {
+    return false;
+  }
+  if (rule !== 'skirt' && SPECIFIC_GARMENT.test(prefix)) return false;
+  return true;
+}
+
+function replyDeniesCatalogItem(reply: string, rule: CatalogCorrectionRule): boolean {
+  const matchers = CLAIM_MATCHERS[rule];
+  const parts = reply.replace(UNAVAILABLE_SKIRT_TYPES, '□').split(CLAUSE_DELIMITER);
+  let previousClause = '';
+  let previousDelimiter = '';
+
+  for (let index = 0; index < parts.length; index += 2) {
+    const clause = parts[index].trim();
+    const delimiter = parts[index + 1] ?? '';
+    if (!clause) continue;
+
+    const isQuestion = /^[？?]/.test(delimiter) || /嗎$/.test(clause);
+    if (!isQuestion) {
+      const match = matchers.forward.exec(clause) ?? matchers.reverse.exec(clause);
+      if (match && isStatementAboutSite(clause.slice(0, match.index), rule)) return true;
+
+      if (
+        /^[，,]/.test(previousDelimiter) &&
+        BARE_DENIAL.test(clause) &&
+        matchers.topicOnly.test(previousClause)
+      ) {
+        return true;
+      }
+    }
+
+    previousClause = clause;
+    previousDelimiter = delimiter;
+  }
+
+  return false;
+}
+
+/** 使用者是在排除這個品項（例如「我不喜歡深色」），這時更正句說「已記下偏好」反而是錯的。 */
+function userRejectsTerm(input: string, userTerm: RegExp): boolean {
+  return splitPreferenceClauses(input).some(
+    (clause) => userTerm.test(clause) && hasDislikePolarity(clause),
+  );
+}
+
+function userAsksAboutRule(input: string, { rule, userTerm }: CatalogClaimRule): boolean {
+  if (!userTerm.test(input)) return false;
+  if (rule === 'skirt' && /迷你裙|長裙|拖地裙|百褶裙|短裙/.test(input)) return false;
+  return !userRejectsTerm(input, userTerm);
+}
+
+/**
+ * 使用者提到棕色／裙子／淺色／深色，而回覆卻陳述網站沒有這些現有商品時，回傳對應的更正規則。
+ *
+ * 只在「沒有」直接否定該品項、且句子在品項後就結束時才成立，
+ * 例如「本網站沒有棕色的單品」「裙子的話目前沒有」。以下不算：
+ * - 「沒有」否定的是別的東西：「如果沒有其他偏好，深色系會是…」「淺色系有白色、米白，沒有粉色」
+ * - 否定的是更具體的商品：「沒有深色的裙子」
+ * - 假設、疑問或在說使用者自己：「如果沒有深色的衣服」「您手邊沒有深色的衣服」
+ * - 使用者是在排除該品項：「我不喜歡深色」
+ */
+export function detectFalseUnavailableCatalogClaim(
   reply: string,
   userInput: string,
-): string {
+): CatalogCorrectionRule | null {
   const input = userInput.trim();
   const text = reply.trim();
-  if (!text) return reply;
+  if (!text) return null;
 
-  const userMentionsBrown = /棕色|咖啡色|深棕|咖啡/.test(input);
-  const userMentionsSkirt =
-    /裙/.test(input) && !/迷你裙|長裙|拖地裙|百褶裙|短裙/.test(input);
-  const userMentionsLight = /淺色/.test(input);
-  const userMentionsDark = /深色/.test(input);
-
-  const replyDeniesBrown =
-    /沒有[^。！？\n]{0,16}(棕色|咖啡色|深棕)/.test(text) ||
-    /(棕色|咖啡色|深棕)[^。！？\n]{0,12}沒有/.test(text);
-  const replyDeniesSkirt =
-    /沒有[^。！？\n]{0,16}裙子/.test(text) ||
-    /裙子[^。！？\n]{0,12}沒有/.test(text);
-  const replyDeniesLight =
-    /沒有[^。！？\n]{0,16}淺色/.test(text) || /淺色[^。！？\n]{0,16}沒有/.test(text);
-  const replyDeniesDark =
-    /沒有[^。！？\n]{0,16}深色/.test(text) || /深色[^。！？\n]{0,16}沒有/.test(text);
-
-  if (userMentionsBrown && replyDeniesBrown) {
-    return `本網站有咖啡色、深棕、棕色等單品，可以往這個色系討論面試穿搭。我會把您對棕色／咖啡色的偏好記下來；您比較希望整體偏穩重，還是再柔和一點呢？`;
+  for (const claimRule of CATALOG_CLAIM_RULES) {
+    if (
+      userAsksAboutRule(input, claimRule) &&
+      replyDeniesCatalogItem(text, claimRule.rule)
+    ) {
+      return claimRule.rule;
+    }
   }
-
-  if (userMentionsSkirt && replyDeniesSkirt) {
-    return `本網站有及膝裙的面試搭配（可作裙裝方案）。我會把您想穿裙子的偏好記下來；您比較希望給人專業俐落，還是柔和親和的印象呢？`;
-  }
-
-  if (userMentionsLight && replyDeniesLight) {
-    return `本網站有淺色系單品（例如白色、米白、淺藍），可以往這個色系討論面試穿搭。我會把您對淺色的偏好記下來。`;
-  }
-
-  if (userMentionsDark && replyDeniesDark) {
-    return `本網站有深色系單品（例如黑色、深灰、深藍、深棕），可以往這個色系討論面試穿搭。我會把您對深色的偏好記下來。`;
-  }
-
-  return reply;
+  return null;
 }
 
 export function buildConversationRhythmBlock(): string {

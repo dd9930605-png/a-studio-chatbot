@@ -7,6 +7,8 @@ import { BRAND_LOGO_URL, getConditionShortName, getConditionTheme } from '@/lib/
 import { isProactiveNoteMessage } from '@/lib/proactiveNotes';
 import { extractChatPreferences } from '@/lib/chatPreferences';
 import { ChatMessage, ParticipantData, extractUserMessages } from '@/lib/dataRecorder';
+import type { CatalogCorrectionRule } from '@/lib/catalogBoundaries';
+import type { ReplySource } from '@/lib/replySource';
 import {
   PRO_SUMMARY_CTA_LABEL,
   PRO_SUMMARY_LOW_BUTTON,
@@ -33,6 +35,10 @@ interface ChatApiResponse {
   relevant: boolean;
   reply: string;
   source: 'openai' | 'fallback';
+  replySource?: ReplySource;
+  catalogCorrectionRule?: CatalogCorrectionRule;
+  replacedReply?: string;
+  replacedReplySource?: ReplySource;
 }
 
 function createMessage(
@@ -191,7 +197,15 @@ export function ChatInterface({
       }
 
       const result = (await response.json()) as ChatApiResponse;
-      const botMessage = createMessage('freeChat', 'bot', result.reply);
+      const botMessage: ChatMessage = {
+        ...createMessage('freeChat', 'bot', result.reply),
+        replySource: result.replySource ?? 'unknown',
+        ...(result.replySource === 'catalog_correction' && {
+          catalogCorrectionRule: result.catalogCorrectionRule,
+          replacedReply: result.replacedReply,
+          replacedReplySource: result.replacedReplySource,
+        }),
+      };
       const additions = [userMessage, botMessage];
       const nextUserMessageCount =
         [...participantData.chatLog, userMessage].filter((message) => message.sender === 'user').length;
@@ -199,14 +213,15 @@ export function ChatInterface({
       let proPatch: Partial<ParticipantData> = {};
 
       if (isHighProactivity && nextUserMessageCount >= 2 && !participantData.proSummaryTriggeredOnce) {
-        additions.push(
-          createMessage(
+        additions.push({
+          ...createMessage(
             'freeChat',
             'bot',
             proSummaryCtaMessage(condition.anthropomorphism),
             'proSummaryCta',
           ),
-        );
+          replySource: 'program_fixed',
+        });
         proPatch = {
           proSummaryTriggeredOnce: true,
           proSummaryInitiator: 'ai',
