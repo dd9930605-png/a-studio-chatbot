@@ -1,7 +1,10 @@
 import { Condition } from '@/lib/conditions';
 import { ResponseStep } from '@/lib/aiResponses';
 import { CATALOG_BOTTOM_SUMMARY, CATALOG_COLOR_SUMMARY } from '@/lib/catalogBoundaries';
-import { buildScaleGroundedManipulationBlock } from '@/lib/manipulationScaleRules';
+import {
+  applyAnthropomorphismWording,
+  buildScaleGroundedManipulationBlock,
+} from '@/lib/manipulationScaleRules';
 
 interface BuildSystemPromptParams {
   condition: Condition;
@@ -57,7 +60,7 @@ export function buildFreeChatSystemPrompt({
     condition.anthropomorphism === 'high' ? 'AI 穿搭顧問' : '品牌 AI 穿搭推薦工具';
   const taskRole = condition.anthropomorphism === 'high' ? '面試穿搭顧問' : '面試穿搭推薦工具';
 
-  return `你是「${condition.botName}」，A.STUDIO 線上韓系服飾網站的${roleLabel}，正在協助使用者準備面試穿搭。
+  const prompt = `你是「${condition.botName}」，A.STUDIO 線上韓系服飾網站的${roleLabel}，正在協助使用者準備面試穿搭。
 ${knowledgeBlock}
 ## 對話模式：任務導向自由對話
 - 使用者可以自由描述面試穿搭需求、風格、正式度、顏色、身形或擔憂。
@@ -86,6 +89,8 @@ ${manipulationBlock}
 ## 輸出格式
 僅輸出 JSON，不要 markdown，不要其他文字：
 {"reply":"給使用者的繁體中文回覆"}`;
+
+  return applyAnthropomorphismWording(prompt, condition.anthropomorphism);
 }
 
 export function buildChatSystemPrompt({

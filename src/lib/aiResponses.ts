@@ -283,7 +283,7 @@ function applyTone(response: string, condition: Condition): string {
       .replace(/依我們剛才的對話/g, '依目前對話內容')
       .replace(/我們可以/g, '可')
       .replace(/我們/g, '')
-      .replace(/我理解/g, '已理解')
+      .replace(/^我理解您喜歡這類風格，但/, '')
       .replace(/我會/g, '系統將')
       .replace(/我/g, '系統')
       .replace(/^抱歉，/, '提示：')
