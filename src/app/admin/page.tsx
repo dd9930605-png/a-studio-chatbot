@@ -12,6 +12,12 @@ import {
   downloadParticipantsExcel,
 } from '@/lib/exportParticipants';
 import { getQuestionnaireItemIds } from '@/lib/questionnaire';
+import {
+  REPLY_SOURCES,
+  REPLY_SOURCE_LABELS,
+  resolveReplySource,
+  summarizeReplySources,
+} from '@/lib/replySource';
 
 export default function AdminPage() {
   const [allData, setAllData] = useState<ParticipantData[]>([]);
@@ -559,15 +565,39 @@ export default function AdminPage() {
                 </Section>
 
                 <Section title="聊天紀錄">
+                  <ReplySourceCounts chatLog={selectedParticipant.chatLog} />
                   <div className="max-h-64 space-y-2 overflow-y-auto rounded-lg bg-gray-50 p-4 text-xs">
-                    {selectedParticipant.chatLog.map((msg, idx) => (
-                      <div key={idx} className="border-b pb-2 last:border-b-0">
-                        <p className="text-gray-500">
-                          [{msg.step}] {msg.sender === 'user' ? '用戶' : 'AI'}
-                        </p>
-                        <p className="font-medium text-gray-800">{msg.message}</p>
-                      </div>
-                    ))}
+                    {selectedParticipant.chatLog.map((msg, idx) => {
+                      const replySource = msg.sender === 'bot' ? resolveReplySource(msg) : null;
+                      return (
+                        <div key={idx} className="border-b pb-2 last:border-b-0">
+                          <p className="text-gray-500">
+                            [{msg.step}]{' '}
+                            {msg.sender === 'user' ? '用戶' : msg.sender === 'system' ? '系統' : 'AI'}
+                            {replySource && (
+                              <span
+                                data-testid="reply-source"
+                                className={`ml-2 rounded px-1.5 py-0.5 ${
+                                  replySource === 'gpt'
+                                    ? 'bg-green-100 text-green-800'
+                                    : 'bg-amber-100 text-amber-900'
+                                }`}
+                              >
+                                {REPLY_SOURCE_LABELS[replySource]}
+                              </span>
+                            )}
+                          </p>
+                          <p className="font-medium text-gray-800">{msg.message}</p>
+                          {msg.replacedReply && (
+                            <p className="mt-1 text-gray-500">
+                              被換掉的原回覆（{msg.catalogCorrectionRule ?? '—'}，來源：
+                              {REPLY_SOURCE_LABELS[msg.replacedReplySource ?? 'unknown']}）：
+                              {msg.replacedReply}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </Section>
               </div>
@@ -578,6 +608,19 @@ export default function AdminPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+function ReplySourceCounts({ chatLog }: { chatLog: ParticipantData['chatLog'] }) {
+  const summary = summarizeReplySources(chatLog);
+  return (
+    <p data-testid="reply-source-counts" className="text-xs text-gray-600">
+      AI 訊息共 {summary.total} 則：
+      {REPLY_SOURCES.filter((source) => summary.counts[source] > 0)
+        .map((source) => `${REPLY_SOURCE_LABELS[source]} ${summary.counts[source]}`)
+        .join('、') || '—'}
+      （備援合計 {summary.backup}）
+    </p>
   );
 }
 

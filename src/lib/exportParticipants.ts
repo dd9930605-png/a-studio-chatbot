@@ -6,6 +6,7 @@ import {
   normalizeParticipantData,
 } from '@/lib/dataRecorder';
 import { getQuestionnaireItemIds } from '@/lib/questionnaire';
+import { summarizeReplySources } from '@/lib/replySource';
 
 const METADATA_COLUMNS = [
   'participantId',
@@ -83,6 +84,18 @@ const METADATA_COLUMNS = [
   'usualStyleInput',
   'allUserMessages',
   'allBotMessages',
+  'aiReplySources',
+  'aiReplyCount',
+  'aiReplyGptCount',
+  'aiReplyBackupCount',
+  'aiReplyApiErrorCount',
+  'aiReplyMissingApiKeyCount',
+  'aiReplyParseErrorCount',
+  'aiReplyColorShortcutCount',
+  'aiReplyCatalogCorrectionCount',
+  'aiReplyProgramFixedCount',
+  'aiReplyUnknownSourceCount',
+  'catalogCorrectionDetails',
   'invalidInputCount',
   'invalidInputs',
   'correctedInputs',
@@ -91,6 +104,7 @@ const METADATA_COLUMNS = [
 
 export function flattenParticipantForExport(participant: ParticipantData): Record<string, string | number> {
   const data = normalizeParticipantData(participant);
+  const replySources = summarizeReplySources(data.chatLog);
   const row: Record<string, string | number> = {
     participantId: data.participantId,
     conditionId: data.conditionId,
@@ -174,6 +188,24 @@ export function flattenParticipantForExport(participant: ParticipantData): Recor
     usualStyleInput: data.answers.usualStyleInput,
     allUserMessages: extractUserMessages(data).join(' | '),
     allBotMessages: extractBotMessages(data).join(' | '),
+    aiReplySources: replySources.sequence.join(' | '),
+    aiReplyCount: replySources.total,
+    aiReplyGptCount: replySources.counts.gpt,
+    aiReplyBackupCount: replySources.backup,
+    aiReplyApiErrorCount: replySources.counts.api_error,
+    aiReplyMissingApiKeyCount: replySources.counts.missing_api_key,
+    aiReplyParseErrorCount: replySources.counts.parse_error,
+    aiReplyColorShortcutCount: replySources.counts.color_shortcut,
+    aiReplyCatalogCorrectionCount: replySources.counts.catalog_correction,
+    aiReplyProgramFixedCount: replySources.counts.program_fixed,
+    aiReplyUnknownSourceCount: replySources.counts.unknown,
+    catalogCorrectionDetails: data.chatLog
+      .filter((message) => message.replySource === 'catalog_correction')
+      .map(
+        (message) =>
+          `${message.catalogCorrectionRule ?? ''}（原回覆來源 ${message.replacedReplySource ?? ''}）:${message.replacedReply ?? ''}`,
+      )
+      .join(' | '),
     invalidInputCount: data.invalidInputCount,
     invalidInputs: data.invalidInputs.map((item) => `${item.step}:${item.message}`).join(' | '),
     correctedInputs: data.correctedInputs.map((item) => `${item.step}:${item.message}`).join(' | '),
