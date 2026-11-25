@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Condition } from '@/lib/conditions';
+import { EmmaPresence, EmmaPresenceState } from '@/components/EmmaPresence';
 import { getConditionTheme } from '@/lib/conditionTheme';
 import { isProactiveNoteMessage } from '@/lib/proactiveNotes';
 import { extractChatPreferences } from '@/lib/chatPreferences';
@@ -80,11 +81,22 @@ export function ChatInterface({
 }: ChatInterfaceProps) {
   const [inputValue, setInputValue] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isResponding, setIsResponding] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [summaryText, setSummaryText] = useState('');
+  const respondingTimeoutRef = useRef<number | null>(null);
   const theme = getConditionTheme(condition);
   const isHighProactivity = condition.proactivity === 'high';
+
+  useEffect(
+    () => () => {
+      if (respondingTimeoutRef.current !== null) {
+        window.clearTimeout(respondingTimeoutRef.current);
+      }
+    },
+    [],
+  );
 
   const userMessageCount =
     participantData.userMessageCount || extractUserMessages(participantData).length;
@@ -132,6 +144,11 @@ export function ChatInterface({
     const answer = inputValue.trim();
     if (!answer || isSubmitting || chatLocked) return;
 
+    if (respondingTimeoutRef.current !== null) {
+      window.clearTimeout(respondingTimeoutRef.current);
+      respondingTimeoutRef.current = null;
+    }
+    setIsResponding(false);
     setIsSubmitting(true);
     setSubmitError('');
 
@@ -215,6 +232,11 @@ export function ChatInterface({
 
       onUpdateData(updatedData);
       setInputValue('');
+      setIsResponding(true);
+      respondingTimeoutRef.current = window.setTimeout(() => {
+        setIsResponding(false);
+        respondingTimeoutRef.current = null;
+      }, 1500);
     } catch {
       setSubmitError('送出失敗，請稍後再試。');
     } finally {
@@ -225,9 +247,19 @@ export function ChatInterface({
   const submitButtonClass = theme.isPersona
     ? 'rounded-xl bg-rose-500 px-6 py-3 font-bold text-white transition hover:bg-rose-600 disabled:cursor-not-allowed disabled:opacity-50'
     : 'rounded-md bg-slate-700 px-6 py-3 font-mono font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50';
+  const emmaState: EmmaPresenceState = isSubmitting
+    ? 'thinking'
+    : inputValue.trim().length > 0
+      ? 'listening'
+      : isResponding
+        ? 'responding'
+        : 'idle';
 
   return (
     <div className={`flex flex-col ${theme.chatContainerClass}`}>
+      <div className={theme.isPersona ? 'grid min-w-0 lg:grid-cols-[minmax(17rem,36%)_1fr]' : 'min-w-0'}>
+        {theme.isPersona && <EmmaPresence state={emmaState} />}
+        <div className="flex min-w-0 flex-col">
       <div
         className={`mx-4 mt-4 rounded-lg border px-3 py-2 text-sm ${
           metTime && metMessages
@@ -354,6 +386,8 @@ export function ChatInterface({
           ))}
         </div>
       </OverlayModal>
+        </div>
+      </div>
     </div>
   );
 }

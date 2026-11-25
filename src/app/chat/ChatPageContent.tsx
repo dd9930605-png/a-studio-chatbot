@@ -390,7 +390,9 @@ export default function ChatPageContent() {
 
         {currentStep === 'chat' && (
           <div className="space-y-4">
-            <BotHeader condition={condition} variant="compact" />
+            {condition.anthropomorphism === 'low' && (
+              <BotHeader condition={condition} variant="compact" />
+            )}
             {timingNotice && (
               <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
                 {timingNotice}
