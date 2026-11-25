@@ -229,8 +229,8 @@ export function ChatInterface({
   };
 
   const submitButtonClass = theme.isPersona
-    ? 'rounded-xl bg-rose-500 px-6 py-3 font-bold text-white transition hover:bg-rose-600 disabled:cursor-not-allowed disabled:opacity-50'
-    : 'rounded-xl bg-neutral-900 px-6 py-3 font-bold text-white transition hover:bg-neutral-700 disabled:cursor-not-allowed disabled:opacity-50';
+    ? 'shrink-0 whitespace-nowrap rounded-xl bg-rose-500 px-6 py-3 font-bold text-white transition hover:bg-rose-600 disabled:cursor-not-allowed disabled:opacity-50'
+    : 'shrink-0 whitespace-nowrap rounded-xl bg-neutral-900 px-6 py-3 font-bold text-white transition hover:bg-neutral-700 disabled:cursor-not-allowed disabled:opacity-50';
   const emmaState: EmmaPresenceState = isSubmitting
     ? 'thinking'
     : inputValue.trim().length > 0
@@ -371,7 +371,7 @@ export function ChatInterface({
             value={inputValue}
             onChange={(event) => setInputValue(event.target.value)}
             disabled={isSubmitting || chatLocked}
-            className={`flex-1 border px-4 py-3 focus:outline-none disabled:bg-gray-100 ${
+            className={`min-w-0 flex-1 border px-4 py-3 focus:outline-none disabled:bg-gray-100 ${
               theme.isPersona
                 ? 'rounded-xl border-rose-200 focus:border-rose-400'
                 : 'rounded-xl border-neutral-300 focus:border-neutral-500'
