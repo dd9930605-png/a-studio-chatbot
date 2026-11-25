@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { BotHeader } from '@/components/BotHeader';
 import { ChatInterface } from '@/components/ChatInterface';
+import { EmmaPresence } from '@/components/EmmaPresence';
 import { OverlayModal } from '@/components/OverlayModal';
 import { QuickPreferenceStep } from '@/components/QuickPreferenceStep';
 import { RecommendationCard } from '@/components/RecommendationCard';
@@ -396,7 +397,23 @@ export default function ChatPageContent() {
 
         {currentStep === 'greeting' && (
           <div className="space-y-6 py-8">
-            <BotHeader condition={condition} greeting={condition.greetingText} />
+            {condition.anthropomorphism === 'high' ? (
+              <div
+                data-testid="emma-greeting"
+                className="grid overflow-hidden rounded-2xl border border-rose-100 bg-white shadow-lg lg:grid-cols-[minmax(17rem,36%)_1fr]"
+              >
+                <EmmaPresence state="idle" />
+                <div className="flex flex-col justify-center p-6 sm:p-10">
+                  <p className="text-xs font-semibold text-rose-600">你的專屬穿搭顧問</p>
+                  <h1 className="mt-1 text-2xl font-bold text-rose-950">穿搭顧問 Emma</h1>
+                  <p className="mt-4 break-words text-base leading-relaxed text-rose-900 sm:text-lg">
+                    {condition.greetingText}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <BotHeader condition={condition} greeting={condition.greetingText} />
+            )}
             <div className="rounded-xl border border-dashed border-gray-300 bg-white/80 p-6 text-center text-sm text-gray-600">
               正在為你準備對話…請先確認上方的 AI 顧問類型
             </div>
