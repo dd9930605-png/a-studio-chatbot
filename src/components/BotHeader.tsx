@@ -29,7 +29,9 @@ export function BotHeader({ condition, greeting, variant = 'full' }: BotHeaderPr
   };
 
   return (
-    <div className={`shadow-lg ${theme.headerClass} ${isCompact ? 'p-4' : 'p-5 sm:p-6'}`}>
+    <div
+      className={`${theme.isPersona ? 'shadow-lg' : 'shadow-sm'} ${theme.headerClass} ${isCompact ? 'p-4' : 'p-5 sm:p-6'}`}
+    >
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
         <div className="flex shrink-0 justify-center sm:justify-start">
           <img
@@ -44,13 +46,13 @@ export function BotHeader({ condition, greeting, variant = 'full' }: BotHeaderPr
           <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
             <h1
               className={`text-center text-xl font-bold sm:text-left sm:text-2xl ${
-                theme.isPersona ? 'text-rose-950' : 'font-mono text-slate-900'
+                theme.isPersona ? 'text-rose-950' : 'tracking-wide text-neutral-900'
               }`}
             >
               {displayName}
             </h1>
             <span className={theme.headerBadgeClass}>
-              {theme.isPersona ? '個人化顧問' : '自動化系統'}
+              {theme.isPersona ? '個人化顧問' : 'AI 推薦工具'}
             </span>
           </div>
 
@@ -58,7 +60,7 @@ export function BotHeader({ condition, greeting, variant = 'full' }: BotHeaderPr
             <>
               <p
                 className={`mt-1 text-center text-xs font-semibold sm:text-left ${
-                  theme.isPersona ? 'text-rose-600' : 'font-mono uppercase tracking-wider text-slate-500'
+                  theme.isPersona ? 'text-rose-600' : 'text-neutral-500'
                 }`}
               >
                 {theme.headerSubtitle}
@@ -66,7 +68,7 @@ export function BotHeader({ condition, greeting, variant = 'full' }: BotHeaderPr
               {greeting && (
                 <p
                   className={`mt-3 break-words text-center text-sm leading-relaxed sm:text-left sm:text-base ${
-                    theme.isPersona ? 'text-rose-900' : 'text-slate-800'
+                    theme.isPersona ? 'text-rose-900' : 'text-neutral-800'
                   }`}
                 >
                   {greeting}
@@ -78,10 +80,10 @@ export function BotHeader({ condition, greeting, variant = 'full' }: BotHeaderPr
           {isCompact && (
             <p
               className={`mt-2 text-center text-xs sm:text-left ${
-                theme.isPersona ? 'text-rose-700' : 'font-mono text-slate-500'
+                theme.isPersona ? 'text-rose-700' : 'text-neutral-500'
               }`}
             >
-              {theme.isPersona ? '正在與你對話中' : '對話進行中 · 系統記錄中'}
+              {theme.isPersona ? '正在與你對話中' : '面試穿搭推薦'}
             </p>
           )}
         </div>

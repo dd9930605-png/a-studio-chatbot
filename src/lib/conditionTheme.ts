@@ -14,6 +14,9 @@ export interface ConditionTheme {
   recommendationAccent: string;
 }
 
+/** 低擬人化組的頭像：品牌標誌，不含人臉或機器人五官。 */
+export const BRAND_LOGO_URL = '/images/avatars/astudio-logo.svg';
+
 export function getConditionTheme(condition: Condition): ConditionTheme {
   const isPersona = condition.anthropomorphism === 'high';
 
@@ -35,14 +38,14 @@ export function getConditionTheme(condition: Condition): ConditionTheme {
 
   return {
     isPersona: false,
-    headerClass: 'rounded-lg border-2 border-slate-300 bg-gradient-to-br from-slate-100 via-slate-50 to-slate-200',
-    headerBadgeClass: 'rounded-md bg-slate-700 px-3 py-1 text-xs font-mono font-semibold uppercase tracking-wider text-slate-100',
-    headerSubtitle: 'AI RECOMMENDATION SYSTEM v2.0',
-    avatarClass: 'shrink-0 rounded-lg border-2 border-slate-400 bg-white object-cover object-center',
-    chatBotBubbleClass: 'rounded-md bg-slate-100 text-slate-900 border border-slate-300 font-medium',
-    chatBotNoteClass: 'rounded-md bg-slate-200 text-slate-900 border border-slate-400 font-mono text-sm',
-    chatUserBubbleClass: 'rounded-md bg-slate-700 text-white',
-    chatContainerClass: 'rounded-lg border-2 border-slate-300 bg-white shadow-md',
+    headerClass: 'rounded-xl border border-neutral-200 bg-white',
+    headerBadgeClass: 'rounded-full border border-neutral-300 px-2.5 py-0.5 text-xs font-medium text-neutral-600',
+    headerSubtitle: '面試穿搭推薦',
+    avatarClass: 'shrink-0 rounded-lg border border-neutral-200 bg-neutral-900 object-cover object-center',
+    chatBotBubbleClass: 'rounded-xl bg-neutral-100 text-neutral-900 border border-neutral-200',
+    chatBotNoteClass: 'rounded-xl bg-neutral-100 text-neutral-900 border border-neutral-300 text-sm',
+    chatUserBubbleClass: 'rounded-xl bg-neutral-900 text-white',
+    chatContainerClass: 'rounded-xl border border-neutral-200 bg-white shadow-sm',
     recommendationCardClass: 'rounded-lg border-2 border-slate-300 bg-slate-50 shadow-md',
     recommendationAccent: 'text-slate-700',
   };
@@ -55,16 +58,21 @@ export function getConditionAvatarUrl(condition: Condition): string {
   if (condition.avatarType === 'persona') {
     return '/images/avatars/emma.jpg';
   }
-  return '/images/avatars/robot.svg';
+  return BRAND_LOGO_URL;
 }
 
 export function getConditionAvatarFallbackUrl(condition: Condition): string {
   if (condition.avatarType === 'persona') {
     return '/images/avatars/emma.svg';
   }
-  return '/images/avatars/robot.svg';
+  return BRAND_LOGO_URL;
 }
 
 export function getConditionDisplayName(condition: Condition): string {
-  return condition.anthropomorphism === 'high' ? '穿搭顧問 Emma' : 'AI 穿搭推薦系統';
+  return condition.anthropomorphism === 'high' ? '穿搭顧問 Emma' : 'A.STUDIO AI';
+}
+
+/** 聊天泡泡上方的短稱呼。 */
+export function getConditionShortName(condition: Condition): string {
+  return condition.anthropomorphism === 'high' ? 'Emma' : 'A.STUDIO AI';
 }

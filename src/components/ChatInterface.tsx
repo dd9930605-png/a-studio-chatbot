@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Condition } from '@/lib/conditions';
 import { EmmaPresence, EmmaPresenceState } from '@/components/EmmaPresence';
-import { getConditionTheme } from '@/lib/conditionTheme';
+import { BRAND_LOGO_URL, getConditionShortName, getConditionTheme } from '@/lib/conditionTheme';
 import { isProactiveNoteMessage } from '@/lib/proactiveNotes';
 import { extractChatPreferences } from '@/lib/chatPreferences';
 import { ChatMessage, ParticipantData, extractUserMessages } from '@/lib/dataRecorder';
@@ -84,6 +84,7 @@ export function ChatInterface({
   const [submitError, setSubmitError] = useState('');
   const respondingTimeoutRef = useRef<number | null>(null);
   const theme = getConditionTheme(condition);
+  const botShortName = getConditionShortName(condition);
   const isHighProactivity = condition.proactivity === 'high';
 
   useEffect(
@@ -229,7 +230,7 @@ export function ChatInterface({
 
   const submitButtonClass = theme.isPersona
     ? 'rounded-xl bg-rose-500 px-6 py-3 font-bold text-white transition hover:bg-rose-600 disabled:cursor-not-allowed disabled:opacity-50'
-    : 'rounded-md bg-slate-700 px-6 py-3 font-mono font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50';
+    : 'rounded-xl bg-neutral-900 px-6 py-3 font-bold text-white transition hover:bg-neutral-700 disabled:cursor-not-allowed disabled:opacity-50';
   const emmaState: EmmaPresenceState = isSubmitting
     ? 'thinking'
     : inputValue.trim().length > 0
@@ -294,15 +295,21 @@ export function ChatInterface({
             ) : (
             <div
               key={`${message.timestamp}-${index}`}
-              className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+              className={`flex gap-2 ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
             >
+              {message.sender === 'bot' && !theme.isPersona && (
+                <img src={BRAND_LOGO_URL} alt="" className={`${theme.avatarClass} mt-1 h-7 w-7`} />
+              )}
               <div
                 className={`max-w-[85%] px-4 py-3 ${
                   message.sender === 'user' ? theme.chatUserBubbleClass : getBotBubbleClass(message.message, theme)
                 }`}
                 data-testid={message.kind === 'proSummaryCta' ? 'pro-summary-cta' : undefined}
               >
-                <p>{message.message}</p>
+                {message.sender === 'bot' && (
+                  <p className="mb-1 text-xs font-semibold opacity-70">{botShortName}</p>
+                )}
+                <p className="whitespace-pre-line">{message.message}</p>
                 {message.kind === 'proSummaryCta' && (
                   <button
                     type="button"
@@ -317,13 +324,20 @@ export function ChatInterface({
             )
           ))}
 
-        <div className="flex justify-start">
+        <div className="flex justify-start gap-2">
+          {!theme.isPersona && (
+            <img src={BRAND_LOGO_URL} alt="" className={`${theme.avatarClass} mt-1 h-7 w-7`} />
+          )}
           <div className={`max-w-[85%] px-4 py-3 ${theme.chatBotBubbleClass}`}>
             <p className="font-semibold">
-              請自由描述你的面試穿搭需求（風格、正式度、顏色、身形修飾、擔心點都可以）。
+              {theme.isPersona
+                ? '請自由描述你的面試穿搭需求（風格、正式度、顏色、身形修飾、擔心點都可以）。'
+                : '請自由描述面試穿搭需求（風格、正式度、顏色、身形修飾、擔心點都可以）。'}
             </p>
-            <p className={`mt-2 text-xs ${theme.isPersona ? 'text-rose-700' : 'font-mono text-slate-600'}`}>
-              你可以像用 ChatGPT 一樣自由提問，我會根據你的需求持續回應。
+            <p className={`mt-2 text-xs ${theme.isPersona ? 'text-rose-700' : 'text-neutral-600'}`}>
+              {theme.isPersona
+                ? '你可以像用 ChatGPT 一樣自由提問，我會根據你的需求持續回應。'
+                : '可像使用 ChatGPT 一樣自由提問，A.STUDIO AI 會根據需求持續回應。'}
             </p>
           </div>
         </div>
@@ -348,7 +362,7 @@ export function ChatInterface({
 
       <form
         onSubmit={handleSubmit}
-        className={`border-t p-4 ${theme.isPersona ? 'border-rose-100' : 'border-slate-300'}`}
+        className={`border-t p-4 ${theme.isPersona ? 'border-rose-100' : 'border-neutral-200'}`}
       >
         {submitError && <p className="mb-3 rounded-lg bg-red-50 p-3 text-sm text-red-600">{submitError}</p>}
         <div className="flex gap-3">
@@ -360,10 +374,16 @@ export function ChatInterface({
             className={`flex-1 border px-4 py-3 focus:outline-none disabled:bg-gray-100 ${
               theme.isPersona
                 ? 'rounded-xl border-rose-200 focus:border-rose-400'
-                : 'rounded-md border-slate-300 font-mono focus:border-slate-500'
+                : 'rounded-xl border-neutral-300 focus:border-neutral-500'
             }`}
             placeholder={
-              chatLocked ? '已達聊天上限，請查看推薦結果' : isSubmitting ? 'AI 正在思考回覆...' : '請輸入你的回答...'
+              chatLocked
+                ? '已達聊天上限，請查看推薦結果'
+                : isSubmitting
+                  ? theme.isPersona
+                    ? 'Emma 正在思考回覆...'
+                    : '回覆產生中...'
+                  : '請輸入你的回答...'
             }
           />
           <button type="submit" disabled={!inputValue.trim() || isSubmitting || chatLocked} className={submitButtonClass}>
