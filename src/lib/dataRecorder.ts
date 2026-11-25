@@ -13,13 +13,15 @@ export interface ExEvidenceItem {
 /** 結果頁版面（僅測試切換用，不是實驗因子） */
 export type ResultLayoutVersion = 'card' | 'paragraph';
 
+export type DirectCheckLevel = 'high' | 'low';
+
 export interface ChatMessage {
   step: string;
-  sender: 'user' | 'bot';
+  sender: 'user' | 'bot' | 'system';
   message: string;
   timestamp: string;
-  /** proSummaryCta：High Proactivity 在第 2 則使用者訊息後附上的整理入口 */
-  kind?: 'text' | 'proSummaryCta';
+  /** proSummaryCta：High 由 AI 主動附上；proSummaryUserAction：Low 使用者點選紀錄 */
+  kind?: 'text' | 'proSummaryCta' | 'proSummaryUserAction';
 }
 
 export type { PkRoundRecord };
@@ -110,7 +112,7 @@ export interface ParticipantData {
   finalRecommendationVersion: string | null;
   viewedChatLog: boolean;
   viewedChatLogAt: string | null;
-  viewedChatLogFrom: 'recommendation' | 'survey' | '';
+  viewedChatLogFrom: 'recommendation' | 'survey' | 'direct_check' | '';
   surveyPageEnteredAt: string | null;
   /** surprise 組：聊天前預先分派的穿搭（偏好過濾前） */
   surprisePreChatOutfit?: string;
@@ -146,8 +148,20 @@ export interface ParticipantData {
   positiveAId: string;
   positiveBId: string;
   cautionId: string;
-  /** card / paragraph；僅 debug 用途，非實驗因子 */
+  /** 正式固定 card；舊資料可能仍為 paragraph */
   resultLayoutVersion: ResultLayoutVersion | '';
+
+  /* ---------- 直接操弄辨識題（不取代 Questionnaire B） ---------- */
+  directCheckExplainability: DirectCheckLevel | '';
+  directCheckTwoSided: DirectCheckLevel | '';
+  directCheckAnthropomorphism: DirectCheckLevel | '';
+  directCheckProactivity: DirectCheckLevel | '';
+  /** 僅供研究分析，不得顯示給受試者 */
+  directCheckEXCorrect: boolean | null;
+  directCheckTSCorrect: boolean | null;
+  directCheckANCorrect: boolean | null;
+  directCheckPROCorrect: boolean | null;
+  directCheckCompletedAt: string | null;
 
   sessionStartTime: string;
   sessionEndTime: string | null;
@@ -317,6 +331,15 @@ export function initializeParticipantData(
     positiveBId: '',
     cautionId: '',
     resultLayoutVersion: '',
+    directCheckExplainability: '',
+    directCheckTwoSided: '',
+    directCheckAnthropomorphism: '',
+    directCheckProactivity: '',
+    directCheckEXCorrect: null,
+    directCheckTSCorrect: null,
+    directCheckANCorrect: null,
+    directCheckPROCorrect: null,
+    directCheckCompletedAt: null,
     sessionStartTime: new Date().toISOString(),
     sessionEndTime: null,
   };
@@ -392,6 +415,15 @@ export function normalizeParticipantData(raw: ParticipantData): ParticipantData 
     positiveBId: raw.positiveBId ?? '',
     cautionId: raw.cautionId ?? '',
     resultLayoutVersion: raw.resultLayoutVersion ?? '',
+    directCheckExplainability: raw.directCheckExplainability ?? '',
+    directCheckTwoSided: raw.directCheckTwoSided ?? '',
+    directCheckAnthropomorphism: raw.directCheckAnthropomorphism ?? '',
+    directCheckProactivity: raw.directCheckProactivity ?? '',
+    directCheckEXCorrect: raw.directCheckEXCorrect ?? null,
+    directCheckTSCorrect: raw.directCheckTSCorrect ?? null,
+    directCheckANCorrect: raw.directCheckANCorrect ?? null,
+    directCheckPROCorrect: raw.directCheckPROCorrect ?? null,
+    directCheckCompletedAt: raw.directCheckCompletedAt ?? null,
     sessionEndTime: raw.sessionEndTime ?? null,
     invalidInputCount: raw.invalidInputCount ?? 0,
     invalidInputs: raw.invalidInputs ?? [],

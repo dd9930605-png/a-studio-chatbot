@@ -9,7 +9,7 @@ import { isProactiveNoteMessage } from '@/lib/proactiveNotes';
 import { OverlayModal } from '@/components/OverlayModal';
 import { ResultExplanationView } from '@/components/ResultExplanationView';
 import { buildResultContent } from '@/lib/resultContent';
-import { defaultResultLayout } from '@/lib/resultLayout';
+import { ConversationRecap } from '@/components/ConversationRecap';
 
 interface RecommendationReviewToolsProps {
   outfit: Outfit;
@@ -42,11 +42,6 @@ function RecommendationFullContent({
     preferenceColor: participantData?.preferenceColor ?? '',
     userMessages: participantData ? extractUserMessages(participantData) : [],
   });
-  const layout =
-    participantData?.resultLayoutVersion === 'card' || participantData?.resultLayoutVersion === 'paragraph'
-      ? participantData.resultLayoutVersion
-      : defaultResultLayout();
-
   return (
     <div className="space-y-4">
       <div className="text-center">
@@ -65,40 +60,12 @@ function RecommendationFullContent({
         content={content}
         explainability={condition.explainability}
         twoSidedMessage={condition.twoSidedMessage}
-        layout={layout}
       />
       {recommendationText ? <span className="sr-only">{recommendationText}</span> : null}
     </div>
   );
 }
 
-function ChatLogContent({ chatLog }: { chatLog: ChatMessage[] }) {
-  const visibleMessages = chatLog.filter((message) => !isProactiveNoteMessage(message.message));
-
-  if (visibleMessages.length === 0) {
-    return <p className="text-sm text-gray-600">目前沒有可顯示的對話紀錄。</p>;
-  }
-
-  return (
-    <div className="space-y-3">
-      {visibleMessages.map((message, index) => (
-        <div
-          key={`${message.timestamp}-${index}`}
-          className={`rounded-lg px-4 py-3 text-sm leading-relaxed sm:text-base ${
-            message.sender === 'user'
-              ? 'ml-6 bg-slate-800 text-white'
-              : 'mr-6 border border-gray-200 bg-gray-50 text-gray-900'
-          }`}
-        >
-          <p className="mb-1 text-xs font-semibold opacity-70">
-            {message.sender === 'user' ? '您' : 'AI 顧問'}
-          </p>
-          {message.message}
-        </div>
-      ))}
-    </div>
-  );
-}
 
 export function RecommendationReviewTools({
   outfit,
@@ -158,8 +125,16 @@ export function RecommendationReviewTools({
         />
       </OverlayModal>
 
-      <OverlayModal open={chatOpen} title="剛才的對話紀錄" onClose={() => setChatOpen(false)}>
-        <ChatLogContent chatLog={chatLog} />
+      <OverlayModal open={chatOpen} title="完整對話紀錄" size="reading" onClose={() => setChatOpen(false)}>
+        {participantData ? (
+          <ConversationRecap
+            condition={condition}
+            participantData={participantData}
+            chatLog={chatLog}
+          />
+        ) : (
+          <p className="text-sm text-gray-600">目前沒有可顯示的對話紀錄。</p>
+        )}
       </OverlayModal>
     </>
   );

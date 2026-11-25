@@ -7,7 +7,6 @@ import { Outfit } from '@/lib/outfits';
 import {
   ChatMessage,
   ParticipantData,
-  ResultLayoutVersion,
   extractUserMessages,
   generateCompletionCode,
 } from '@/lib/dataRecorder';
@@ -18,6 +17,8 @@ import { OutfitGrid } from '@/components/OutfitGrid';
 import { isProactiveNoteMessage } from '@/lib/proactiveNotes';
 import { buildResultContent } from '@/lib/resultContent';
 import { ResultExplanationView } from '@/components/ResultExplanationView';
+import { DirectManipulationChecks } from '@/components/DirectManipulationChecks';
+import { ConversationRecap } from '@/components/ConversationRecap';
 
 const recommendationSans = Noto_Sans_TC({
   subsets: ['latin'],
@@ -39,35 +40,7 @@ interface RecommendationCardProps {
   chatLog: ChatMessage[];
   onSurveyClick: () => void;
   onViewChatLog?: () => void;
-  resultLayout?: ResultLayoutVersion;
-}
-
-function ChatLogContent({ chatLog }: { chatLog: ChatMessage[] }) {
-  const visibleMessages = chatLog.filter((message) => !isProactiveNoteMessage(message.message));
-
-  if (visibleMessages.length === 0) {
-    return <p className="text-sm text-gray-600">目前沒有可顯示的對話紀錄。</p>;
-  }
-
-  return (
-    <div className="space-y-3">
-      {visibleMessages.map((message, index) => (
-        <div
-          key={`${message.timestamp}-${index}`}
-          className={`rounded-lg px-4 py-3 text-sm leading-relaxed sm:text-base ${
-            message.sender === 'user'
-              ? 'ml-6 bg-slate-800 text-white'
-              : 'mr-6 border border-gray-200 bg-gray-50 text-gray-900'
-          }`}
-        >
-          <p className="mb-1 text-xs font-semibold opacity-70">
-            {message.sender === 'user' ? '您' : 'AI 顧問'}
-          </p>
-          {message.message}
-        </div>
-      ))}
-    </div>
-  );
+  onDirectChecksComplete?: (data: ParticipantData) => void;
 }
 
 export function RecommendationCard({
@@ -78,12 +51,14 @@ export function RecommendationCard({
   chatLog,
   onSurveyClick,
   onViewChatLog,
-  resultLayout = 'card',
+  onDirectChecksComplete,
 }: RecommendationCardProps) {
   const [imageFailed, setImageFailed] = useState(false);
   const [catalogOpen, setCatalogOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
-  const [hasReadExplanation, setHasReadExplanation] = useState(false);
+  const alreadyChecked = Boolean(participantData.directCheckCompletedAt);
+  const [hasReadExplanation, setHasReadExplanation] = useState(alreadyChecked);
+  const [checksDone, setChecksDone] = useState(alreadyChecked);
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle');
 
   const lookNumber = getLookNumberFromOutfitId(outfit.outfitId);
@@ -162,7 +137,6 @@ export function RecommendationCard({
         content={resultContent}
         explainability={condition.explainability}
         twoSidedMessage={condition.twoSidedMessage}
-        layout={resultLayout}
       />
 
       <div className="mt-6 flex flex-col items-stretch gap-2 sm:flex-row sm:justify-center sm:gap-4">
@@ -193,6 +167,16 @@ export function RecommendationCard({
           >
             我已閱讀推薦說明
           </button>
+        ) : !checksDone ? (
+          <DirectManipulationChecks
+            condition={condition}
+            participantData={participantData}
+            onViewChatLog={onViewChatLog}
+            onComplete={(next) => {
+              setChecksDone(true);
+              onDirectChecksComplete?.(next);
+            }}
+          />
         ) : (
           <div className="space-y-5">
             <div className="rounded-xl border border-blue-200 bg-blue-50 px-5 py-6 text-center sm:px-6">
@@ -225,8 +209,12 @@ export function RecommendationCard({
         )}
       </div>
 
-      <OverlayModal open={chatOpen} title="剛才的對話紀錄" onClose={() => setChatOpen(false)}>
-        <ChatLogContent chatLog={chatLog} />
+      <OverlayModal open={chatOpen} title="完整對話紀錄" size="reading" onClose={() => setChatOpen(false)}>
+        <ConversationRecap
+          condition={condition}
+          participantData={participantData}
+          chatLog={chatLog}
+        />
       </OverlayModal>
 
       <OverlayModal

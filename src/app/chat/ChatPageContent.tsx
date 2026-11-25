@@ -1,14 +1,14 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import React, { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { BotHeader } from '@/components/BotHeader';
 import { ChatInterface } from '@/components/ChatInterface';
+import { OverlayModal } from '@/components/OverlayModal';
 import { QuickPreferenceStep } from '@/components/QuickPreferenceStep';
 import { RecommendationCard } from '@/components/RecommendationCard';
 import {
   ParticipantData,
-  ResultLayoutVersion,
   clearParticipantDraft,
   extractUserMessages,
   generateCompletionCode,
@@ -26,9 +26,12 @@ import {
 } from '@/lib/chatPreferences';
 import { isExternalSurveyMode, resolveExternalSurveyUrl } from '@/lib/surveyMode';
 import { QuickPreferences, isQuickPreferencesComplete } from '@/lib/quickPreferences';
-import { proSummaryGateMessage } from '@/lib/needSummary';
+import {
+  PRO_SUMMARY_LOW_BUTTON,
+  applyProSummaryOpen,
+  proSummaryGateMessage,
+} from '@/lib/needSummary';
 import { buildResultContent, buildResultParagraph } from '@/lib/resultContent';
-import { isResultLayoutSwitchEnabled, resolveResultLayout } from '@/lib/resultLayout';
 
 type Step = 'quick' | 'greeting' | 'chat' | 'recommendation';
 
@@ -39,17 +42,17 @@ const MIN_USER_MESSAGES = 3;
 
 export default function ChatPageContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [participantData, setParticipantData] = useState<ParticipantData | null>(null);
   const [condition, setCondition] = useState<ReturnType<typeof getCondition>>(undefined);
   const [currentStep, setCurrentStep] = useState<Step>('quick');
-  const [resultLayout, setResultLayout] = useState<ResultLayoutVersion>(() =>
-    resolveResultLayout(searchParams.get('resultLayout')),
-  );
   const [chatStartedAt, setChatStartedAt] = useState<number | null>(null);
   const [elapsedMs, setElapsedMs] = useState(0);
   const [timingNotice, setTimingNotice] = useState('');
   const [showMaxTimeDialog, setShowMaxTimeDialog] = useState(false);
+  const [maxDialogDismissed, setMaxDialogDismissed] = useState(false);
+  const [summaryOpen, setSummaryOpen] = useState(false);
+  const [summaryText, setSummaryText] = useState('');
+  const summaryGateRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const draft = getParticipantDraft();
@@ -128,11 +131,16 @@ export default function ChatPageContent() {
   useEffect(() => {
     if (currentStep !== 'chat') return;
     // 僅在時間達上限且訊息數也達標時，強制引導查看推薦
-    if (elapsedMs >= MAX_CHAT_MS && canViewRecommendation && !showMaxTimeDialog) {
+    if (
+      elapsedMs >= MAX_CHAT_MS &&
+      canViewRecommendation &&
+      !showMaxTimeDialog &&
+      !maxDialogDismissed
+    ) {
       setShowMaxTimeDialog(true);
       setTimingNotice('已達互動上限（5 分鐘），請查看推薦結果。');
     }
-  }, [currentStep, elapsedMs, canViewRecommendation, showMaxTimeDialog]);
+  }, [currentStep, elapsedMs, canViewRecommendation, showMaxTimeDialog, maxDialogDismissed]);
 
   if (!participantData || !condition) {
     return (
@@ -161,6 +169,7 @@ export default function ChatPageContent() {
 
     if (!participantData.proSummaryOpened) {
       setTimingNotice(proSummaryGateMessage(condition.proactivity));
+      summaryGateRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
 
@@ -258,7 +267,7 @@ export default function ChatPageContent() {
         positiveAId: resultContent.positiveAId,
         positiveBId: resultContent.positiveBId,
         cautionId: resultContent.cautionId,
-        resultLayoutVersion: resultLayout,
+        resultLayoutVersion: 'card',
       };
     }
 
@@ -358,12 +367,18 @@ export default function ChatPageContent() {
     setCurrentStep('greeting');
   };
 
-  const switchResultLayout = (next: ResultLayoutVersion) => {
-    if (!isResultLayoutSwitchEnabled()) return;
-    setResultLayout(next);
-    const url = new URL(window.location.href);
-    url.searchParams.set('resultLayout', next);
-    window.history.replaceState(null, '', `${url.pathname}${url.search}`);
+  const handleDirectChecksComplete = (next: ParticipantData) => {
+    setParticipantData(next);
+    saveParticipantDraft(next);
+    void saveParticipantData(next);
+  };
+
+  const handleOpenSummary = (initiator: 'ai' | 'user') => {
+    const updated = applyProSummaryOpen(participantData, initiator);
+    setParticipantData(updated);
+    saveParticipantDraft(updated);
+    setSummaryText(updated.proSummaryContent);
+    setSummaryOpen(true);
   };
 
   const missingHints: string[] = [];
@@ -405,6 +420,7 @@ export default function ChatPageContent() {
                 setParticipantData(data);
                 saveParticipantDraft(data);
               }}
+              onOpenSummary={handleOpenSummary}
               chatLocked={chatLocked}
               minChatMs={MIN_CHAT_MS}
               maxChatMs={MAX_CHAT_MS}
@@ -436,9 +452,25 @@ export default function ChatPageContent() {
                 </p>
               )}
               {canViewRecommendation && !participantData.proSummaryOpened && (
-                <p className="mt-2 text-sm font-medium text-slate-800">
-                  {proSummaryGateMessage(condition.proactivity)}
-                </p>
+                <div
+                  ref={summaryGateRef}
+                  data-testid="pro-summary-gate"
+                  className="mt-3 rounded-lg border border-slate-300 bg-slate-50 px-4 py-3"
+                >
+                  <p className="text-sm font-medium leading-relaxed text-slate-800">
+                    {proSummaryGateMessage(condition.proactivity)}
+                  </p>
+                  {condition.proactivity === 'low' && (
+                    <button
+                      type="button"
+                      data-testid="pro-summary-gate-button"
+                      onClick={() => handleOpenSummary('user')}
+                      className="mt-3 w-full rounded-lg border border-slate-400 bg-white px-4 py-3 text-sm font-bold text-slate-900"
+                    >
+                      {PRO_SUMMARY_LOW_BUTTON}
+                    </button>
+                  )}
+                </div>
               )}
               <button
                 type="button"
@@ -451,12 +483,12 @@ export default function ChatPageContent() {
             </div>
 
             {showMaxTimeDialog && canViewRecommendation && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+              <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50 px-4">
                 <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl">
                   <h3 className="text-lg font-bold text-gray-900">已達互動上限</h3>
                   <p className="mt-2 text-sm leading-relaxed text-gray-700">
                     {participantData.proSummaryOpened
-                      ? '你已完成 5 分鐘互動，為維持實驗一致性，現在請進入推薦結果頁面。'
+                      ? '已達 5 分鐘互動上限。目前需求已確認，請進入推薦結果頁面。'
                       : proSummaryGateMessage(condition.proactivity)}
                   </p>
                   {participantData.proSummaryOpened ? (
@@ -467,10 +499,22 @@ export default function ChatPageContent() {
                     >
                       前往查看推薦結果
                     </button>
+                  ) : condition.proactivity === 'low' ? (
+                    <button
+                      type="button"
+                      data-testid="pro-summary-max-gate-button"
+                      onClick={() => handleOpenSummary('user')}
+                      className="mt-4 w-full rounded-lg border border-slate-400 bg-white px-4 py-3 font-bold text-slate-900"
+                    >
+                      {PRO_SUMMARY_LOW_BUTTON}
+                    </button>
                   ) : (
                     <button
                       type="button"
-                      onClick={() => setShowMaxTimeDialog(false)}
+                      onClick={() => {
+                        setShowMaxTimeDialog(false);
+                        setMaxDialogDismissed(true);
+                      }}
                       className="mt-4 w-full rounded-lg bg-slate-700 px-4 py-3 font-bold text-white"
                     >
                       返回確認
@@ -479,26 +523,28 @@ export default function ChatPageContent() {
                 </div>
               </div>
             )}
+
+            <OverlayModal
+              open={summaryOpen}
+              title="目前需求整理"
+              onClose={() => setSummaryOpen(false)}
+            >
+              <div data-testid="pro-summary-board" className="space-y-3">
+                {summaryText.split('\n').map((line) => (
+                  <p
+                    key={line}
+                    className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-relaxed text-slate-900 sm:text-base"
+                  >
+                    {line}
+                  </p>
+                ))}
+              </div>
+            </OverlayModal>
           </div>
         )}
 
         {currentStep === 'recommendation' && displayOutfit && (
           <div className="space-y-3">
-            {isResultLayoutSwitchEnabled() && (
-              <div className="flex flex-wrap items-center justify-end gap-2 text-xs text-slate-500" data-testid="result-layout-switch">
-                <span>版面預覽（測試用，正式實驗不會顯示）</span>
-                <button type="button" onClick={() => switchResultLayout('card')} className="rounded border border-slate-300 px-2 py-1">
-                  卡片
-                </button>
-                <button
-                  type="button"
-                  onClick={() => switchResultLayout('paragraph')}
-                  className="rounded border border-slate-300 px-2 py-1"
-                >
-                  段落
-                </button>
-              </div>
-            )}
             <RecommendationCard
               outfit={displayOutfit}
               condition={condition}
@@ -507,7 +553,7 @@ export default function ChatPageContent() {
               chatLog={participantData.chatLog}
               onSurveyClick={handleSurveyClick}
               onViewChatLog={handleViewChatLog}
-              resultLayout={resultLayout}
+              onDirectChecksComplete={handleDirectChecksComplete}
             />
           </div>
         )}

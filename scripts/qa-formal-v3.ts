@@ -21,15 +21,18 @@ import {
   countSentences,
   listLookResultOutfitIds,
 } from '../src/lib/resultContent';
-import { resolveResultLayout } from '../src/lib/resultLayout';
+import { isResultLayoutSwitchEnabled, resolveResultLayout } from '../src/lib/resultLayout';
 import { describeResultPageModules } from '../src/lib/recommendationText';
 import { buildFreeChatSystemPrompt } from '../src/lib/botPrompts';
 import { generateFreeChatFallbackReply } from '../src/lib/aiResponses';
 import {
   emptyChatPreferences,
   extractChatPreferences,
+  outfitConflictsWithPreferences,
+  scoreOutfitForPreferences,
   selectSurpriseOutfitBPlus,
 } from '../src/lib/chatPreferences';
+import { getLookFeatures } from '../src/data/lookFeatures';
 
 function chars(text: string): number {
   return Array.from(text).length;
@@ -100,16 +103,29 @@ assert.ok(insufficient.evidenceItems.every((item) => item.source === 'scenario')
 assert.doesNotMatch(insufficient.userNeed1, /你說|你選擇|你在對話中/);
 console.log('PASS insufficient info uses scenario fallback without fake quotes');
 
-const chatNeed = buildResultContent({
+const chatNeedMismatch = buildResultContent({
   outfit: getOutfit('M4')!,
   preferenceFormality: 'formal',
   preferenceImpression: 'none',
   preferenceColor: 'dark',
   userMessages: ['我想穿淺色'],
 });
+assert.doesNotMatch(
+  `${chatNeedMismatch.userNeed1}${chatNeedMismatch.userNeed2}`,
+  /淺色/,
+);
+assert.match(`${chatNeedMismatch.userNeed1}${chatNeedMismatch.userNeed2}`, /偏正式|面試需要/);
+console.log('PASS EX drops chat evidence that contradicts the final Look');
+
+const chatNeed = buildResultContent({
+  outfit: getOutfit('F1')!,
+  preferenceFormality: 'none',
+  preferenceImpression: 'none',
+  preferenceColor: 'none',
+  userMessages: ['我想穿淺色'],
+});
 assert.match(chatNeed.userNeed1, /你在對話中提到希望淺色系/);
 assert.equal(chatNeed.evidenceItems[0]?.source, 'chat');
-assert.match(chatNeed.userNeed2, /你選擇：偏正式/);
 console.log('PASS EX source priority is chat then quick');
 
 assert.equal(listLookResultOutfitIds().length, 12);
@@ -203,7 +219,10 @@ console.log('PASS result modules ignore AN and PRO');
 assert.equal(proSummaryCtaMessage('high').includes('我'), true);
 assert.equal(proSummaryCtaMessage('low').includes('我'), false);
 assert.doesNotMatch(proSummaryCtaMessage('high'), /我現在主動幫你/);
-assert.equal(proSummaryGateMessage('low'), '請先使用『請 AI 整理目前需求』功能確認目前資訊。');
+assert.equal(proSummaryGateMessage('low'), '進入推薦結果前，請先完成目前需求確認。');
+assert.doesNotMatch(proSummaryGateMessage('low'), /我提醒你|我先幫你|😊|🙂/);
+assert.doesNotMatch(proSummaryGateMessage('high'), /我提醒你|我先幫你|😊|🙂/);
+assert.match(proSummaryGateMessage('high'), /查看目前需求整理/);
 console.log('PASS PRO copy differs by AN form only');
 
 const promptHighEx = buildFreeChatSystemPrompt({ condition: getCondition(1)! });
@@ -248,19 +267,67 @@ assert.ok(surprise.surpriseCandidateOutfits.includes(pickedAgain.finalOutfit));
 assert.notEqual(pickedAgain.finalOutfit, 'M1');
 console.log('PASS surprise selection stays on chat preferences and ignores quick-question fields');
 
-const previousSwitch = process.env.NEXT_PUBLIC_RESULT_LAYOUT_SWITCH;
-const previousDefault = process.env.NEXT_PUBLIC_RESULT_LAYOUT;
-process.env.NEXT_PUBLIC_RESULT_LAYOUT_SWITCH = '1';
-delete process.env.NEXT_PUBLIC_RESULT_LAYOUT;
-assert.equal(resolveResultLayout('paragraph'), 'paragraph');
+const lightFamily = extractChatPreferences(['我喜歡淺色']);
+const darkFamily = extractChatPreferences(['我喜歡深色']);
+assert.equal(lightFamily.likedColorFamily, 'light');
+assert.equal(darkFamily.likedColorFamily, 'dark');
+for (const outfitId of ['M2', 'M4', 'F2', 'F4', 'F1', 'F6', 'M1', 'M3']) {
+  assert.equal(
+    outfitConflictsWithPreferences(outfitId, lightFamily),
+    false,
+    `${outfitId} must stay in the light-family candidate pool`,
+  );
+  assert.equal(
+    outfitConflictsWithPreferences(outfitId, darkFamily),
+    false,
+    `${outfitId} must stay in the dark-family candidate pool`,
+  );
+}
+assert.ok(
+  scoreOutfitForPreferences('F1', lightFamily) > scoreOutfitForPreferences('M2', lightFamily),
+);
+assert.ok(
+  scoreOutfitForPreferences('M2', darkFamily) > scoreOutfitForPreferences('F1', darkFamily),
+);
+assert.equal(scoreOutfitForPreferences('F1', lightFamily) - scoreOutfitForPreferences('M1', lightFamily), 3);
+assert.equal(getLookFeatures('F1').colorFamily, 'light');
+assert.equal(getLookFeatures('M2').colorFamily, 'dark');
+assert.equal(getLookFeatures('M1').colorFamily, 'mixed');
+
+for (const category of ['male', 'female'] as const) {
+  const pools = getOutfitPools(category);
+  for (const prediction of pools.allowedOutfits) {
+    const resolved = resolveFinalOutfit({
+      surpriseMode: 'surprise',
+      expectedOutfitBeforeAI: prediction,
+      allowedOutfits: pools.allowedOutfits,
+      blockedOutfits: pools.blockedOutfits,
+    });
+    assert.ok(resolved.surpriseCandidateOutfits.length > 0, `${category} ${prediction} empty pool`);
+    assert.equal(resolved.surpriseCandidateOutfits.includes(prediction), false);
+    assert.ok(resolved.surpriseCandidateOutfits.every((id) => pools.allowedOutfits.includes(id)));
+    const scored = selectSurpriseOutfitBPlus({
+      expectedOutfitBeforeAI: prediction,
+      candidates: resolved.surpriseCandidateOutfits,
+      preferences: lightFamily,
+    });
+    assert.notEqual(scored.finalOutfit, prediction);
+    assert.ok(resolved.surpriseCandidateOutfits.includes(scored.finalOutfit));
+    const none = resolveFinalOutfit({
+      surpriseMode: 'no_surprise',
+      expectedOutfitBeforeAI: prediction,
+      allowedOutfits: pools.allowedOutfits,
+      blockedOutfits: pools.blockedOutfits,
+    });
+    assert.equal(none.finalRecommendedOutfit, prediction);
+  }
+}
+console.log('PASS colorFamily scores without shrinking the surprise candidate pool');
+
+assert.equal(isResultLayoutSwitchEnabled(), false);
+assert.equal(resolveResultLayout('paragraph'), 'card');
 assert.equal(resolveResultLayout('card'), 'card');
 assert.equal(resolveResultLayout(null), 'card');
-process.env.NEXT_PUBLIC_RESULT_LAYOUT_SWITCH = '0';
-assert.equal(resolveResultLayout('paragraph'), 'card');
-if (previousSwitch === undefined) delete process.env.NEXT_PUBLIC_RESULT_LAYOUT_SWITCH;
-else process.env.NEXT_PUBLIC_RESULT_LAYOUT_SWITCH = previousSwitch;
-if (previousDefault === undefined) delete process.env.NEXT_PUBLIC_RESULT_LAYOUT;
-else process.env.NEXT_PUBLIC_RESULT_LAYOUT = previousDefault;
-console.log('PASS layout switch is test-only');
+console.log('PASS production result layout is card-only');
 
 console.log('ALL FORMAL V3 QA PASSED');
