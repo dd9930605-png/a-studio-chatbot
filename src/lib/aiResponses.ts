@@ -280,6 +280,10 @@ function applyTone(response: string, condition: Condition): string {
 
     const neutralResponse = protectedResponse
       .replace(/^了解，/, '已記錄：')
+      .replace(/依我們剛才的對話/g, '依目前對話內容')
+      .replace(/我們可以/g, '可')
+      .replace(/我們/g, '')
+      .replace(/我理解/g, '已理解')
       .replace(/我會/g, '系統將')
       .replace(/我/g, '系統')
       .replace(/^抱歉，/, '提示：')
@@ -462,6 +466,13 @@ function buildNextMissingInfoQuestion(
   }
   return '';
 }
+
+/** 高擬人化備援回覆輪替句型，避免每則都同一個開頭；資訊量相同。 */
+const HIGH_ACK_VARIANTS: Array<(topic: string) => string> = [
+  (topic) => `了解～你提到「${topic}」，我記住了 😊`,
+  (topic) => `好喔，「${topic}」這點我記住了～`,
+  (topic) => `嗯嗯，你說的「${topic}」我記住了，謝謝你跟我說 😊`,
+];
 
 /** 無 OpenAI 時的自由對話備援，不做關鍵字篩選。 */
 export function generateFreeChatFallbackReply(
@@ -648,7 +659,7 @@ export function generateFreeChatFallbackReply(
   // 可解釋性、雙面訊息與主動追問都不在一般聊天呈現；高低組資訊量相同，只差擬人化語氣。
   let reply =
     condition.anthropomorphism === 'high'
-      ? `了解～你提到「${topic}」，我記住了 😊`
+      ? HIGH_ACK_VARIANTS[(userMessages.length - 1) % HIGH_ACK_VARIANTS.length](topic)
       : `已記錄：「${topic}」。`;
 
   const nextQuestion = buildNextMissingInfoQuestion(userMessages);
